@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.png" width="940" alt="Vocium — AI voice input, the five interaction states" />
+  <img src="docs/assets/showcase.gif" width="940" alt="Vocium — AI voice input demo (hotkey → speak → text inserted)" />
 </p>
 
 ---
