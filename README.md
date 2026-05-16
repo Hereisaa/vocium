@@ -5,8 +5,9 @@
 <h1 align="center">Vocium</h1>
 
 <p align="center">
-  A desktop voice‑input tool — press a hotkey (or click the floating icon), speak,
-  and your words are transcribed and typed straight into whatever app you're using.
+  <b>AI‑powered voice typing for the desktop.</b><br/>
+  Press a hotkey, speak, and your speech is transcribed by AI and inserted
+  straight into whatever app you're working in.
 </p>
 
 <p align="center">
@@ -14,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.png" width="900" alt="Vocium — the floating icon in its listening state (real UI)" />
+  <img src="docs/assets/showcase.png" width="940" alt="Vocium — AI voice input, the five interaction states" />
 </p>
 
 ---
@@ -119,7 +120,7 @@ MIT
 
 <p align="center"><a href="#vocium">English</a> · <b>繁體中文</b></p>
 
-**Vocium** 是一款桌面語音輸入工具：桌面頂部常駐一顆懸浮 ICON，按**快捷鍵**或**點擊 ICON** 開始錄音，語音轉文字後**自動貼入你目前焦點的輸入框**。
+**Vocium — AI 智慧語音輸入**。桌面頂部常駐一顆懸浮 ICON，按**快捷鍵**或**點擊 ICON** 開口說話，AI（Groq Whisper）即時將語音轉為文字，**自動落鍵到你目前焦點的輸入框**——不打斷工作流，講完即成文。
 
 ### 功能
 
