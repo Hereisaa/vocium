@@ -13,6 +13,10 @@
   <b>English</b> · <a href="#中文">繁體中文</a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/showcase.png" width="900" alt="Vocium — floating icon, listening state, and the five states" />
+</p>
+
 ---
 
 ## Features
@@ -88,6 +92,8 @@ Visual specs are kept as self‑contained HTML you can open in a browser:
 
 The app‑icon master is the vector `app-tauri/src-tauri/icons/icon.svg`; run `npm run icons` to regenerate every PNG size + the multi‑resolution `.ico` from it.
 
+> GitHub renders Markdown and images, **not** `.html` (clicking a mockup shows its source). The banner above is `docs/assets/showcase.png`, rendered from `docs/assets/showcase.html`. To view the interactive mockups, open the HTML files locally — or, once this repo is public, via GitHub Pages / a raw‑HTML viewer.
+
 ## Architecture (in one line)
 
 A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic over a single MCP protocol. Details in [`docs/SPEC.md`](docs/SPEC.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
@@ -112,6 +118,10 @@ MIT
 <h2 id="中文">中文</h2>
 
 <p align="center"><a href="#vocium">English</a> · <b>繁體中文</b></p>
+
+<p align="center">
+  <img src="docs/assets/showcase.png" width="900" alt="Vocium — 懸浮 ICON、聆聽狀態、五種狀態" />
+</p>
 
 **Vocium** 是一款桌面語音輸入工具：桌面頂部常駐一顆懸浮 ICON，按**快捷鍵**或**點擊 ICON** 開始錄音，語音轉文字後**自動貼入你目前焦點的輸入框**。
 
@@ -187,6 +197,8 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 - `docs/ICON_DESIGN.html` — App 圖示方案與定案。
 
 App 圖示母版為向量檔 `app-tauri/src-tauri/icons/icon.svg`；執行 `npm run icons` 可由它重產所有尺寸 PNG 與多解析度 `.ico`。
+
+> GitHub 只渲染 Markdown 與圖片，**不會**渲染 `.html`（點 mockup 只會看到原始碼）。上方橫幅是 `docs/assets/showcase.png`，由 `docs/assets/showcase.html` 無頭渲染產生。要看可互動的 mockup，請在本機開啟該 HTML；待此 repo 公開後亦可透過 GitHub Pages／raw‑HTML 檢視服務開啟。
 
 ### 架構（一句話）
 
