@@ -1,0 +1,208 @@
+<p align="center">
+  <img src="app-tauri/src-tauri/icons/128x128.png" width="96" height="96" alt="Vocium" />
+</p>
+
+<h1 align="center">Vocium</h1>
+
+<p align="center">
+  A desktop voice‑input tool — press a hotkey (or click the floating icon), speak,
+  and your words are transcribed and typed straight into whatever app you're using.
+</p>
+
+<p align="center">
+  <b>English</b> · <a href="#中文">繁體中文</a>
+</p>
+
+---
+
+## Features
+
+- **Floating icon** pinned top‑center: always‑on‑top, frameless, translucent, never steals focus (your paste lands in the app you were typing in).
+- **Five animated states** so you always know what's happening: idle (breathing) · listening (sound wave) · transcribing (spinner) · injected (check) · error (shake).
+- **Two ways to trigger**: a **global hotkey** (default `Ctrl+Shift+Space`) or **clicking the icon**. Press `Esc` while listening to cancel.
+- **Customizable hotkey** — a Settings window lets you **record a new combo and it applies instantly**, no restart. A taken/invalid combo is rejected and the old one is kept.
+- **Hover controls** on the icon (fade in only on hover): 🔒 lock/unlock drag · ⎯ minimize to tray · ✕ quit.
+- **Speech‑to‑text via Groq Whisper** (`whisper-large-v3-turbo`, bring‑your‑own‑key). No key? It automatically falls back to an offline **mock** mode so the flow still works.
+- **Automatic paste** into the focused field (clipboard + simulated paste). If paste fails it degrades gracefully to "copied — paste manually".
+- **System tray menu**: show/hide icon · STT mode · Settings… · open config location · quit.
+- **Settings persisted** in `%APPDATA%/vocium/vocium-config.json` (hotkey, drag‑lock, icon position, STT provider, …).
+
+## Requirements
+
+- **Windows 11** (v1 target — text injection is pure PowerShell, zero native build).
+- **Node.js ≥ 20**
+- **Rust toolchain** + Tauri 2 prerequisites (Microsoft Edge **WebView2** runtime and MSVC build tools) — needed to build/run the shell.
+- *(Optional)* a **Groq API key** for real transcription. Without one, Vocium runs in mock mode.
+
+> macOS / Linux: the injection interface and stubs are in place but `inject()` is not implemented in v1 (Phase 2).
+
+## Install & Run
+
+```bash
+git clone <your-repo-url> vocium
+cd vocium
+npm install
+npm run build        # compile the TypeScript sidecar
+npm run dev          # build + launch the desktop app (tauri dev)
+```
+
+Produce a local build:
+
+```bash
+npx tauri build --config app-tauri/src-tauri/tauri.conf.json
+```
+
+> The produced binary is unsigned; installer packaging/signing is a later‑phase item.
+
+## Configure
+
+Settings live in `%APPDATA%\vocium\vocium-config.json` (created on first run). Example — **never commit your real key**:
+
+```jsonc
+{
+  "hotkey": "Ctrl+Shift+Space",
+  "sttProvider": "groq",            // "groq" | "mock"
+  "groqApiKey": "<your-groq-key>",  // local only; falls back to mock if empty
+  "groqModel": "whisper-large-v3-turbo",
+  "maxListenMs": 30000,
+  "dragLocked": false
+}
+```
+
+The hotkey is also editable from the in‑app **Settings…** window (Tray → Settings…) and applies live. The config file is git‑ignored — your key never enters version control.
+
+## Usage
+
+1. Focus any text field (editor, browser, chat…).
+2. Press the hotkey **or** click the floating icon → it enters **listening**.
+3. Speak.
+4. Press again (or it auto‑stops after `maxListenMs`) → it transcribes and **pastes the text into your focused field**. `Esc` while listening cancels (nothing is inserted).
+5. Hover the icon to reveal the controls: lock drag · minimize to tray · quit. Re‑show from the tray icon.
+
+## Design
+
+Visual specs are kept as self‑contained HTML you can open in a browser:
+
+- `docs/DESIGN_MOCKUP.html` — the floating icon, all five states, controls, and the settings window.
+- `docs/ICON_DESIGN.html` — app‑icon concepts and the chosen mark.
+
+The app‑icon master is the vector `app-tauri/src-tauri/icons/icon.svg`; run `npm run icons` to regenerate every PNG size + the multi‑resolution `.ico` from it.
+
+## Architecture (in one line)
+
+A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic over a single MCP protocol. Details in [`docs/SPEC.md`](docs/SPEC.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Development
+
+```bash
+npm test         # vitest — core logic, config, injector, MCP integration
+npm run icons    # regenerate icons from icon.svg
+```
+
+## Status
+
+MVP, Windows‑first. GUI verified on a real machine; real Groq transcription is the next verification step. Not yet packaged for distribution.
+
+## License
+
+MIT
+
+---
+
+<h2 id="中文">中文</h2>
+
+<p align="center"><a href="#vocium">English</a> · <b>繁體中文</b></p>
+
+**Vocium** 是一款桌面語音輸入工具：桌面頂部常駐一顆懸浮 ICON，按**快捷鍵**或**點擊 ICON** 開始錄音，語音轉文字後**自動貼入你目前焦點的輸入框**。
+
+### 功能
+
+- **懸浮 ICON**：頂部置中、永遠最上層、無邊框、半透明、**不搶焦點**（貼上會落在你原本打字的程式）。
+- **五種狀態動畫**：待命（呼吸）／聆聽（聲波）／轉錄（旋轉）／輸入完成（勾選）／錯誤（抖動）。
+- **兩種觸發**：全域快捷鍵（預設 `Ctrl+Shift+Space`）或點擊 ICON；聆聽中按 `Esc` 取消。
+- **可自訂快捷鍵**：設定視窗可**錄製新組合並即時生效**，無需重開；組合被占用或無效會擋下並保留原快捷鍵。
+- **懸浮控制鈕**（滑鼠移上才淡入）：🔒 鎖定/解除拖曳 · ⎯ 縮小到系統匣 · ✕ 結束。
+- **STT＝Groq Whisper**（`whisper-large-v3-turbo`，自備金鑰）。未設金鑰時自動回退離線 **mock** 模式，流程照樣走通。
+- **自動貼上**到焦點輸入框（剪貼簿＋模擬貼上）；失敗時優雅降級為「已複製，請手動貼上」。
+- **系統匣選單**：顯示/隱藏 ICON · STT 模式 · 設定… · 開啟設定檔位置 · 結束。
+- **設定持久化**於 `%APPDATA%/vocium/vocium-config.json`（快捷鍵、拖曳鎖定、ICON 位置、STT 來源…）。
+
+### 需求
+
+- **Windows 11**（v1 範疇 — 文字注入純 PowerShell，零 native build）。
+- **Node.js ≥ 20**
+- **Rust 工具鏈** ＋ Tauri 2 前置（Edge **WebView2** Runtime 與 MSVC build tools）。
+- *(選用)* **Groq API 金鑰** 以啟用真實轉錄；未設則為 mock 模式。
+
+> macOS / Linux：注入介面與 stub 已就位，但 v1 `inject()` 未實作（Phase 2）。
+
+### 安裝與執行
+
+```bash
+git clone <你的-repo-url> vocium
+cd vocium
+npm install
+npm run build        # 編譯 TypeScript sidecar
+npm run dev          # 編譯並啟動桌面程式（tauri dev）
+```
+
+本機打包：
+
+```bash
+npx tauri build --config app-tauri/src-tauri/tauri.conf.json
+```
+
+> 產物未簽章；安裝程式打包/簽章列為後期項目。
+
+### 設定
+
+設定檔位於 `%APPDATA%\vocium\vocium-config.json`（首次執行自動建立）。範例 — **切勿把真實金鑰提交進版控**：
+
+```jsonc
+{
+  "hotkey": "Ctrl+Shift+Space",
+  "sttProvider": "groq",            // "groq" | "mock"
+  "groqApiKey": "<你的-groq-金鑰>",  // 僅存本機；留空則回退 mock
+  "groqModel": "whisper-large-v3-turbo",
+  "maxListenMs": 30000,
+  "dragLocked": false
+}
+```
+
+快捷鍵也可從程式內 **設定…** 視窗（系統匣 → 設定…）修改，即時生效。設定檔已被 git 忽略，金鑰不會進版控。
+
+### 操作
+
+1. 把游標焦點放在任一輸入框（編輯器、瀏覽器、聊天…）。
+2. 按快捷鍵**或**點擊懸浮 ICON → 進入**聆聽**。
+3. 說話。
+4. 再按一次（或超過 `maxListenMs` 自動停止）→ 轉錄並**把文字貼進你的焦點輸入框**。聆聽中按 `Esc` 取消（不會輸入任何字）。
+5. 滑鼠移到 ICON 上叫出控制鈕：鎖定拖曳 · 縮小到系統匣 · 結束。縮小後可由系統匣圖示重新顯示。
+
+### 設計圖
+
+視覺規格為可直接用瀏覽器開的單一 HTML：
+
+- `docs/DESIGN_MOCKUP.html` — 懸浮 ICON、五狀態、控制鈕、設定視窗。
+- `docs/ICON_DESIGN.html` — App 圖示方案與定案。
+
+App 圖示母版為向量檔 `app-tauri/src-tauri/icons/icon.svg`；執行 `npm run icons` 可由它重產所有尺寸 PNG 與多解析度 `.ico`。
+
+### 架構（一句話）
+
+輕薄的 Tauri 2（Rust）殼驅動一個 Node sidecar，後者以單一 MCP 協定對外暴露核心邏輯。細節見 [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+### 開發
+
+```bash
+npm test         # vitest — 核心邏輯／設定／注入／MCP 整合
+npm run icons    # 由 icon.svg 重產圖示
+```
+
+### 狀態
+
+MVP，Windows 優先。GUI 已實機驗證；真實 Groq 轉錄為下一步驗證項。尚未打包發佈。
+
+### 授權
+
+MIT

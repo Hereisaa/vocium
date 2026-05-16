@@ -1,0 +1,263 @@
+/* Vocium webview styles — ported from docs/DESIGN_MOCKUP.html revision 4.
+   Only the floating icon (control row + single-line pill) is rendered;
+   the window is frameless + transparent. */
+
+:root {
+  --bg-desktop: #0e1117;
+  --panel: #161b22;
+  --panel-2: #1c2230;
+  --stroke: rgba(255, 255, 255, .08);
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --accent: #6ad0c8;       /* idle / brand (Vocium teal) */
+  --listen: #3ddc97;       /* listening */
+  --transcribe: #f5a623;   /* transcribing */
+  --inject: #7c5cff;       /* injecting */
+  --error: #ff5d5d;        /* error */
+  --pill-bg: rgba(22, 27, 34, .92);
+  --pill-stroke: rgba(255, 255, 255, .10);
+  --radius: 16px;
+  --shadow: 0 8px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .04) inset;
+  --font: 'Segoe UI', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: transparent;            /* frameless transparent window */
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* .iconwin = the real transparent window bounds. padding-top reserves the
+   control-row band so it never clips. The control row is ABSOLUTELY pinned
+   to the pill's top-right, so it stays put regardless of state label. */
+.iconwin {
+  position: relative;
+  display: inline-block;
+  padding-top: 26px;
+}
+
+.controls {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity .15s, transform .15s;
+  pointer-events: none;
+}
+.iconwin:hover .controls,
+.controls.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.wbtn {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color .14s, background .14s, transform .14s;
+}
+.wbtn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, .07);
+  transform: translateY(-1px);
+}
+.wbtn .i {
+  width: 15px;
+  height: 15px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wbtn.close {
+  color: var(--error);
+  opacity: .85;
+}
+.wbtn.close:hover {
+  color: #fff;
+  background: var(--error);
+  opacity: 1;
+}
+.wbtn.lock.on {
+  color: var(--accent);
+}
+
+/* width:auto -> pill hugs orb+label tightly (no dead right space). The real
+   window is sized to fit the WIDEST state label so runtime state changes
+   never resize/reflow it; the pill itself stays content-snug.
+   backdrop-filter:blur() is intentionally NOT used: on Windows WebView2 a
+   transparent window cannot composite a backdrop blur against the desktop
+   and falls back to an OPAQUE backing (the "square box" bug). */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: auto;
+  height: 52px;
+  padding: 0 13px 0 11px;
+  background: var(--pill-bg);
+  border: 1px solid var(--pill-stroke);
+  border-radius: var(--radius);
+  /* Tight shadow hugging the pill edge. The icon window is transparent with a
+     hard rectangular boundary; the old --shadow (30px blur, 8px offset)
+     overflowed that rect and was sliced by the invisible window edge. Keep
+     blur+offset small enough to stay inside the transparent margin. */
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .05) inset;
+  user-select: none;
+}
+
+/* orb enlarged for a bigger, easier click target (esp. idle) */
+.orb {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;            /* the orb is the click→toggle control */
+}
+.orb .core {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: background .25s;
+}
+.orb .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  white-space: nowrap;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  cursor: move;               /* the meta area is the drag handle */
+}
+
+.bars { display: none; align-items: flex-end; gap: 3px; height: 24px; }
+.bars span { width: 3px; background: var(--listen); border-radius: 2px; height: 6px; }
+
+/* ---- s-idle ---- */
+.s-idle .core {
+  width: 19px;
+  height: 19px;
+  background: var(--accent);
+  animation: breathe 2.6s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(.82); opacity: .7; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+/* ---- s-listen ---- */
+.s-listen .core { display: none; }
+.s-listen .bars { display: flex; }
+.s-listen .orb .ring { border-color: var(--listen); animation: pulsering 1.4s ease-out infinite; }
+.s-listen .bars span { animation: eq .9s ease-in-out infinite; }
+.s-listen .bars span:nth-child(1) { animation-delay: 0s; }
+.s-listen .bars span:nth-child(2) { animation-delay: .15s; }
+.s-listen .bars span:nth-child(3) { animation-delay: .3s; }
+.s-listen .bars span:nth-child(4) { animation-delay: .45s; }
+.s-listen .bars span:nth-child(5) { animation-delay: .2s; }
+@keyframes eq { 0%, 100% { height: 5px; } 50% { height: 24px; } }
+@keyframes pulsering {
+  0% { transform: scale(.7); opacity: .9; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* ---- s-trans ---- */
+.s-trans .core { background: var(--transcribe); }
+.s-trans .orb .ring {
+  border-top-color: var(--transcribe);
+  border-right-color: var(--transcribe);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- s-inject ---- */
+.s-inject .core {
+  background: var(--inject);
+  width: 20px;
+  height: 20px;
+  clip-path: polygon(43% 73%, 18% 50%, 9% 60%, 43% 91%, 91% 33%, 82% 24%);
+  border-radius: 0;
+  animation: pop .4s ease;
+}
+.s-inject .orb .ring { border-color: var(--inject); opacity: .4; }
+@keyframes pop {
+  0% { transform: scale(.2); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ---- s-error ---- */
+.s-error .core { background: var(--error); animation: shake .4s ease 2; }
+.s-error .orb .ring { border-color: var(--error); opacity: .5; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* ---- settings window ---- */
+.settings-body { display:block; padding:0; background:var(--bg-desktop); }
+.settings { width:100%; height:100vh; background:var(--panel); display:flex;
+  flex-direction:column; }
+.s-head { display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; background:var(--panel-2); border-bottom:1px solid var(--stroke); }
+.s-head b { font-size:14px; letter-spacing:.4px; }
+.s-head .x { color:var(--text-dim); font-size:14px; cursor:pointer; }
+.s-body { padding:20px 18px; display:flex; flex-direction:column; gap:14px; flex:1; }
+.field { display:flex; flex-direction:column; gap:8px; }
+.flabel { font-size:12px; color:var(--text-dim); letter-spacing:.5px; }
+.hkrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.hkcombo { display:flex; gap:6px; flex:1; flex-wrap:wrap; min-width:120px; }
+.keycap { font-size:12px; color:var(--text); background:var(--panel-2);
+  border:1px solid var(--stroke); border-bottom-width:2px; border-radius:6px;
+  padding:5px 10px; font-weight:600; }
+.recbtn { font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;
+  border:1px solid var(--accent); background:rgba(106,208,200,.10);
+  padding:7px 14px; border-radius:8px; white-space:nowrap; }
+.recbtn.armed { color:var(--listen); border-color:var(--listen);
+  background:rgba(61,220,151,.12); }
+.s-hint { font-size:11px; color:var(--text-dim); line-height:1.65; }
+.s-err { font-size:11px; color:var(--error); line-height:1.65; }
+.s-foot { display:flex; justify-content:flex-end; gap:10px; padding:14px 18px;
+  border-top:1px solid var(--stroke); background:var(--panel-2); }
+.sbtn { font-size:12px; font-weight:600; padding:8px 16px; border-radius:8px;
+  cursor:pointer; border:1px solid var(--stroke); color:var(--text-dim);
+  background:transparent; }
+.sbtn.primary { color:#0e1117; background:var(--accent); border-color:var(--accent); }

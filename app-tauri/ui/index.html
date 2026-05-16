@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vocium</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Icon sprite: clean Lucide-style line icons, reused via <use>.
+       Structure ported from docs/DESIGN_MOCKUP.html revision 4. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ic-min" viewBox="0 0 24 24">
+      <path d="M6 17h12" />
+    </symbol>
+    <symbol id="ic-unlock" viewBox="0 0 24 24">
+      <rect x="4" y="11" width="16" height="10" rx="2.2" />
+      <path d="M8 11V7a4 4 0 0 1 7.6-1.7" />
+    </symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24">
+      <rect x="4" y="11" width="16" height="10" rx="2.2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24">
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </symbol>
+  </svg>
+
+  <!-- .iconwin = the real transparent window bounds. The control row is
+       absolutely pinned to the pill's top-right and only fades in on hover.
+       The single-line .pill carries the s-* state class; #orb is the
+       click→toggle control; #meta is the drag handle (gated by dragLocked
+       in app.js). NO subtitle (.sub) anymore. -->
+  <div class="iconwin">
+    <div class="controls" id="controls">
+      <button class="wbtn lock" id="btnLock" title="鎖定/解除水平拖曳">
+        <svg class="i"><use href="#ic-unlock" id="lockUse" /></svg>
+      </button>
+      <button class="wbtn min" id="btnMin" title="縮小到系統匣">
+        <svg class="i"><use href="#ic-min" /></svg>
+      </button>
+      <button class="wbtn close" id="btnClose" title="結束 Vocium">
+        <svg class="i"><use href="#ic-close" /></svg>
+      </button>
+    </div>
+    <div class="pill s-idle" id="pill">
+      <div class="orb" id="orb" title="點此或按快捷鍵開始／停止">
+        <div class="core"></div>
+        <div class="ring"></div>
+        <div class="bars">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="meta" id="meta" title="拖曳此處可水平移動">
+        <div class="label" id="label">Vocium</div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

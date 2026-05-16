@@ -1,0 +1,27 @@
+# --- dependencies / build output ---
+node_modules/
+dist/
+app-tauri/src-tauri/target/
+app-tauri/src-tauri/gen/
+
+# --- local config & secrets (Groq key lives only in %APPDATA%, never here) ---
+**/vocium-config.json
+.env
+*.local
+
+# --- logs (may contain local paths / machine info) ---
+*.log
+docs/logs/
+
+# --- internal AI workflow docs — not for the public repo ---
+docs/superpowers/
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# NOTE: app-tauri/src-tauri/Cargo.lock is intentionally COMMITTED.
+# Vocium is an application (not a library) → a pinned lockfile gives
+# reproducible builds. (Previously this file ignored Cargo.lock — fixed.)

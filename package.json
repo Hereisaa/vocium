@@ -1,0 +1,31 @@
+{
+  "name": "vocium",
+  "version": "0.1.0",
+  "description": "Desktop voice input tool — Node sidecar (single MCP server) + Tauri shell",
+  "type": "module",
+  "main": "dist/sidecar/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json -w",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sidecar": "node dist/sidecar/index.js",
+    "icons": "node scripts/gen-icons.mjs",
+    "dev": "npm run build && tauri dev --config app-tauri/src-tauri/tauri.conf.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.1",
+    "@types/node": "^22.10.5",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vocium — Design Mockup</title>
+    <style>
+      :root {
+        --bg-desktop: #0e1117;
+        --panel: #161b22;
+        --panel-2: #1c2230;
+        --stroke: rgba(255, 255, 255, 0.08);
+        --text: #e6edf3;
+        --text-dim: #8b949e;
+        --accent: #6ad0c8;
+        --listen: #3ddc97;
+        --transcribe: #f5a623;
+        --inject: #7c5cff;
+        --error: #ff5d5d;
+        --pill-bg: rgba(22, 27, 34, 0.92);
+        --pill-stroke: rgba(255, 255, 255, 0.1);
+        --radius: 16px;
+        --shadow:
+          0 8px 30px rgba(0, 0, 0, 0.55),
+          0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        --font:
+          "Segoe UI", system-ui, -apple-system, "Microsoft JhengHei", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--font);
+        background: radial-gradient(
+          1200px 600px at 50% -10%,
+          #16242a 0%,
+          var(--bg-desktop) 60%
+        );
+        color: var(--text);
+        min-height: 100vh;
+        padding: 40px 24px 80px;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 8px;
+      }
+      header h1 {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      header h1 .k {
+        color: var(--accent);
+      }
+      header p {
+        color: var(--text-dim);
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      .badge {
+        display: inline-block;
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--text-dim);
+        border: 1px solid var(--stroke);
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--panel);
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin: 48px 0 18px;
+        border-left: 3px solid var(--accent);
+        padding-left: 10px;
+      }
+      .note {
+        font-size: 12px;
+        color: var(--text-dim);
+        line-height: 1.8;
+        margin: 18px 0 8px;
+        padding: 14px 16px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+      }
+      .note b {
+        color: var(--text);
+      }
+
+      .desktop {
+        position: relative;
+        border-radius: 16px;
+        border: 1px solid var(--stroke);
+        background: linear-gradient(160deg, #1d2c30, #11161f);
+        height: 240px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+      .desktop .topbar {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 30px;
+        background: rgba(0, 0, 0, 0.25);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 12px;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+      .dot.r {
+        background: #ff5f57;
+      }
+      .dot.y {
+        background: #febc2e;
+      }
+      .dot.g {
+        background: #28c840;
+      }
+      .desktop .hint {
+        position: absolute;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        color: var(--text-dim);
+        font-size: 12px;
+        text-align: center;
+        width: 90%;
+      }
+      .pin {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      /* .iconwin = the real transparent window bounds. padding-top reserves the
+     control-row band so it never clips. The control row is ABSOLUTELY pinned
+     to the pill's top-right, so it stays put regardless of state label. */
+      .iconwin {
+        position: relative;
+        display: inline-block;
+        padding-top: 26px;
+      }
+      .controls {
+        position: absolute;
+        top: 0;
+        right: 2px;
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        opacity: 0;
+        transform: translateY(3px);
+        transition:
+          opacity 0.15s,
+          transform 0.15s;
+        pointer-events: none;
+      }
+      .iconwin:hover .controls,
+      .controls.show {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+      .wbtn {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        color: var(--text-dim);
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        border-radius: 6px;
+        transition:
+          color 0.14s,
+          background 0.14s,
+          transform 0.14s;
+      }
+      .wbtn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.07);
+        transform: translateY(-1px);
+      }
+      .wbtn .i {
+        width: 15px;
+        height: 15px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .wbtn.close {
+        color: var(--error);
+        opacity: 0.85;
+      }
+      .wbtn.close:hover {
+        color: #fff;
+        background: var(--error);
+        opacity: 1;
+      }
+      .wbtn.lock.on {
+        color: var(--accent);
+      }
+
+      /* width:auto -> pill hugs orb+label tightly (no dead right space). The real
+     window is sized to the WIDEST state label so runtime state changes never
+     resize/reflow it; the pill itself stays content-snug. */
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        width: auto;
+        height: 52px;
+        padding: 0 13px 0 11px;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-stroke);
+        border-radius: var(--radius);
+        backdrop-filter: blur(14px);
+        box-shadow: var(--shadow);
+        user-select: none;
+      }
+      /* orb enlarged for a bigger, easier click target (esp. idle) */
+      .orb {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        flex: none;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+      .orb .core {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        transition: background 0.25s;
+      }
+      .orb .ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid transparent;
+      }
+      .label {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .bars {
+        display: none;
+        align-items: flex-end;
+        gap: 3px;
+        height: 24px;
+      }
+      .bars span {
+        width: 3px;
+        background: var(--listen);
+        border-radius: 2px;
+        height: 6px;
+      }
+
+      .s-idle .core {
+        width: 19px;
+        height: 19px;
+        background: var(--accent);
+        animation: breathe 2.6s ease-in-out infinite;
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: scale(0.82);
+          opacity: 0.7;
+        }
+        50% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .s-listen .core {
+        display: none;
+      }
+      .s-listen .bars {
+        display: flex;
+      }
+      .s-listen .orb .ring {
+        border-color: var(--listen);
+        animation: pulsering 1.4s ease-out infinite;
+      }
+      .s-listen .bars span {
+        animation: eq 0.9s ease-in-out infinite;
+      }
+      .s-listen .bars span:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .s-listen .bars span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .s-listen .bars span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      .s-listen .bars span:nth-child(4) {
+        animation-delay: 0.45s;
+      }
+      .s-listen .bars span:nth-child(5) {
+        animation-delay: 0.2s;
+      }
+      @keyframes eq {
+        0%,
+        100% {
+          height: 5px;
+        }
+        50% {
+          height: 24px;
+        }
+      }
+      @keyframes pulsering {
+        0% {
+          transform: scale(0.7);
+          opacity: 0.9;
+        }
+        100% {
+          transform: scale(1.7);
+          opacity: 0;
+        }
+      }
+
+      .s-trans .core {
+        background: var(--transcribe);
+      }
+      .s-trans .orb .ring {
+        border-top-color: var(--transcribe);
+        border-right-color: var(--transcribe);
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .s-inject .core {
+        background: var(--inject);
+        width: 20px;
+        height: 20px;
+        clip-path: polygon(43% 73%, 18% 50%, 9% 60%, 43% 91%, 91% 33%, 82% 24%);
+        border-radius: 0;
+        animation: pop 0.4s ease;
+      }
+      .s-inject .orb .ring {
+        border-color: var(--inject);
+        opacity: 0.4;
+      }
+      @keyframes pop {
+        0% {
+          transform: scale(0.2);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.15);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .s-error .core {
+        background: var(--error);
+        animation: shake 0.4s ease 2;
+      }
+      .s-error .orb .ring {
+        border-color: var(--error);
+        opacity: 0.5;
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-4px);
+        }
+        75% {
+          transform: translateX(4px);
+        }
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+        gap: 20px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 30px 20px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+      .card .tag {
+        font-size: 12px;
+        color: var(--text-dim);
+        text-align: center;
+        line-height: 1.55;
+      }
+      .card .tag b {
+        color: var(--text);
+        display: block;
+        font-size: 14px;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+      }
+
+      .fsm {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 30px 20px;
+      }
+      .node {
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 1px solid var(--stroke);
+      }
+      .n-idle {
+        color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+      .n-listen {
+        color: var(--listen);
+        box-shadow: 0 0 0 1px var(--listen) inset;
+      }
+      .n-trans {
+        color: var(--transcribe);
+        box-shadow: 0 0 0 1px var(--transcribe) inset;
+      }
+      .n-inject {
+        color: var(--inject);
+        box-shadow: 0 0 0 1px var(--inject) inset;
+      }
+      .n-error {
+        color: var(--error);
+        box-shadow: 0 0 0 1px var(--error) inset;
+      }
+      .arrow {
+        color: var(--text-dim);
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .arrow span {
+        font-size: 10px;
+      }
+
+      .arch {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 28px 22px;
+      }
+      .tier {
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+        padding: 16px 18px;
+        background: var(--panel-2);
+      }
+      .tier .t-name {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        margin-bottom: 6px;
+      }
+      .tier .t-desc {
+        font-size: 12px;
+        color: var(--text-dim);
+        line-height: 1.6;
+      }
+      .tier.shell .t-name {
+        color: var(--accent);
+      }
+      .tier.side .t-name {
+        color: var(--listen);
+      }
+      .conn {
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 11px;
+        letter-spacing: 0.5px;
+      }
+      .clients {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .cli {
+        font-size: 11px;
+        color: var(--text-dim);
+        border: 1px dashed var(--stroke);
+        padding: 6px 12px;
+        border-radius: 8px;
+      }
+      .cli b {
+        color: var(--text);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 11px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--stroke);
+        vertical-align: top;
+      }
+      th {
+        color: var(--text-dim);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 1px;
+      }
+      td code {
+        background: var(--panel-2);
+        padding: 2px 7px;
+        border-radius: 5px;
+        font-size: 12px;
+        color: var(--accent);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .settings {
+        width: 100%;
+        max-width: 380px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+      .settings .s-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        background: var(--panel-2);
+        border-bottom: 1px solid var(--stroke);
+      }
+      .settings .s-head b {
+        font-size: 14px;
+        letter-spacing: 0.4px;
+      }
+      .settings .s-head .x {
+        color: var(--text-dim);
+        font-size: 14px;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .settings .s-body {
+        padding: 20px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .field .flabel {
+        font-size: 12px;
+        color: var(--text-dim);
+        letter-spacing: 0.5px;
+      }
+      .hkrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .hkcombo {
+        display: flex;
+        gap: 6px;
+        flex: 1;
+        flex-wrap: wrap;
+        min-width: 120px;
+      }
+      .keycap {
+        font-size: 12px;
+        color: var(--text);
+        background: var(--panel-2);
+        border: 1px solid var(--stroke);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-weight: 600;
+      }
+      .recbtn {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+        border: 1px solid var(--accent);
+        background: rgba(106, 208, 200, 0.1);
+        padding: 7px 14px;
+        border-radius: 8px;
+        white-space: nowrap;
+      }
+      .recbtn.armed {
+        color: var(--listen);
+        border-color: var(--listen);
+        background: rgba(61, 220, 151, 0.12);
+        animation: breathe 1.4s ease-in-out infinite;
+      }
+      .s-hint {
+        font-size: 11px;
+        color: var(--text-dim);
+        line-height: 1.65;
+      }
+      .s-err {
+        font-size: 11px;
+        color: var(--error);
+        line-height: 1.65;
+      }
+      .s-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 18px;
+        border-top: 1px solid var(--stroke);
+        background: var(--panel-2);
+      }
+      .sbtn {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid var(--stroke);
+        color: var(--text-dim);
+        background: transparent;
+      }
+      .sbtn.primary {
+        color: #0e1117;
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .tokens {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--panel);
+        border: 1px solid var(--stroke);
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 12px;
+      }
+      .chip {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      footer {
+        text-align: center;
+        color: var(--text-dim);
+        font-size: 12px;
+        margin-top: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- icon sprite: clean Lucide-style line icons, reused via <use> -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="ic-min" viewBox="0 0 24 24">
+        <path d="M6 17h12" />
+      </symbol>
+      <symbol id="ic-unlock" viewBox="0 0 24 24">
+        <rect x="4" y="11" width="16" height="10" rx="2.2" />
+        <path d="M8 11V7a4 4 0 0 1 7.6-1.7" />
+      </symbol>
+      <symbol id="ic-lock" viewBox="0 0 24 24">
+        <rect x="4" y="11" width="16" height="10" rx="2.2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </symbol>
+      <symbol id="ic-close" viewBox="0 0 24 24">
+        <path d="M6 6l12 12" />
+        <path d="M18 6 6 18" />
+      </symbol>
+    </svg>
+
+    <div class="wrap">
+      <header>
+        <h1>Voc<span class="k">ium</span></h1>
+        <p>桌面語音輸入工具 — 懸浮 ICON 設計圖</p>
+      </header>
+
+      <h2>1 · 桌面實境 — 懸浮 ICON (可拖曳)</h2>
+      <div class="desktop">
+        <div class="topbar">
+          <i class="dot r"></i><i class="dot y"></i><i class="dot g"></i>
+        </div>
+        <div class="pin">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock" title="鎖定/解除水平拖曳">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min" title="縮小到系統匣">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close" title="結束 Vocium">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-listen">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">聆聽中…</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="hint">
+          控制鈕僅在滑鼠懸浮於 ICON 時淡入（此處為展示故恆顯）· 永遠最上層 ·
+          無邊框 · 透明 · 不搶焦點
+        </div>
+      </div>
+      
+      <div class="note">
+        <b>控制鈕：</b>平時隱藏，hover 才淡入。
+        <span style="color: var(--accent)">鎖定拖曳</span> 、
+        <span style="color: var(--text)">縮小到 Tray</span
+        >（程式續跑，Tray「顯示 ICON」喚回）、
+        <span style="color: var(--error)">關閉</span>（殼 + sidecar 一併退出）。
+      </div>
+
+      <h2>2 · 五種狀態（放大 orb · 單行）</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-idle">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">Vocium</div></div>
+            </div>
+          </div>
+          <div class="tag"><b>idle 待命</b>放大呼吸光暈，點擊區更大更好按</div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-listen">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">聆聽中…</div></div>
+            </div>
+          </div>
+          <div class="tag"><b>listening 聆聽</b>等化器聲波 + 擴散環</div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-trans">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">轉錄中…</div></div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>transcribing 轉錄</b>旋轉弧線，Groq STT 處理中
+          </div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-inject">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">輸入完成</div></div>
+            </div>
+          </div>
+          <div class="tag"><b>injecting 注入</b>勾選彈出，文字已送出</div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-error">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">發生問題</div></div>
+            </div>
+          </div>
+          <div class="tag"><b>error 錯誤</b>紅色抖動，自動回復</div>
+        </div>
+      </div>
+
+      <h2>2b · 控制鈕 — 隱藏 / 懸浮顯示 / 鎖定態</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls">
+              <button class="wbtn lock">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-idle">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">Vocium</div></div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>靜止（未 hover）</b>控制鈕完全隱藏，只見乾淨的 pill
+          </div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock" title="鎖定水平拖曳">
+                <svg class="i"><use href="#ic-unlock" /></svg>
+              </button>
+              <button class="wbtn min" title="縮小到系統匣">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close" title="結束 Vocium">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-idle">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">Vocium</div></div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>懸浮顯示</b>三枚透明 SVG 圖示淡入（左→右）：鎖定 · 縮小 ·
+            <span style="color: var(--error)">關閉</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="iconwin">
+            <div class="controls show">
+              <button class="wbtn lock on" title="點擊解除鎖定">
+                <svg class="i"><use href="#ic-lock" /></svg>
+              </button>
+              <button class="wbtn min" title="縮小到系統匣">
+                <svg class="i"><use href="#ic-min" /></svg>
+              </button>
+              <button class="wbtn close" title="結束 Vocium">
+                <svg class="i"><use href="#ic-close" /></svg>
+              </button>
+            </div>
+            <div class="pill s-idle">
+              <div class="orb">
+                <div class="core"></div>
+                <div class="ring"></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span
+                  ><span></span>
+                </div>
+              </div>
+              <div class="meta"><div class="label">Vocium</div></div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>🔒 鎖定態</b>鎖頭閉合轉 teal、拖曳停用；狀態記憶於 config
+          </div>
+        </div>
+      </div>
+
+      <h2>3 · 狀態機</h2>
+      <div class="fsm">
+        <div class="node n-idle">idle</div>
+        <div class="arrow">
+          <span>TOGGLE ▶</span><span>◀ CANCEL/INJECTED</span>
+        </div>
+        <div class="node n-listen">listening</div>
+        <div class="arrow"><span>TOGGLE ▶</span></div>
+        <div class="node n-trans">transcribing</div>
+        <div class="arrow"><span>TRANSCRIBED ▶</span></div>
+        <div class="node n-inject">injecting</div>
+        <div class="arrow"><span>INJECTED ▶ (idle)</span></div>
+        <div class="node n-error">error</div>
+        <div class="arrow"><span>RESET ▶ (idle)</span></div>
+      </div>
+
+      <h2>4 · 架構拓樸 — 單一 MCP 協定</h2>
+      <div class="arch">
+        <div class="tier shell">
+          <div class="t-name">Tauri 2 殼（Rust，薄）— MCP client</div>
+          <div class="t-desc">
+            懸浮 ICON 視窗 · Tray · 全域熱鍵 · webview 用 getUserMedia 錄音 ·
+            spawn sidecar 後以 MCP client 對話
+          </div>
+        </div>
+        <div class="conn">
+          ▲▼　MCP over stdio　(JSON-RPC + state_changed notification)
+        </div>
+        <div class="tier side">
+          <div class="t-name">Node Sidecar（TypeScript）— 單一 MCP server</div>
+          <div class="t-desc">
+            StateMachine（純） · SttAdapter（<b style="color: var(--text)"
+              >Groq 預設</b
+            >
+            / Mock fallback） · Injector（Windows 實作；Mac/Linux stub）·
+            啟動背景預熱注入 host<br />工具：toggle · start/stop_listening ·
+            cancel · submit_audio · transcribe_clip · inject_text · get_state
+          </div>
+          <div class="clients">
+            <div class="cli"><b>Tauri 殼</b> — GUI 消費者（v1）</div>
+            <div class="cli"><b>BrainMesh</b> — 未來 MCP 消費者（Phase 2）</div>
+            <div class="cli">
+              <b>任意 MCP client</b> — headless transcribe/inject
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>5 · 觸發與互動</h2>
+      <table>
+        <tr>
+          <th>互動</th>
+          <th>觸發</th>
+          <th>結果</th>
+        </tr>
+        <tr>
+          <td>全域快捷鍵</td>
+          <td><code>可自訂</code>（預設 Ctrl+Shift+Space）</td>
+          <td>idle⇄listening 切換</td>
+        </tr>
+        <tr>
+          <td>點擊 ICON</td>
+          <td>滑鼠左鍵（orb，已放大）</td>
+          <td>同快捷鍵切換</td>
+        </tr>
+        <tr>
+          <td>取消</td>
+          <td><code>Esc</code>（聆聽中）</td>
+          <td>丟棄錄音，回 idle</td>
+        </tr>
+        <tr>
+          <td>拖曳</td>
+          <td>按住 pill 水平拖移（未鎖定時）</td>
+          <td>微調位置並記憶</td>
+        </tr>
+        <tr>
+          <td>鎖定拖曳</td>
+          <td>右上鎖頭鈕（左1）</td>
+          <td>切換水平拖曳啟用，狀態記憶</td>
+        </tr>
+        <tr>
+          <td>縮小</td>
+          <td>右上最小化鈕（左2）</td>
+          <td>隱藏視窗到系統匣，程式續跑</td>
+        </tr>
+        <tr>
+          <td>關閉</td>
+          <td>右上 ✕ 鈕（左3）</td>
+          <td>結束整個程式（殼 + sidecar）</td>
+        </tr>
+        <tr>
+          <td>系統匣</td>
+          <td>右鍵 Tray 圖示</td>
+          <td>
+            顯示/隱藏 · STT 模式 · <b style="color: var(--text)">設定…</b> ·
+            結束
+          </td>
+        </tr>
+        <tr>
+          <td>自訂快捷鍵</td>
+          <td>Tray「設定…」開啟設定視窗</td>
+          <td>錄製組合 → 即時生效，無需重開</td>
+        </tr>
+        <tr>
+          <td>headless</td>
+          <td>MCP <code>transcribe_clip</code> / <code>inject_text</code></td>
+          <td>不經 GUI 取得文字 / 注入</td>
+        </tr>
+      </table>
+
+      <h2>6 · 設定視窗 — 自訂全域快捷鍵</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="settings">
+            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
+            <div class="s-body">
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap">Ctrl</span
+                    ><span class="keycap">Shift</span
+                    ><span class="keycap">Space</span>
+                  </div>
+                  <div class="recbtn">錄製快捷鍵</div>
+                </div>
+                <div class="s-hint">
+                  目前綁定。點「錄製快捷鍵」後按下想要的組合即可變更。
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>預設檢視</b>顯示目前快捷鍵（讀自 config），未錄製前不可變更
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="settings">
+            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
+            <div class="s-body">
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap" style="color: var(--text-dim)"
+                      >按下組合…</span
+                    >
+                  </div>
+                  <div class="recbtn armed">● 錄製中</div>
+                </div>
+                <div class="s-hint">
+                  正在聆聽鍵盤；需含至少一個修飾鍵（Ctrl/Shift/Alt/Win）＋一個主鍵。Esc
+                  取消錄製。
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag"><b>錄製中</b>即時擷取按鍵；放開即顯示組合預覽</div>
+        </div>
+
+        <div class="card">
+          <div class="settings">
+            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
+            <div class="s-body">
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap">Ctrl</span
+                    ><span class="keycap">Alt</span
+                    ><span class="keycap">V</span>
+                  </div>
+                  <div class="recbtn">重新錄製</div>
+                </div>
+                <div class="s-err">
+                  ⚠ 此組合已被其他程式占用，註冊失敗 — 仍保留原快捷鍵
+                  <b>Ctrl+Shift+Space</b>。
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>衝突回退</b>新組合註冊失敗時不破壞現況，保留舊鍵並明示
+          </div>
+        </div>
+      </div>
+
+      <h2>7 · 設計 Token</h2>
+      <div class="tokens">
+        <div class="swatch">
+          <span class="chip" style="background: #6ad0c8"></span>accent / idle
+          #6ad0c8
+        </div>
+        <div class="swatch">
+          <span class="chip" style="background: #3ddc97"></span>listening
+          #3ddc97
+        </div>
+        <div class="swatch">
+          <span class="chip" style="background: #f5a623"></span>transcribing
+          #f5a623
+        </div>
+        <div class="swatch">
+          <span class="chip" style="background: #7c5cff"></span>injecting
+          #7c5cff
+        </div>
+        <div class="swatch">
+          <span class="chip" style="background: #ff5d5d"></span>error / close
+          #ff5d5d
+        </div>
+        <div class="swatch">
+          <span class="chip" style="background: #161b22"></span>pill bg #161b22
+          / blur14
+        </div>
+        <div class="swatch">
+          radius 16 · pill 高 52／寬隨內容 · orb 36（core idle 19）· 控制鈕 22
+          透明/SVG15 · font Segoe UI
+        </div>
+      </div>
+
+      <footer>
+        Vocium · MVP 設計定案 · 動畫即實作規格
+      </footer>
+    </div>
+  </body>
+</html>

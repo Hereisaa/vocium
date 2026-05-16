@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vocium 設定</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="settings-body">
+  <div class="settings">
+    <div class="s-head"><b>Vocium 設定</b><span class="x" id="sClose">✕</span></div>
+    <div class="s-body">
+      <div class="field">
+        <div class="flabel">全域快捷鍵</div>
+        <div class="hkrow">
+          <div class="hkcombo" id="combo"></div>
+          <div class="recbtn" id="rec">錄製快捷鍵</div>
+        </div>
+        <div class="s-hint" id="hint">目前綁定。點「錄製快捷鍵」後按下想要的組合即可變更。</div>
+        <div class="s-err" id="err" style="display:none"></div>
+      </div>
+    </div>
+    <div class="s-foot">
+      <div class="sbtn" id="cancel">取消</div>
+      <div class="sbtn primary" id="save">儲存並套用</div>
+    </div>
+  </div>
+  <script src="settings.js"></script>
+</body>
+</html>

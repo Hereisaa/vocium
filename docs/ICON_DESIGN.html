@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vocium — App Icon Design</title>
+<style>
+  :root{
+    --bg-desktop:#0e1117; --panel:#161b22; --panel-2:#1c2230;
+    --stroke:rgba(255,255,255,.08); --text:#e6edf3; --text-dim:#8b949e;
+    --accent:#6ad0c8; --listen:#3ddc97; --transcribe:#f5a623;
+    --inject:#7c5cff; --error:#ff5d5d;
+    --font:'Segoe UI',system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+    --shadow:0 8px 30px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);
+    background:radial-gradient(1200px 600px at 50% -10%,#16242a 0%,var(--bg-desktop) 60%);
+    color:var(--text);min-height:100vh;padding:40px 24px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{text-align:center;margin-bottom:8px}
+  header h1{font-size:30px;font-weight:700;letter-spacing:.5px}
+  header h1 .k{color:var(--accent)}
+  header p{color:var(--text-dim);margin-top:8px;font-size:14px}
+  .badge{display:inline-block;margin-top:14px;font-size:12px;color:var(--text-dim);
+    border:1px solid var(--stroke);padding:5px 12px;border-radius:999px;background:var(--panel)}
+  h2{font-size:15px;font-weight:600;color:var(--text-dim);text-transform:uppercase;
+    letter-spacing:1.5px;margin:46px 0 6px;border-left:3px solid var(--accent);padding-left:10px}
+  .sub{color:var(--text-dim);font-size:12px;line-height:1.7;margin:0 0 18px 13px}
+  .sub b{color:var(--text)}
+
+  .concept{background:var(--panel);border:1px solid var(--stroke);border-radius:16px;
+    padding:26px 24px;margin-bottom:22px}
+  .concept .title{font-size:16px;font-weight:700;letter-spacing:.4px;margin-bottom:4px}
+  .concept .title .tag{font-size:11px;font-weight:600;color:var(--accent);
+    border:1px solid var(--accent);border-radius:999px;padding:3px 10px;margin-left:10px;
+    vertical-align:middle}
+  .concept .desc{font-size:12.5px;color:var(--text-dim);line-height:1.7;margin:6px 0 20px}
+  .row{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap}
+  .spec{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .spec .cap{font-size:11px;color:var(--text-dim)}
+  .tile{border-radius:22%;box-shadow:var(--shadow);overflow:hidden;display:block}
+  .s256{width:160px;height:160px}        /* shown smaller; master is vector */
+  .s128{width:96px;height:96px}
+  .s64{width:64px;height:64px}
+  .s32{width:32px;height:32px;border-radius:22%}
+  .s16{width:16px;height:16px;border-radius:20%}
+
+  .ctx{display:flex;gap:30px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .taskbar{display:flex;align-items:center;gap:14px;background:rgba(0,0,0,.5);
+    border:1px solid var(--stroke);border-radius:10px;padding:8px 16px}
+  .taskbar .ico{width:28px;height:28px;border-radius:24%}
+  .taskbar .dotline{width:18px;height:3px;border-radius:2px;background:var(--accent);
+    opacity:.8;margin-top:4px}
+  .tcell{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;color:var(--text-dim)}
+  .tray{display:flex;align-items:center;gap:10px;background:#c9cdd3;border-radius:8px;
+    padding:7px 12px}            /* light system tray to test mono legibility */
+  .tray svg{display:block}
+  .tray .lbl{font-size:11px;color:#222}
+
+  footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:54px}
+</style>
+</head>
+<body>
+
+<!-- ========================= ICON MASTERS (vector) =========================
+  Each concept is a 256-viewBox <symbol>. The chosen one becomes the master
+  SVG rasterized to 32 / 128 / 256(@2x) PNG + .ico after approval. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="tileBG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2330"/><stop offset="1" stop-color="#0c0f15"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="44%" r="60%">
+      <stop offset="0" stop-color="#6ad0c8" stop-opacity=".34"/>
+      <stop offset="55%" stop-color="#6ad0c8" stop-opacity=".06"/>
+      <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7fe6dd"/><stop offset="1" stop-color="#4fb8b0"/>
+    </linearGradient>
+    <linearGradient id="tealV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ff0e6"/><stop offset="1" stop-color="#3ea99f"/>
+    </linearGradient>
+    <!-- AI cue: teal -> brand inject-violet (#7c5cff). Same palette as the
+         app's "injecting/AI" state, so it reads as intelligence, not a new color. -->
+    <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7fe6dd"/>
+      <stop offset="55%" stop-color="#6ad0c8"/>
+      <stop offset="100%" stop-color="#7c5cff"/>
+    </linearGradient>
+    <linearGradient id="aiGradV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ff0e6"/>
+      <stop offset="55%" stop-color="#5cc7be"/>
+      <stop offset="100%" stop-color="#8a6cff"/>
+    </linearGradient>
+    <radialGradient id="glowAI" cx="50%" cy="44%" r="62%">
+      <stop offset="0" stop-color="#8f7cff" stop-opacity=".30"/>
+      <stop offset="50%" stop-color="#6ad0c8" stop-opacity=".10"/>
+      <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 4-point AI sparkle (concave star). -->
+    <path id="spark" d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
+      C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"/>
+  </defs>
+
+  <!-- Concept A — Orb Pulse: glowing core + two expanding rings (echoes the
+       in-app listening pulsering). Calmest, most "brand-default". -->
+  <symbol id="ic-A" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="0" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glow)"/>
+    <circle cx="128" cy="128" r="78" fill="none" stroke="#6ad0c8" stroke-opacity=".18" stroke-width="6"/>
+    <circle cx="128" cy="128" r="56" fill="none" stroke="#6ad0c8" stroke-opacity=".34" stroke-width="7"/>
+    <circle cx="128" cy="128" r="30" fill="url(#teal)"/>
+    <circle cx="128" cy="128" r="30" fill="none" stroke="#bff3ee" stroke-opacity=".5" stroke-width="2"/>
+  </symbol>
+
+  <!-- Concept B — Voice "V" Bars: 5 rounded equalizer bars whose tops trace a
+       V (= Vocium + voice). Most distinctive as a monogram; best small-size. -->
+  <symbol id="ic-B" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glow)"/>
+    <g fill="url(#tealV)">
+      <rect x="50"  y="78"  width="22" height="78"  rx="11"/>
+      <rect x="86"  y="100" width="22" height="100" rx="11"/>
+      <rect x="117" y="124" width="22" height="80"  rx="11"/>
+      <rect x="148" y="100" width="22" height="100" rx="11"/>
+      <rect x="184" y="78"  width="22" height="78"  rx="11"/>
+    </g>
+  </symbol>
+
+  <!-- Concept C — Orb + Bars (literal app glyph): the pill's orb core beside
+       ascending bars — a tile-framed version of the actual listening icon. -->
+  <symbol id="ic-C" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glow)"/>
+    <circle cx="96" cy="128" r="30" fill="url(#teal)"/>
+    <circle cx="96" cy="128" r="46" fill="none" stroke="#6ad0c8" stroke-opacity=".30" stroke-width="6"/>
+    <g fill="url(#tealV)">
+      <rect x="150" y="120" width="16" height="38" rx="8"/>
+      <rect x="174" y="100" width="16" height="78" rx="8"/>
+      <rect x="198" y="112" width="16" height="54" rx="8"/>
+    </g>
+  </symbol>
+
+  <!-- Mono tray glyphs (single-color, no tile — Windows tray is ~16px on a
+       variable background; must read as a silhouette). -->
+  <symbol id="trayA" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="12" cy="12" r="3.4" fill="currentColor"/>
+  </symbol>
+  <symbol id="trayB" viewBox="0 0 24 24">
+    <g fill="currentColor">
+      <rect x="3"  y="8"  width="3" height="8"  rx="1.5"/>
+      <rect x="7.5" y="9.5" width="3" height="11" rx="1.5"/>
+      <rect x="12" y="12" width="3" height="8" rx="1.5"/>
+      <rect x="16.5" y="9.5" width="3" height="11" rx="1.5"/>
+      <rect x="21" y="8" width="0" height="0"/>
+    </g>
+  </symbol>
+  <symbol id="trayC" viewBox="0 0 24 24">
+    <circle cx="8" cy="12" r="3.2" fill="currentColor"/>
+    <g fill="currentColor">
+      <rect x="14" y="10.5" width="2.4" height="6"  rx="1.2"/>
+      <rect x="17.6" y="7.5" width="2.4" height="12" rx="1.2"/>
+    </g>
+  </symbol>
+
+  <!-- ===== AI-infused variants (sparkle + teal→violet gradient) ===== -->
+  <symbol id="ic-A2" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glowAI)"/>
+    <circle cx="128" cy="128" r="78" fill="none" stroke="#6ad0c8" stroke-opacity=".16" stroke-width="6"/>
+    <circle cx="128" cy="128" r="56" fill="none" stroke="#8a6cff" stroke-opacity=".30" stroke-width="7"/>
+    <circle cx="128" cy="128" r="30" fill="url(#aiGrad)"/>
+    <circle cx="128" cy="128" r="30" fill="none" stroke="#d8ccff" stroke-opacity=".5" stroke-width="2"/>
+    <use href="#spark" x="160" y="44" width="56" height="56" fill="#bff3ee"/>
+    <use href="#spark" x="196" y="150" width="26" height="26" fill="#8a6cff"/>
+  </symbol>
+
+  <symbol id="ic-B2" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glowAI)"/>
+    <g fill="url(#aiGradV)">
+      <rect x="50"  y="86"  width="22" height="78"  rx="11"/>
+      <rect x="86"  y="108" width="22" height="100" rx="11"/>
+      <rect x="117" y="132" width="22" height="80"  rx="11"/>
+      <rect x="148" y="108" width="22" height="100" rx="11"/>
+      <rect x="184" y="86"  width="22" height="78"  rx="11"/>
+    </g>
+    <use href="#spark" x="112" y="46" width="56" height="56" fill="#bff3ee"/>
+  </symbol>
+
+  <symbol id="ic-C2" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#tileBG)"/>
+    <rect width="256" height="256" fill="url(#glowAI)"/>
+    <circle cx="96" cy="132" r="30" fill="url(#aiGrad)"/>
+    <circle cx="96" cy="132" r="46" fill="none" stroke="#8a6cff" stroke-opacity=".28" stroke-width="6"/>
+    <g fill="url(#aiGradV)">
+      <rect x="150" y="124" width="16" height="38" rx="8"/>
+      <rect x="174" y="104" width="16" height="78" rx="8"/>
+      <rect x="198" y="116" width="16" height="54" rx="8"/>
+    </g>
+    <use href="#spark" x="150" y="48" width="44" height="44" fill="#bff3ee"/>
+  </symbol>
+
+  <!-- mono tray + tiny spark (still reads as a silhouette at 16px) -->
+  <symbol id="trayA2" viewBox="0 0 24 24">
+    <circle cx="11" cy="13" r="6.6" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="11" cy="13" r="3" fill="currentColor"/>
+    <path d="M19 3 C19.6 5.6 21.4 7.4 24 8 C21.4 8.6 19.6 10.4 19 13
+      C18.4 10.4 16.6 8.6 14 8 C16.6 7.4 18.4 5.6 19 3 Z"
+      fill="currentColor" transform="scale(.78) translate(5 0)"/>
+  </symbol>
+  <symbol id="trayB2" viewBox="0 0 24 24">
+    <g fill="currentColor">
+      <rect x="2.5" y="9"  width="2.8" height="8"  rx="1.4"/>
+      <rect x="6.6" y="10.5" width="2.8" height="11" rx="1.4"/>
+      <rect x="10.6" y="12.5" width="2.8" height="8" rx="1.4"/>
+      <rect x="14.6" y="10.5" width="2.8" height="11" rx="1.4"/>
+      <rect x="18.7" y="9" width="2.8" height="8" rx="1.4"/>
+    </g>
+    <path d="M12 1 C12.5 3.2 14 4.7 16 5 C14 5.3 12.5 6.8 12 9
+      C11.5 6.8 10 5.3 8 5 C10 4.7 11.5 3.2 12 1 Z" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Voc<span class="k">ium</span> · App Icon</h1>
+    <p>3 個方案 — 沿用品牌 teal #6ad0c8 / 暗底 / orb-聲波語彙；全為向量母版</p>
+    <span class="badge">2026-05-17 修訂 2 · 原案 A/B/C + AI 融合 A+/B+/C+ · 待確認才進 app</span>
+  </header>
+
+  <h2>方案 A — Orb Pulse</h2>
+  <div class="sub"><b>發光核心 + 兩圈擴散環</b>，直接對應 App 內 listening 的 pulsering 動畫。最沉穩、最「品牌預設」，與懸浮 ICON 一脈相承。小尺寸時外環淡出、核心仍清楚。</div>
+  <div class="concept">
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-A"/></svg><span class="cap">256（@2x 母版）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-A"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-A"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-A"/></svg><span class="cap">32（工作列）</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-A"/></svg><span class="cap">16</span></div>
+    </div>
+    <div class="ctx">
+      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-A"/></svg><svg class="ico"><use href="#ic-A"/></svg></div><span>工作列情境</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayA"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
+    </div>
+  </div>
+
+  <h2>方案 B — Voice “V” Bars</h2>
+  <div class="sub"><b>5 根圓角等化器聲波，頂端勾勒出 V</b>（Vocium + voice）。最具辨識度的 monogram，小尺寸（16/32）依然清楚，與 listening 聲波呼應。</div>
+  <div class="concept">
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-B"/></svg><span class="cap">256（@2x 母版）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-B"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-B"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-B"/></svg><span class="cap">32（工作列）</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-B"/></svg><span class="cap">16</span></div>
+    </div>
+    <div class="ctx">
+      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-B"/></svg><svg class="ico"><use href="#ic-B"/></svg></div><span>工作列情境</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
+    </div>
+  </div>
+
+  <h2>方案 C — Orb + Bars（App 本體字符）</h2>
+  <div class="sub"><b>orb 核心 + 上升聲波</b>，等於把 App 內 pill 的 listening 字符裝進方磚——與產品本體視覺最直白的連結。</div>
+  <div class="concept">
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-C"/></svg><span class="cap">256（@2x 母版）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-C"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-C"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-C"/></svg><span class="cap">32（工作列）</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-C"/></svg><span class="cap">16</span></div>
+    </div>
+    <div class="ctx">
+      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-C"/></svg><svg class="ico"><use href="#ic-C"/></svg></div><span>工作列情境</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayC"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
+    </div>
+  </div>
+
+  <h2>＋ AI 元素融合（修訂 2）</h2>
+  <div class="sub">在上方三案各加入<b>克制</b>的 AI 訊號：① <b>Sparkle 火花</b>（四角星，生成式 AI 通用符號）② <b>teal→violet 漸層</b>（violet＝App 既有 <i>inject/AI 處理</i> 狀態色，不引入新色）。火花大小／漸層深淺皆可再微調，這裡為中等強度。</div>
+
+  <div class="concept">
+    <div class="title">A+ · Orb Pulse ＋ Spark<span class="tag">AI</span></div>
+    <div class="desc">核心改 teal→violet 漸層、外環帶 violet；右上一枚主火花＋右下一枚小火花作 AI 徽印。沉穩且明確「智慧」。</div>
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-A2"/></svg><span class="cap">256</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-A2"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-A2"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-A2"/></svg><span class="cap">32</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-A2"/></svg><span class="cap">16</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayA2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+    </div>
+  </div>
+
+  <div class="concept">
+    <div class="title">B+ · Voice “V” Bars ＋ Spark<span class="tag">AI · 推薦</span></div>
+    <div class="desc">聲波 V 改 teal→violet 直向漸層；V 的開口正中嵌一枚火花——聲音×AI 一眼可讀，小尺寸最穩。推薦此案。</div>
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-B2"/></svg><span class="cap">256</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-B2"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-B2"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-B2"/></svg><span class="cap">32</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-B2"/></svg><span class="cap">16</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+    </div>
+  </div>
+
+  <div class="concept">
+    <div class="title">C+ · Orb + Bars ＋ Spark<span class="tag">AI</span></div>
+    <div class="desc">orb 與聲波皆 teal→violet；聲波上方一枚火花。與 App 本體字符連結最直白，再點上 AI。</div>
+    <div class="row">
+      <div class="spec"><svg class="tile s256"><use href="#ic-C2"/></svg><span class="cap">256</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-C2"/></svg><span class="cap">128</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-C2"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-C2"/></svg><span class="cap">32</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-C2"/></svg><span class="cap">16</span></div>
+      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+    </div>
+  </div>
+
+  <footer>Vocium · App Icon 修訂 2（A/B/C 原案 + A+/B+/C+ AI 融合）· 選定後 rasterize 32/128/256(@2x)/icon.ico</footer>
+</div>
+</body>
+</html>
