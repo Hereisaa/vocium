@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.png" width="900" alt="Vocium — floating icon, listening state, and the five states" />
+  <img src="docs/assets/showcase.png" width="900" alt="Vocium — the floating icon in its listening state (real UI)" />
 </p>
 
 ---
@@ -118,10 +118,6 @@ MIT
 <h2 id="中文">中文</h2>
 
 <p align="center"><a href="#vocium">English</a> · <b>繁體中文</b></p>
-
-<p align="center">
-  <img src="docs/assets/showcase.png" width="900" alt="Vocium — 懸浮 ICON、聆聽狀態、五種狀態" />
-</p>
 
 **Vocium** 是一款桌面語音輸入工具：桌面頂部常駐一顆懸浮 ICON，按**快捷鍵**或**點擊 ICON** 開始錄音，語音轉文字後**自動貼入你目前焦點的輸入框**。
 
