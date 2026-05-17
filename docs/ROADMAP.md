@@ -52,9 +52,9 @@
 > 既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關）。
 > 皆不動狀態機 / MCP / sidecar / Injector。
 
-### A. 繁簡轉換（Settings 內）
-- [ ] Whisper 中文預設輸出**簡體**（已實證：台灣 TTS 輸入仍得簡體）。Settings 增「中文輸出」選項：**繁體(台灣) / 簡體 / 不轉換**（建議預設繁體台灣）。
-- STT pipeline 後加可選 OpenCC `s2twp` 轉換 step；config 持久化。屬個人自用必要項（[[feedback-personal-use-first]]）。
+### A. 中文輸出（繁／簡）（Settings 內）
+- [x] Whisper 中文時繁時簡 → Settings 二段式切換**繁體（台灣）/ 簡體**（config `zhConvert`，預設 twp；非開關非三選項）。 （2026-05-17 完成）
+- [x] opencc-js `cn→twp`／`twp→cn` 雙向強制；config 持久化，`save_zh_mode` 即時生效（不重啟）；由儲存按鈕套用。
 
 ### B. 多家雲端 AI + 本地 AI 串接（Settings 內，STT 來源選擇）
 - [ ] Settings 增「STT 來源」區：provider 選擇 + 金鑰 / baseURL / 模型 欄位。

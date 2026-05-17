@@ -3,6 +3,7 @@ import type { createVoiceSession } from '../core/state-machine.js';
 import type { SttAdapter } from '../core/stt/types.js';
 import type { Injector } from '../core/inject/types.js';
 import { describeSttError, GUIDANCE_MSG } from '../core/stt/describe-error.js';
+import { convertZh } from '../core/zh-convert.js';
 
 type Session = ReturnType<typeof createVoiceSession>;
 
@@ -13,10 +14,13 @@ export interface PipelineDeps {
   /** Resolved at boot: sttProvider==='groq' but no API key. When true,
    *  submitAudio short-circuits transcription and injects GUIDANCE_MSG. */
   noKey?: boolean;
+  /** Resolved per-call from the live setting (no sidecar restart needed).
+   *  'twp' → force Traditional(TW), 'cn' → force Simplified. */
+  getZhMode?: () => 'twp' | 'cn';
 }
 export interface AudioPayload { audioBase64: string; mimeType: string; language?: string; }
 
-export function createPipeline({ session, stt, injector, noKey = false }: PipelineDeps) {
+export function createPipeline({ session, stt, injector, noKey = false, getZhMode = () => 'twp' }: PipelineDeps) {
   let resetTimer: ReturnType<typeof setTimeout> | null = null;
   function fail() {
     session.send('FAIL');
@@ -55,9 +59,10 @@ export function createPipeline({ session, stt, injector, noKey = false }: Pipeli
         return { text: GUIDANCE_MSG };
       }
       try {
-        const { text } = await stt.transcribe({
+        const raw = await stt.transcribe({
           audio: Buffer.from(p.audioBase64, 'base64'), mimeType: p.mimeType, language: p.language,
         });
+        const text = convertZh(raw.text, getZhMode());
         session.send('TRANSCRIBED'); // -> injecting
         const r = await injector.inject(text);
         if (!r.ok) { fail(); return { text }; }
@@ -72,13 +77,14 @@ export function createPipeline({ session, stt, injector, noKey = false }: Pipeli
         return { text: msg };
       }
     },
-    async transcribeClip(p: AudioPayload): Promise<{ text: string }> {
+    async transcribeClip(p: AudioPayload): Promise<{ text: string; durationMs?: number }> {
       // Consistent with submitAudio: no key -> guidance text, never a raw
       // 'Groq API key not configured' throw leaking to MCP consumers.
       if (noKey) return { text: GUIDANCE_MSG };
-      return stt.transcribe({
+      const raw = await stt.transcribe({
         audio: Buffer.from(p.audioBase64, 'base64'), mimeType: p.mimeType, language: p.language,
       });
+      return { ...raw, text: convertZh(raw.text, getZhMode()) };
     },
     async injectText(text: string) { return injector.inject(text); },
   };

@@ -41,7 +41,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 
 詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。
 
-- **A. 繁簡轉換**：Whisper 中文預設輸出簡體；Settings「中文輸出」選項（繁體(台灣)/簡體/不轉換，預設繁體台灣），STT 後加可選 OpenCC `s2twp` step。
+- **A. 中文輸出（繁／簡）** ✅（已實作）：Whisper 中文時繁時簡；Settings 二段式「中文輸出（中文字繁／簡）」＝**繁體（台灣）/ 簡體**（config `zhConvert`，預設 `twp`），opencc-js `cn→twp`／`twp→cn` 雙向強制（已是目標字體則 passthrough）；每次轉錄即時讀設定不重啟；由「儲存並套用」按鈕套用；套用 submitAudio+transcribeClip，不轉引導/錯誤訊息。
 - **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」（provider + 金鑰/baseURL/模型）。雲端 Groq(現有)/OpenAI/Gemini（Claude 無 STT，不列）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。架構已以 `SttAdapter`（FR-STT-1）隔離，新增為侷限變更（新 adapter + 工廠分支 + config + Settings 一區）。
 - **C. AI 潤稿**：轉錄後可選交 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入；Settings 開關 + 供應商/模型/金鑰 + 風格。可用任何 LLM（含 Claude/OpenAI/Gemini/本地），預設關閉。
 

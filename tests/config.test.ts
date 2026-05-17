@@ -1,6 +1,6 @@
 // tests/config.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import { loadConfig, saveConfig, DEFAULTS } from '../src/core/config.js';
+import { loadConfig, saveConfig, DEFAULTS, readZhMode } from '../src/core/config.js';
 
 function fakeFs(initial?: string) {
   const store = new Map<string, string>();
@@ -64,5 +64,42 @@ describe('config', () => {
     saveConfig(fs as any, path as any, '/cfg', { ...DEFAULTS, dragLocked: true });
     const cfg = loadConfig(fs as any, path as any, '/cfg');
     expect(cfg.dragLocked).toBe(true);
+  });
+});
+
+describe('zhConvert mode', () => {
+  const path = { join: (...xs: string[]) => xs.join('/') };
+  it("loadConfig defaults zhConvert to 'twp'", () => {
+    const fs = { existsSync: () => false, readFileSync: () => '', writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(loadConfig(fs as any, path as any, '/d').zhConvert).toBe('twp');
+  });
+  it('readZhMode: missing file → twp, NO write side-effect', () => {
+    let wrote = false;
+    const fs = { existsSync: () => false, readFileSync: () => { throw new Error('x'); },
+      writeFileSync: () => { wrote = true; }, mkdirSync: () => { wrote = true; } };
+    expect(readZhMode(fs as any, path as any, '/d')).toBe('twp');
+    expect(wrote).toBe(false);
+  });
+  it('readZhMode: corrupt JSON → twp, never throws', () => {
+    const fs = { existsSync: () => true, readFileSync: () => '{ broken', writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(fs as any, path as any, '/d')).toBe('twp');
+  });
+  it('readZhMode: file containing JSON null → twp', () => {
+    const fs = { existsSync: () => true, readFileSync: () => 'null', writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(fs as any, path as any, '/d')).toBe('twp');
+  });
+  it("readZhMode: explicit 'cn' → cn", () => {
+    const fs = { existsSync: () => true, readFileSync: () => JSON.stringify({ zhConvert: 'cn' }), writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(fs as any, path as any, '/d')).toBe('cn');
+  });
+  it("readZhMode: explicit 'twp' → twp", () => {
+    const fs = { existsSync: () => true, readFileSync: () => JSON.stringify({ zhConvert: 'twp' }), writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(fs as any, path as any, '/d')).toBe('twp');
+  });
+  it('readZhMode: invalid value or absent key → twp', () => {
+    const bad = { existsSync: () => true, readFileSync: () => JSON.stringify({ zhConvert: 'xx' }), writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(bad as any, path as any, '/d')).toBe('twp');
+    const absent = { existsSync: () => true, readFileSync: () => JSON.stringify({ hotkey: 'X' }), writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readZhMode(absent as any, path as any, '/d')).toBe('twp');
   });
 });

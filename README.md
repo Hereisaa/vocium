@@ -122,11 +122,11 @@ npm run icons    # regenerate icons from icon.svg
 
 MVP, Windows‑first. Real Groq transcription integrated and verified on a real machine; in‑app API key field + no‑key/error guidance shipped. Not yet packaged for distribution.
 
-## Roadmap (planned)
+## Roadmap
 
 Next stage — three features, all configured **in the Settings window** (post‑processing order: STT → Traditional/Simplified → AI polish → inject):
 
-- **Traditional/Simplified conversion** — Whisper outputs Simplified Chinese by default; a "Chinese output" option (Traditional‑TW / Simplified / off) applies OpenCC `s2twp` after STT.
+- **Chinese script (Traditional/Simplified)** — force either Traditional(TW) or Simplified output (Groq is inconsistent); two-way segmented switch in Settings, applied on save. ✅ implemented
 - **Multi‑provider STT (cloud + local)** — choose the STT source: Groq (current) / OpenAI / Gemini (Claude has no STT), or local whisper.cpp / faster‑whisper / LocalAI / Ollama.
 - **AI polishing** — optionally pass the transcript through an LLM (clean fillers, punctuation, fluency — meaning preserved) before injecting; any LLM incl. Claude/OpenAI/Gemini/local; off by default.
 
@@ -246,11 +246,11 @@ npm run icons    # 由 icon.svg 重產圖示
 
 MVP，Windows 優先。真實 Groq 轉錄已串接並實機驗證；App 內 API Key 欄位 + 無金鑰/錯誤引導已上線。尚未打包發佈。
 
-### 規劃中（Roadmap）
+### Roadmap（部分已實作）
 
 下一階段三大功能，**皆在「設定」視窗內**設定（後處理順序：STT → 繁簡轉換 → AI 潤稿 → 注入）：
 
-- **繁簡轉換** — Whisper 中文預設輸出簡體；「中文輸出」選項（繁體台灣／簡體／不轉換）於 STT 後套用 OpenCC `s2twp`。
+- **中文輸出（繁／簡）** — 一律強制輸出繁體（台灣）或簡體（Groq 時繁時簡）；設定內二段式切換，存檔套用。 ✅ 已實作
 - **多家雲端 + 本地 AI STT** — 選擇 STT 來源：Groq（現有）／OpenAI／Gemini（Claude 無 STT），或本地 whisper.cpp／faster‑whisper／LocalAI／Ollama。
 - **AI 潤稿** — 轉錄後可選交 LLM 潤飾（清贅詞、補標點、通順，不改原意）再注入；可用任何 LLM（含 Claude／OpenAI／Gemini／本地）；預設關閉。
 

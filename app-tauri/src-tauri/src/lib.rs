@@ -517,6 +517,7 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
     let file = s.config.config_dir.join("vocium-config.json");
     let (mut hotkey, mut drag_locked) = (s.config.hotkey.clone(), s.config.drag_locked);
     let (mut provider_cfg, mut groq_key) = ("groq".to_string(), String::new());
+    let mut zh_convert = "twp".to_string();
     if let Ok(raw) = std::fs::read_to_string(&file) {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
             if let Some(h) = v.get("hotkey").and_then(|x| x.as_str()) {
@@ -530,6 +531,9 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
             }
             if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
                 groq_key = k.to_string();
+            }
+            if let Some(z) = v.get("zhConvert").and_then(|x| x.as_str()) {
+                if z == "twp" || z == "cn" { zh_convert = z.to_string(); }
             }
         }
     }
@@ -556,7 +560,8 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
         "hotkey": hotkey,
         "dragLocked": drag_locked,
         "groqKeySet": groq_key_set,
-        "groqKeyMask": groq_key_mask
+        "groqKeyMask": groq_key_mask,
+        "zhConvert": zh_convert
     }))
 }
 
@@ -565,6 +570,18 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
 fn save_drag_locked(app: AppHandle, locked: bool) -> Result<(), String> {
     let dir = app.state::<ShellState>().config.config_dir.clone();
     patch_config(&dir, "dragLocked", json!(locked))
+}
+
+/// Persist the zh-convert mode ('twp'|'cn'). No sidecar restart — the sidecar
+/// re-reads it per transcription (read-only readZhMode). Invalid input is
+/// rejected so the config never holds a bad value.
+#[tauri::command]
+fn save_zh_mode(app: AppHandle, mode: String) -> Result<(), String> {
+    if mode != "twp" && mode != "cn" {
+        return Err(format!("invalid zh mode: {mode}"));
+    }
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "zhConvert", json!(mode))
 }
 
 /// Kill the sidecar child so no orphan node process remains after exit.
@@ -704,6 +721,7 @@ pub fn run() {
             get_config,
             save_offset_x,
             save_drag_locked,
+            save_zh_mode,
             quit_app,
             set_hotkey,
             set_hotkey_enabled,

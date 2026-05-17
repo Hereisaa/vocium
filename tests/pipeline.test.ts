@@ -154,4 +154,57 @@ describe('pipeline', () => {
     expect(p.getState()).toBe('idle');
     vi.useRealTimers();
   });
+
+  it("getZhMode 'twp': submitAudio injects Traditional", async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '这是简体软件' }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector, getZhMode: () => 'twp' });
+    p.toggle();
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: '這是簡體軟體' });
+    expect(injected).toEqual(['這是簡體軟體']);
+  });
+  it("getZhMode 'cn': submitAudio injects Simplified", async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '軟體與滑鼠' }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector, getZhMode: () => 'cn' });
+    p.toggle();
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: '软件与鼠标' });
+    expect(injected).toEqual(['软件与鼠标']);
+  });
+  it("getZhMode 'cn': transcribeClip returns Simplified", async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '滑鼠' }) };
+    const p = createPipeline({ session, stt, injector: { inject: async () => ({ ok: true }) }, getZhMode: () => 'cn' });
+    const r = await p.transcribeClip({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r.text).toBe('鼠标');
+  });
+  it("getZhMode 'twp': injector failure returns Traditional", async () => {
+    vi.useFakeTimers();
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '软件' }) };
+    const p = createPipeline({ session, stt, injector: { inject: async () => ({ ok: false, message: 'x' }) }, getZhMode: () => 'twp' });
+    p.toggle();
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r.text).toBe('軟體');
+    vi.useRealTimers();
+  });
+  it('zh-convert does NOT touch noKey guidance (submitAudio & transcribeClip)', async () => {
+    const mk = () => createPipeline({
+      session: createVoiceSession({ onState: () => {} }),
+      stt: { transcribe: async () => ({ text: 'unused' }) },
+      injector: { inject: async () => ({ ok: true }) },
+      noKey: true, getZhMode: () => 'cn',
+    });
+    const p1 = mk(); p1.toggle();
+    expect(await p1.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' })).toEqual({ text: GUIDANCE_MSG });
+    // p2: a fresh pipeline instance (independent state machine; no toggle needed for transcribeClip)
+    const p2 = mk();
+    expect(await p2.transcribeClip({ audioBase64: 'AA==', mimeType: 'audio/webm' })).toEqual({ text: GUIDANCE_MSG });
+  });
 });

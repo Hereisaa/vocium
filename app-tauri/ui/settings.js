@@ -5,7 +5,6 @@ const comboEl = document.getElementById('combo');
 const recBtn = document.getElementById('rec');
 const saveBtn = document.getElementById('save');
 const cancelBtn = document.getElementById('cancel');
-const hintEl = document.getElementById('hint');
 const errEl = document.getElementById('err');
 
 const keyInput = document.getElementById('keyInput');
@@ -13,6 +12,37 @@ const keyToggle = document.getElementById('keyToggle');
 const keyClear = document.getElementById('keyClear');
 const keyHint = document.getElementById('keyHint');
 const keyErr = document.getElementById('keyErr');
+
+const zhSeg = document.getElementById('zhSeg');
+const zhOpts = zhSeg ? Array.from(zhSeg.querySelectorAll('.seg-opt')) : [];
+let currentZh = 'twp';  // authoritative (from config)
+let pendingZh = 'twp';  // selected but unsaved
+function renderZh() {
+  zhOpts.forEach((o) => {
+    const on = o.dataset.mode === pendingZh;
+    o.classList.toggle('active', on);
+    o.setAttribute('aria-checked', on ? 'true' : 'false');
+    o.tabIndex = on ? 0 : -1;
+  });
+}
+function pickZh(mode) {
+  pendingZh = mode === 'cn' ? 'cn' : 'twp';
+  renderZh();
+}
+zhOpts.forEach((o) => {
+  o.addEventListener('click', () => pickZh(o.dataset.mode));
+  o.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pickZh(o.dataset.mode); o.focus(); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const next = pendingZh === 'twp' ? 'cn' : 'twp';
+      pickZh(next);
+      const el = zhOpts.find((x) => x.dataset.mode === next);
+      if (el) el.focus();
+    }
+  });
+});
+
 let clearArmed = false;
 const KEY_PLACEHOLDER_UNSET = '貼上 gsk_… 後按儲存';
 const EYE_OPEN_SVG =
@@ -77,6 +107,9 @@ async function refreshFromConfig() {
     const cfg = await invoke('get_config');
     if (cfg && cfg.hotkey) currentSpec = cfg.hotkey;
     applyKeyState(cfg && cfg.groqKeySet, cfg && cfg.groqKeyMask);
+    currentZh = cfg && cfg.zhConvert === 'cn' ? 'cn' : 'twp';
+    pendingZh = currentZh;
+    renderZh();
   } catch (_) {}
   updateToggleVisibility();
   renderCombo(pendingSpec || currentSpec);
@@ -175,7 +208,6 @@ saveBtn.addEventListener('click', async () => {
       pendingSpec = null;
       clearErr();
       if (armed) setArmed(false); // exit recording mode on apply
-      hintEl.textContent = '快捷鍵已套用';
     }
   } catch (reason) {
     if (reason === 'parse') showErr('組合無效：需修飾鍵＋主鍵');
@@ -206,8 +238,30 @@ saveBtn.addEventListener('click', async () => {
     }
   }
 
+  // 3. zh mode: apply only if changed
+  if (pendingZh !== currentZh) {
+    try {
+      await invoke('save_zh_mode', { mode: pendingZh });
+      currentZh = pendingZh;
+    } catch (reason) {
+      showErr(`中文輸出套用失敗：${reason}`);
+      return; // surface as error (not 提示語), keep window open
+    }
+  }
+  // success feedback animation on the Save button (dedup: a rapid 2nd save
+  // must not capture the '✓ 已套用' transient as the label to restore)
+  if (saveBtn._okTimer) { clearTimeout(saveBtn._okTimer); }
+  else { saveBtn._okLabel = saveBtn.textContent; } // original captured once
+  saveBtn.classList.add('ok');
+  saveBtn.textContent = '✓ 已套用';
+  saveBtn._okTimer = setTimeout(() => {
+    saveBtn.classList.remove('ok');
+    saveBtn.textContent = saveBtn._okLabel;
+    saveBtn._okTimer = null;
+  }, 1000);
+
   // Per UX: do NOT close after save. Re-sync the masked field to the new key
-  // (dialog stays open); the "已套用" confirmation above is left visible.
+  // (dialog stays open); the animation above provides confirmation.
   await refreshFromConfig();
 });
 
@@ -215,13 +269,14 @@ function dismiss() {
   pendingSpec = null;
   setArmed(false);
   clearErr();
-  hintEl.textContent = '';
   renderCombo(currentSpec);
   keyInput.value = '';
   clearArmed = false;
   resetClearConfirm();
   keyErr.style.display = 'none';
   keyHint.textContent = '';
+  pendingZh = currentZh;
+  renderZh();
   getCurrentWindow().hide();
 }
 cancelBtn.addEventListener('click', dismiss);
@@ -270,9 +325,7 @@ getCurrentWindow().onFocusChanged(({ payload: focused }) => {
   if (armed) setArmed(false);
   clearErr();
   // Clear stale transient confirmations from a previous session.
-  hintEl.textContent = '';
   keyHint.textContent = '';
-  // Re-sync hotkey + masked key state from the shell every reopen so a
-  // previously-saved key shows its mask instead of being blank (Issue 1).
+  // Re-sync hotkey + masked key state + zh mode from the shell every reopen.
   refreshFromConfig();
 });

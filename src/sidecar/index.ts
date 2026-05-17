@@ -6,7 +6,7 @@ import { MockSttAdapter } from '../core/stt/mock-stt.js';
 import { createSttAdapter } from '../core/stt/stt-adapter.js';
 import { createInjector } from '../core/inject/injector.js';
 import type { Injector } from '../core/inject/types.js';
-import { loadConfig } from '../core/config.js';
+import { loadConfig, readZhMode } from '../core/config.js';
 import { createPipeline } from './pipeline.js';
 import { registerTools } from './mcp-tools.js';
 import * as fs from 'node:fs';
@@ -19,7 +19,8 @@ export interface BuildOpts { sttText?: string; configDir?: string; injector?: In
 export function buildServer(opts: BuildOpts = {}): McpServer {
   const server = new McpServer({ name: 'vocium', version: '0.1.0' });
 
-  const cfg = loadConfig(fs as any, path as any, opts.configDir ?? configDir());
+  const cfgDir = opts.configDir ?? configDir();
+  const cfg = loadConfig(fs as any, path as any, cfgDir);
   const mockMode = opts.sttText !== undefined || cfg.sttProvider === 'mock';
   const noKey = !mockMode && cfg.sttProvider === 'groq' && !cfg.groqApiKey.trim();
   const stt = opts.sttText !== undefined
@@ -42,7 +43,11 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
     // console flash; the injector falls back to one-shot execFile if unusable.
     spawn: ((c: string, a: string[]) => spawn(c, a, { windowsHide: true })) as any,
   });
-  const pipeline = createPipeline({ session, stt, injector, noKey });
+  const pipeline = createPipeline({
+    session, stt, injector, noKey,
+    // live read per call — picks up the setting change without sidecar restart
+    getZhMode: () => readZhMode(fs as any, path as any, cfgDir),
+  });
   registerTools(server, pipeline);
   if (!opts.injector) void injector.warmup?.();
   return server;

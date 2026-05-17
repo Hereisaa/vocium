@@ -42,7 +42,7 @@ Vocium 是 VoxKey 的 MCP 化重作版本。架構：Tauri 2 殼（Rust，薄，
 - 私有 repo `github.com/Hereisaa/vocium`（僅 `projects/vocium` 範圍，`docs/superpowers/` 與 `docs/logs/` git-ignored）。
 - 雙語 README（EN + 繁中）。`HEAD=7e445c2`，使用者自錄 `docs/assets/showcase.gif` 為 banner。
 - 探針 `scripts/probe-groq.mjs`（`npm run probe:groq`）：`✓ Groq OK in 421ms`，wiring 全鏈路驗證通過。
-- 已知：Whisper 中文預設輸出簡體（非 bug，繁簡轉換列 ROADMAP Phase 3）。
+- 已知：Whisper 中文預設輸出簡體（非 bug；繁簡轉換已於 §10 完成）。
 
 ## §8 API Key 欄位 + 無金鑰引導 + 錯誤注入（2026-05-17）
 
@@ -63,6 +63,10 @@ Vocium 是 VoxKey 的 MCP 化重作版本。架構：Tauri 2 殼（Rust，薄，
 
 API Key 功能已合入 `main`（`origin/main`=`4fbc44b`），階段性完成。使用者指定下一階段三大功能，**皆做在 Settings 視窗內**，B/C 同屬轉錄後處理鏈；既定 pipeline 順序 **STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機/MCP/sidecar/Injector。詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」、`docs/SPEC.md` §1.3。
 
-- **A. 繁簡轉換**：Whisper 中文輸出簡體；Settings「中文輸出」（繁體(台灣)/簡體/不轉換，預設繁體），STT 後加 OpenCC `s2twp` step。個人自用必要（[[feedback-personal-use-first]]）。
+- **A. 中文輸出（繁／簡）**：✅ 已完成 — 二段式繁體（台灣）/簡體雙向強制，詳見 §10。個人自用必要（[[feedback-personal-use-first]]）。
 - **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」provider 選擇。雲端 Groq/OpenAI/Gemini（Claude 無 STT）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。`SttAdapter` 已隔離，新增為侷限變更。
 - **C. AI 潤稿**：轉錄後可選 LLM 潤飾（清贅詞/標點/通順，不改原意）；Settings 開關+供應商/模型/風格；可用任何 LLM（含 Claude）；預設關閉。取代原 ROADMAP「轉錄後處理：標點/贅詞」並 AI 化。
+
+## §10 中文輸出 繁／簡 雙向（2026-05-17）
+
+Settings 二段式「中文輸出（中文字繁／簡）」＝繁體（台灣）/ 簡體（config `zhConvert:'twp'|'cn'`，預設 `twp`）。因 Groq 中文時繁時簡，改為**雙向強制**：`opencc-js` `cn→twp`（→繁台）與 `twp→cn`（→簡），已是目標字體則 passthrough；純本地離線零 API。純模組 `src/core/zh-convert.ts` `convertZh(text,mode)` 雙 lazy 轉換器、total、失敗回原文。pipeline `getZhMode` 在 STT 後注入前套 submitAudio＋transcribeClip（不轉 GUIDANCE_MSG/錯誤；transcribeClip spread 保 durationMs）。方案 A：sidecar 只讀 `readZhMode` 每轉錄重讀（不重啟）。Settings 改由「儲存並套用」按鈕套用（不再 onChange 即存），按鈕加 press+成功脈動動畫；移除快捷鍵/中文輸出提示語（錯誤顯示保留）；二段式 radiogroup 鍵盤可達。Rust `save_zh_mode`（驗 twp/cn，patch_config，不重啟）+ get_config 回 `zhConvert`。測試：zh-convert(7)+config/pipeline 改寫；vitest 79 全綠、cargo 0/0。

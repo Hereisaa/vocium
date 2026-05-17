@@ -414,6 +414,9 @@
         grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
         gap: 20px;
       }
+      .grid.grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
       .card {
         background: var(--panel);
         border: 1px solid var(--stroke);
@@ -586,24 +589,6 @@
         overflow: hidden;
         box-shadow: var(--shadow);
       }
-      .settings .s-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 18px;
-        background: var(--panel-2);
-        border-bottom: 1px solid var(--stroke);
-      }
-      .settings .s-head b {
-        font-size: 14px;
-        letter-spacing: 0.4px;
-      }
-      .settings .s-head .x {
-        color: var(--text-dim);
-        font-size: 14px;
-        cursor: pointer;
-        line-height: 1;
-      }
       .settings .s-body {
         padding: 20px 18px;
         display: flex;
@@ -660,11 +645,6 @@
         background: rgba(61, 220, 151, 0.12);
         animation: breathe 1.4s ease-in-out infinite;
       }
-      .s-hint {
-        font-size: 11px;
-        color: var(--text-dim);
-        line-height: 1.65;
-      }
       .s-err {
         font-size: 11px;
         color: var(--error);
@@ -693,6 +673,29 @@
         background: var(--accent);
         border-color: var(--accent);
       }
+      .sbtn.primary:active { transform: translateY(1px) scale(.98); }
+      .sbtn.ok { background:var(--listen); border-color:var(--listen); color:#0e1117;
+        animation: sbtnok .9s ease; }
+      @keyframes sbtnok { 0% { transform:scale(1); } 30% { transform:scale(1.04); } 100% { transform:scale(1); } }
+      .seg { display:flex; width:100%; border:1px solid var(--stroke); border-radius:8px;
+        overflow:hidden; background:var(--panel-2); }
+      .seg-opt { flex:1; text-align:center; padding:8px 0; font-size:12px; cursor:pointer;
+        color:var(--text-dim); background:transparent; user-select:none;
+        transition:background .15s ease, color .15s ease; }
+      .seg-opt:not(.active):hover { background:rgba(255,255,255,.06); color:var(--text); }
+      .seg-opt + .seg-opt { border-left:1px solid var(--stroke); }
+      .seg-opt.active { background:var(--accent); color:#0e1117; font-weight:600; }
+      .keywrap { position:relative; flex:1; min-width:0; }
+      .keyinput { width:100%; background:#0d0f14; border:1px solid #2a2f3a;
+        color:#e8eaf0; border-radius:8px; padding:8px 34px 8px 10px; font:inherit; }
+      .eye { position:absolute; right:8px; top:50%; transform:translateY(-50%);
+        cursor:pointer; line-height:0; user-select:none; opacity:.7;
+        color:var(--text-dim); }
+      .eye:hover { opacity:1; }
+      .eye svg { display:block; }
+      .clearkey { color:var(--error); font-size:12px; font-weight:600; cursor:pointer;
+        background:none; border:none; padding:0; white-space:nowrap; }
+      .clearkey:hover { text-decoration:underline; }
 
       .tokens {
         display: flex;
@@ -1136,24 +1139,41 @@
         </tr>
       </table>
 
-      <h2>6 · 設定視窗 — 自訂全域快捷鍵</h2>
-      <div class="grid">
+      <h2>6 · 設定視窗（快捷鍵 · API Key · 中文輸出）</h2>
+      <div class="grid grid-2">
+
+        <!-- Card 1: 預設檢視 -->
         <div class="card">
           <div class="settings">
-            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
             <div class="s-body">
+              <!-- hotkey field -->
               <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
                   <div class="hkcombo">
-                    <span class="keycap">Ctrl</span
-                    ><span class="keycap">Shift</span
-                    ><span class="keycap">Space</span>
+                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
                   </div>
-                  <div class="recbtn">錄製快捷鍵</div>
+                  <div class="recbtn">錄製</div>
                 </div>
-                <div class="s-hint">
-                  目前綁定。點「錄製快捷鍵」後按下想要的組合即可變更。
+                <div class="s-err" id="err" style="display:none"></div>
+              </div>
+              <!-- Groq API Key field -->
+              <div class="field">
+                <div class="flabel">Groq API Key</div>
+                <div class="hkrow">
+                  <div class="keywrap">
+                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                  </div>
+                  <span class="clearkey">✕ 清除金鑰</span>
+                </div>
+              </div>
+              <!-- 中文輸出 field -->
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
                 </div>
               </div>
             </div>
@@ -1163,55 +1183,38 @@
             </div>
           </div>
           <div class="tag">
-            <b>預設檢視</b>顯示目前快捷鍵（讀自 config），未錄製前不可變更
+            <b>預設檢視</b> 三欄位：快捷鍵 / API Key（遮罩，已設定顯示 ✕ 清除）/ 中文輸出二段式；無自製標題列（用系統原生視窗框）
           </div>
         </div>
 
+        <!-- Card 2: 中文輸出＝簡體 -->
         <div class="card">
           <div class="settings">
-            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
             <div class="s-body">
               <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
                   <div class="hkcombo">
-                    <span class="keycap" style="color: var(--text-dim)"
-                      >按下組合…</span
-                    >
+                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
                   </div>
-                  <div class="recbtn armed">● 錄製中</div>
-                </div>
-                <div class="s-hint">
-                  正在聆聽鍵盤；需含至少一個修飾鍵（Ctrl/Shift/Alt/Win）＋一個主鍵。Esc
-                  取消錄製。
+                  <div class="recbtn">錄製</div>
                 </div>
               </div>
-            </div>
-            <div class="s-foot">
-              <div class="sbtn">取消</div>
-              <div class="sbtn primary">儲存並套用</div>
-            </div>
-          </div>
-          <div class="tag"><b>錄製中</b>即時擷取按鍵；放開即顯示組合預覽</div>
-        </div>
-
-        <div class="card">
-          <div class="settings">
-            <div class="s-head"><b>Vocium 設定</b><span class="x">✕</span></div>
-            <div class="s-body">
               <div class="field">
-                <div class="flabel">全域快捷鍵</div>
+                <div class="flabel">Groq API Key</div>
                 <div class="hkrow">
-                  <div class="hkcombo">
-                    <span class="keycap">Ctrl</span
-                    ><span class="keycap">Alt</span
-                    ><span class="keycap">V</span>
+                  <div class="keywrap">
+                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
                   </div>
-                  <div class="recbtn">重新錄製</div>
+                  <span class="clearkey">✕ 清除金鑰</span>
                 </div>
-                <div class="s-err">
-                  ⚠ 此組合已被其他程式占用，註冊失敗 — 仍保留原快捷鍵
-                  <b>Ctrl+Shift+Space</b>。
+              </div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt" role="radio" data-mode="twp">繁體（台灣）</span>
+                  <span class="seg-opt active" role="radio" data-mode="cn">簡體</span>
                 </div>
               </div>
             </div>
@@ -1221,9 +1224,93 @@
             </div>
           </div>
           <div class="tag">
-            <b>衝突回退</b>新組合註冊失敗時不破壞現況，保留舊鍵並明示
+            <b>中文輸出</b> 二段式繁/簡，全寬等分；選中半邊 accent 高亮；改設定後按「儲存並套用」生效（每次轉錄即時讀，無需重啟）
           </div>
         </div>
+
+        <!-- Card 3: 儲存成功回饋 -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
+                  </div>
+                  <div class="recbtn">錄製</div>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">Groq API Key</div>
+                <div class="hkrow">
+                  <div class="keywrap">
+                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                  </div>
+                  <span class="clearkey">✕ 清除金鑰</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary ok">✓ 已套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>儲存回饋</b> [儲存並套用] 按下 press 動畫；成功後按鈕 success-pulse「✓ 已套用」約 1s 後復原；移除常駐提示語，回饋集中於此
+          </div>
+        </div>
+
+        <!-- Card 4: 快捷鍵錄製中／衝突 -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap" style="color:var(--text-dim)">按下組合…</span>
+                  </div>
+                  <div class="recbtn armed">● 錄製中…</div>
+                </div>
+                <div class="s-err">⚠ 此組合已被其他程式占用，註冊失敗 — 仍保留原快捷鍵 Ctrl+Shift+Space。</div>
+              </div>
+              <div class="field">
+                <div class="flabel">Groq API Key</div>
+                <div class="hkrow">
+                  <div class="keywrap">
+                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                  </div>
+                  <span class="clearkey">✕ 清除金鑰</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>快捷鍵</b> 錄製中即時擷取；放開自動結束；衝突回退保留舊鍵並以 #err 顯示（錯誤訊息保留，非提示語）
+          </div>
+        </div>
+
       </div>
 
       <h2>7 · 設計 Token</h2>

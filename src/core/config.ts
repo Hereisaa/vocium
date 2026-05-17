@@ -9,6 +9,7 @@ export interface VociumConfig {
   maxListenMs: number;
   iconOffsetX: number;
   dragLocked: boolean;
+  zhConvert: 'twp' | 'cn';
 }
 
 export const DEFAULTS: VociumConfig = {
@@ -21,6 +22,7 @@ export const DEFAULTS: VociumConfig = {
   maxListenMs: 30000,
   iconOffsetX: 0,
   dragLocked: false,
+  zhConvert: 'twp',
 };
 
 interface FsLike {
@@ -51,4 +53,19 @@ export function loadConfig(fs: FsLike, path: PathLike, dir: string): VociumConfi
   }
   saveConfig(fs, path, dir, DEFAULTS);
   return { ...DEFAULTS };
+}
+
+/** Read ONLY the zhConvert mode. Never writes (unlike loadConfig). Missing
+ *  file / corrupt JSON / absent or invalid value → DEFAULTS.zhConvert ('twp').
+ *  Never throws. */
+export function readZhMode(fs: FsLike, path: PathLike, dir: string): 'twp' | 'cn' {
+  try {
+    const file = path.join(dir, FILE);
+    if (!fs.existsSync(file)) return DEFAULTS.zhConvert;
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return parsed?.zhConvert === 'cn' || parsed?.zhConvert === 'twp'
+      ? parsed.zhConvert : DEFAULTS.zhConvert;
+  } catch {
+    return DEFAULTS.zhConvert;
+  }
 }
