@@ -19,13 +19,13 @@ export interface BuildOpts { sttText?: string; configDir?: string; injector?: In
 export function buildServer(opts: BuildOpts = {}): McpServer {
   const server = new McpServer({ name: 'vocium', version: '0.1.0' });
 
+  const cfg = loadConfig(fs as any, path as any, opts.configDir ?? configDir());
+  const mockMode = opts.sttText !== undefined || cfg.sttProvider === 'mock';
+  const noKey = !mockMode && cfg.sttProvider === 'groq' && !cfg.groqApiKey.trim();
   const stt = opts.sttText !== undefined
     ? new MockSttAdapter({ text: opts.sttText, delayMs: 0 })
-    : createSttAdapter(
-        loadConfig(fs as any, path as any, opts.configDir ?? configDir()),
-        { fetch: globalThis.fetch },
-      );
-  const effectiveProvider = (stt instanceof MockSttAdapter) ? 'mock' : 'groq';
+    : createSttAdapter(cfg, { fetch: globalThis.fetch });
+  const effectiveProvider = (mockMode || noKey) ? 'mock' : 'groq';
 
   const emitState = (state: string, prev: string) => {
     server.server.notification({
@@ -42,7 +42,7 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
     // console flash; the injector falls back to one-shot execFile if unusable.
     spawn: ((c: string, a: string[]) => spawn(c, a, { windowsHide: true })) as any,
   });
-  const pipeline = createPipeline({ session, stt, injector });
+  const pipeline = createPipeline({ session, stt, injector, noKey });
   registerTools(server, pipeline);
   if (!opts.injector) void injector.warmup?.();
   return server;

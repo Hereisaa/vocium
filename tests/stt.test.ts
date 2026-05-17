@@ -26,6 +26,11 @@ describe('GroqSttAdapter', () => {
     await expect(a.transcribe(audio)).rejects.toThrow('Groq API key not configured');
   });
 
+  it('rejects when api key is whitespace only', async () => {
+    const a = new GroqSttAdapter({ apiKey: '   ', model: 'm' }, { fetch: (async () => ({})) as any });
+    await expect(a.transcribe(audio)).rejects.toThrow('Groq API key not configured');
+  });
+
   it('rejects on non-2xx', async () => {
     const fakeFetch = async () => ({ ok: false, status: 401, text: async () => 'unauthorized' } as any);
     const a = new GroqSttAdapter({ apiKey: 'k', model: 'm' }, { fetch: fakeFetch as any });
@@ -49,9 +54,9 @@ describe('createSttAdapter factory', () => {
     const a = createSttAdapter({ sttProvider: 'groq', groqApiKey: 'k', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });
     expect(a).toBeInstanceOf(GroqSttAdapter);
   });
-  it('groq without key -> falls back to MockSttAdapter', () => {
+  it('groq without key -> still GroqSttAdapter (pipeline handles noKey)', () => {
     const a = createSttAdapter({ sttProvider: 'groq', groqApiKey: '', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });
-    expect(a).toBeInstanceOf(MockSttAdapter);
+    expect(a).toBeInstanceOf(GroqSttAdapter);
   });
   it('mock -> MockSttAdapter', () => {
     const a = createSttAdapter({ sttProvider: 'mock', groqApiKey: 'k', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });

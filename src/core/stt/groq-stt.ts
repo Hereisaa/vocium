@@ -10,7 +10,7 @@ export class GroqSttAdapter implements SttAdapter {
   constructor(private opts: GroqOpts, private deps: GroqDeps) {}
 
   async transcribe(input: SttInput): Promise<SttResult> {
-    if (!this.opts.apiKey) throw new Error('Groq API key not configured');
+    if (!this.opts.apiKey.trim()) throw new Error('Groq API key not configured');
     const form = new FormData();
     // Uint8Array wrap required: Buffer is not assignable to BlobPart under TS strict + @types/node v22
     form.append('file', new Blob([new Uint8Array(input.audio)], { type: input.mimeType }), 'audio.webm');

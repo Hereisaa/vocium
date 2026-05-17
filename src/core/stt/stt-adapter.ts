@@ -11,8 +11,10 @@ interface SttConfigSlice {
 }
 
 export function createSttAdapter(cfg: SttConfigSlice, deps: GroqDeps): SttAdapter {
-  if (cfg.sttProvider === 'groq' && cfg.groqApiKey) {
-    return new GroqSttAdapter({ apiKey: cfg.groqApiKey, model: cfg.groqModel }, deps);
+  if (cfg.sttProvider === 'mock') {
+    return new MockSttAdapter({ text: cfg.mockText });
   }
-  return new MockSttAdapter({ text: cfg.mockText });
+  // 'groq': always GroqSttAdapter. An empty key is NOT a silent Mock fallback —
+  // the sidecar computes noKey and the pipeline injects guidance instead.
+  return new GroqSttAdapter({ apiKey: cfg.groqApiKey, model: cfg.groqModel }, deps);
 }

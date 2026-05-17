@@ -38,6 +38,11 @@ struct ShellState {
     shortcut: Mutex<Option<Shortcut>>,
     /// The tray "快捷鍵：…" menu item so set_hotkey can refresh its label live.
     hk_item: Mutex<Option<MenuItem<Wry>>>,
+    /// The tray "STT：…" menu item so set_groq_key can refresh its label live.
+    stt_item: Mutex<Option<MenuItem<Wry>>>,
+    /// True while the global toggle hotkey is temporarily unregistered
+    /// (the user is recording a new combo in Settings).
+    hotkey_suspended: Mutex<bool>,
     config: VociumConfig,
     /// Diagnostic sink (-> %APPDATA%/vocium/logs/shell.log). The GUI process
     /// has no console (CREATE_NO_WINDOW) so eprintln! is invisible; everything
@@ -124,7 +129,7 @@ fn read_config() -> VociumConfig {
     }
 
     // Effective STT mode mirrors createSttAdapter(): groq only if key present.
-    let stt_provider = if provider_cfg == "groq" && !groq_key.is_empty() {
+    let stt_provider = if provider_cfg == "groq" && !groq_key.trim().is_empty() {
         "groq".to_string()
     } else {
         "mock".to_string()
@@ -189,28 +194,77 @@ fn parse_shortcut(spec: &str) -> Option<Shortcut> {
 /// (Re)register the global toggle hotkey at runtime. Unregisters the previously
 /// stored shortcut first. Err("parse") if spec invalid; Err("taken") if the OS
 /// refuses (already in use). On success the new Shortcut is stored in state.
+/// Register the OS-level toggle shortcut with its Pressed handler. Shared by
+/// apply_hotkey (new binding) and resume_hotkey (re-arm after recording).
+fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String> {
+    let h = app.clone();
+    app.global_shortcut()
+        .on_shortcut(sc, move |_a, _s, ev| {
+            if ev.state == ShortcutState::Pressed {
+                let hh = h.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = invoke_tool(hh, "toggle", json!({})).await;
+                });
+            }
+        })
+        .map_err(|_| "taken".to_string())
+}
+
 fn apply_hotkey(app: &AppHandle, spec: &str) -> Result<(), String> {
     let sc = parse_shortcut(spec).ok_or_else(|| "parse".to_string())?;
     // No-op if unchanged (avoids the same-key re-register edge).
     if app.state::<ShellState>().shortcut.lock().unwrap().as_ref() == Some(&sc) {
         return Ok(());
     }
-    let gs = app.global_shortcut();
-    let h = app.clone();
-    gs.on_shortcut(sc, move |_a, _s, ev| {
-        if ev.state == ShortcutState::Pressed {
-            let hh = h.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = invoke_tool(hh, "toggle", json!({})).await;
-            });
-        }
-    })
-    .map_err(|_| "taken".to_string())?;
+    register_toggle_shortcut(app, sc)?;
     // New binding is live — now safe to drop the previous one.
     if let Some(old) = app.state::<ShellState>().shortcut.lock().unwrap().take() {
-        let _ = gs.unregister(old);
+        let _ = app.global_shortcut().unregister(old);
     }
     *app.state::<ShellState>().shortcut.lock().unwrap() = Some(sc);
+    // A concrete hotkey is now active again.
+    *app.state::<ShellState>().hotkey_suspended.lock().unwrap() = false;
+    Ok(())
+}
+
+/// Unregister the global toggle hotkey without forgetting it (idempotent).
+/// Used while the user records a new combo so pressing the current hotkey
+/// doesn't trigger Vocium.
+fn suspend_hotkey(app: &AppHandle) {
+    let st = app.state::<ShellState>();
+    let mut suspended = st.hotkey_suspended.lock().unwrap();
+    if *suspended {
+        return;
+    }
+    if let Some(sc) = *st.shortcut.lock().unwrap() {
+        let _ = app.global_shortcut().unregister(sc);
+    }
+    *suspended = true;
+}
+
+/// Re-register the stored toggle hotkey if it was suspended (idempotent).
+fn resume_hotkey(app: &AppHandle) {
+    let st = app.state::<ShellState>();
+    let mut suspended = st.hotkey_suspended.lock().unwrap();
+    if !*suspended {
+        return;
+    }
+    let sc = *st.shortcut.lock().unwrap();
+    if let Some(sc) = sc {
+        let _ = register_toggle_shortcut(app, sc);
+    }
+    *suspended = false;
+}
+
+/// Settings recorder calls this: enabled=false while recording (suspend),
+/// enabled=true when recording ends (resume).
+#[tauri::command]
+fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    if enabled {
+        resume_hotkey(&app);
+    } else {
+        suspend_hotkey(&app);
+    }
     Ok(())
 }
 
@@ -458,11 +512,11 @@ fn patch_config(dir: &std::path::Path, key: &str, val: Value) -> Result<(), Stri
 #[tauri::command]
 fn get_config(app: AppHandle) -> Result<Value, String> {
     let s = app.state::<ShellState>();
-    // hotkey/dragLocked can change at runtime via set_hotkey/save_drag_locked,
-    // so read them live from the file the commands write. sttProvider is the
-    // boot-resolved effective value (groq-key dependent) and stays from state.
+    // hotkey/dragLocked/groqApiKey can change at runtime via the settings
+    // commands, so read them live from the file the commands write.
     let file = s.config.config_dir.join("vocium-config.json");
     let (mut hotkey, mut drag_locked) = (s.config.hotkey.clone(), s.config.drag_locked);
+    let (mut provider_cfg, mut groq_key) = ("groq".to_string(), String::new());
     if let Ok(raw) = std::fs::read_to_string(&file) {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
             if let Some(h) = v.get("hotkey").and_then(|x| x.as_str()) {
@@ -471,9 +525,39 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
             if let Some(d) = v.get("dragLocked").and_then(|x| x.as_bool()) {
                 drag_locked = d;
             }
+            if let Some(p) = v.get("sttProvider").and_then(|x| x.as_str()) {
+                provider_cfg = p.to_string();
+            }
+            if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
+                groq_key = k.to_string();
+            }
         }
     }
-    Ok(json!({ "sttProvider": s.config.stt_provider, "hotkey": hotkey, "dragLocked": drag_locked }))
+    let groq_key_trimmed = groq_key.trim();
+    let groq_key_set = !groq_key_trimmed.is_empty();
+    // Industry-standard preview: first 4 + ••• + last 4. NEVER the full key.
+    // (Groq keys are ~56 chars; first 4 is the constant `gsk_` prefix, last 4
+    // is the only mild exposure — standard dashboard practice.)
+    let groq_key_mask = if groq_key_set {
+        let chars: Vec<char> = groq_key_trimmed.chars().collect();
+        if chars.len() > 8 {
+            let first: String = chars[..4].iter().collect();
+            let last: String = chars[chars.len() - 4..].iter().collect();
+            format!("{first}•••{last}")
+        } else {
+            "•".repeat(8) // too short to safely reveal edges
+        }
+    } else {
+        String::new()
+    };
+    let stt_provider = if provider_cfg == "groq" && groq_key_set { "groq" } else { "mock" };
+    Ok(json!({
+        "sttProvider": stt_provider,
+        "hotkey": hotkey,
+        "dragLocked": drag_locked,
+        "groqKeySet": groq_key_set,
+        "groqKeyMask": groq_key_mask
+    }))
 }
 
 /// Persist the drag-lock toggle into the shared config file.
@@ -509,6 +593,58 @@ fn set_hotkey(app: AppHandle, spec: String) -> Result<Value, String> {
     Ok(json!({ "ok": true, "hotkey": spec }))
 }
 
+/// Persist the Groq API key, restart the sidecar so it rebuilds its STT
+/// adapter with the new key, and refresh the tray "STT：…" label.
+#[tauri::command]
+async fn set_groq_key(app: AppHandle, key: String) -> Result<Value, String> {
+    let (dir, log) = {
+        let s = app.state::<ShellState>();
+        (s.config.config_dir.clone(), s.log.clone())
+    };
+    patch_config(&dir, "groqApiKey", json!(key))?;
+
+    // Restart sidecar via the same spawn/connect path used at boot so the
+    // adapter is rebuilt from the new key. Old child is killed first.
+    shutdown_sidecar(&app);
+    let logs_dir = dir.join("logs");
+    let new_client = match spawn_sidecar(&app, log.clone(), &logs_dir) {
+        Ok(c) => c,
+        Err(e) => {
+            log(&format!("[set_groq_key] sidecar restart failed: {e}"));
+            // Old child was killed; clear the client so invoke_tool fast-fails
+            // ("sidecar not connected") instead of 30s-hanging on a dead Arc.
+            *app.state::<ShellState>().client.lock().unwrap() = None;
+            return Err(e);
+        }
+    };
+    *app.state::<ShellState>().client.lock().unwrap() = Some(new_client);
+
+    // Re-derive effective provider from the file we just wrote.
+    let file = dir.join("vocium-config.json");
+    let mut provider_cfg = "groq".to_string();
+    let mut groq_key = String::new();
+    if let Ok(raw) = std::fs::read_to_string(&file) {
+        if let Ok(v) = serde_json::from_str::<Value>(&raw) {
+            if let Some(p) = v.get("sttProvider").and_then(|x| x.as_str()) {
+                provider_cfg = p.to_string();
+            }
+            if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
+                groq_key = k.to_string();
+            }
+        }
+    }
+    let stt_provider = if provider_cfg == "groq" && !groq_key.trim().is_empty() {
+        "groq"
+    } else {
+        "mock"
+    };
+    if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
+        let _ = item.set_text(format!("STT：{stt_provider}"));
+    }
+    log(&format!("[set_groq_key] applied; provider now {stt_provider}"));
+    Ok(json!({ "ok": true, "sttProvider": stt_provider }))
+}
+
 /// Persist iconOffsetX into the shared config file (drag-to-reposition).
 #[tauri::command]
 fn save_offset_x(app: AppHandle, offset_x: i32) -> Result<(), String> {
@@ -539,8 +675,25 @@ pub fn run() {
             hotkey_ok: Mutex::new(false),
             shortcut: Mutex::new(None),
             hk_item: Mutex::new(None),
+            stt_item: Mutex::new(None),
+            hotkey_suspended: Mutex::new(false),
             config: cfg_for_state,
             log: log_state,
+        })
+        // The settings window is created once and reused via show()/hide().
+        // The native title-bar close (decorations:true) would DESTROY it,
+        // making tray "設定…" (get_webview_window) return None forever. Hide
+        // instead so it stays reopenable.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "settings" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    // Safety net: closing mid-recording must never leave the
+                    // global hotkey suspended (would soft-lock it).
+                    resume_hotkey(window.app_handle());
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             toggle,
@@ -552,7 +705,9 @@ pub fn run() {
             save_offset_x,
             save_drag_locked,
             quit_app,
-            set_hotkey
+            set_hotkey,
+            set_hotkey_enabled,
+            set_groq_key
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -631,6 +786,7 @@ fn build_tray(
         false,
         None::<&str>,
     )?;
+    *app.state::<ShellState>().stt_item.lock().unwrap() = Some(stt.clone());
     let open_cfg =
         MenuItem::with_id(app, "open_cfg", "開啟設定檔位置", true, None::<&str>)?;
     // Distinct separator instances: muda OS menu-item ID reuse is undefined on

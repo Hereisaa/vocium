@@ -8,16 +8,28 @@
 </head>
 <body class="settings-body">
   <div class="settings">
-    <div class="s-head"><b>Vocium 設定</b><span class="x" id="sClose">✕</span></div>
     <div class="s-body">
       <div class="field">
         <div class="flabel">全域快捷鍵</div>
         <div class="hkrow">
           <div class="hkcombo" id="combo"></div>
-          <div class="recbtn" id="rec">錄製快捷鍵</div>
+          <div class="recbtn" id="rec">錄製</div>
         </div>
-        <div class="s-hint" id="hint">目前綁定。點「錄製快捷鍵」後按下想要的組合即可變更。</div>
+        <div class="s-hint" id="hint"></div>
         <div class="s-err" id="err" style="display:none"></div>
+      </div>
+      <div class="field">
+        <div class="flabel">Groq API Key</div>
+        <div class="hkrow">
+          <div class="keywrap">
+            <input id="keyInput" type="password" placeholder="貼上 gsk_… 後按儲存"
+                   autocomplete="off" spellcheck="false" class="keyinput" />
+            <span class="eye" id="keyToggle" role="button" title="顯示/隱藏" aria-label="顯示或隱藏金鑰"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <span class="clearkey" id="keyClear" role="button" hidden>✕ 清除金鑰</span>
+        </div>
+        <div class="s-hint" id="keyHint"></div>
+        <div class="s-err" id="keyErr" style="display:none"></div>
       </div>
     </div>
     <div class="s-foot">

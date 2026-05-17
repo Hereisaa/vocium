@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createVoiceSession } from '../src/core/state-machine.js';
 import { MockSttAdapter } from '../src/core/stt/mock-stt.js';
 import { createPipeline } from '../src/sidecar/pipeline.js';
+import { describeSttError, GUIDANCE_MSG } from '../src/core/stt/describe-error.js';
 
 function setup(sttText = 'transcribed!') {
   const states: string[] = [];
@@ -81,14 +82,73 @@ describe('pipeline', () => {
     vi.useRealTimers();
   });
 
-  it('failure goes error then auto RESET to idle', async () => {
+  it('failure goes error then auto RESET to idle (no rethrow, injects message)', async () => {
     vi.useFakeTimers();
     const session = createVoiceSession({ onState: () => {} });
     const stt = new MockSttAdapter({ text: 'x', delayMs: 0, failMode: true });
-    const injector = { inject: async () => ({ ok: true }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
     const p = createPipeline({ session, stt, injector });
     p.toggle();
-    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' }).catch(() => {});
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r.text).toBe('（語音轉錄失敗：轉錄服務錯誤，請稍後再試）');
+    expect(injected).toEqual(['（語音轉錄失敗：轉錄服務錯誤，請稍後再試）']);
+    expect(p.getState()).toBe('error');
+    vi.advanceTimersByTime(1500);
+    expect(p.getState()).toBe('idle');
+    vi.useRealTimers();
+  });
+
+  it('noKey: injects guidance via normal flow, no error animation', async () => {
+    const states: string[] = [];
+    const session = createVoiceSession({ onState: (s) => states.push(s) });
+    const stt = new MockSttAdapter({ text: 'SHOULD-NOT-BE-USED', delayMs: 0 });
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector, noKey: true });
+    p.toggle();                       // idle->listening
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: GUIDANCE_MSG });
+    expect(injected).toEqual([GUIDANCE_MSG]);
+    expect(p.getState()).toBe('idle');
+    expect(states).toEqual(['listening', 'transcribing', 'injecting', 'idle']);
+  });
+
+  it('noKey: injector failure goes error then auto RESET to idle', async () => {
+    vi.useFakeTimers();
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = new MockSttAdapter({ text: 'unused', delayMs: 0 });
+    const injector = { inject: async () => ({ ok: false, message: 'blocked' }) };
+    const p = createPipeline({ session, stt, injector, noKey: true });
+    p.toggle();
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: GUIDANCE_MSG });
+    expect(p.getState()).toBe('error');
+    vi.advanceTimersByTime(1500);
+    expect(p.getState()).toBe('idle');
+    vi.useRealTimers();
+  });
+
+  it('noKey: transcribeClip returns guidance text instead of throwing', async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => { throw new Error('Groq API key not configured'); } };
+    const injector = { inject: async () => ({ ok: true }) };
+    const p = createPipeline({ session, stt, injector, noKey: true });
+    const r = await p.transcribeClip({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: GUIDANCE_MSG });
+  });
+
+  it('STT error: injects categorized message, plays error animation, no rethrow', async () => {
+    vi.useFakeTimers();
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => { throw new Error('Groq STT failed: 401 invalid_api_key'); } };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector });
+    p.toggle();                       // idle->listening
+    const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r).toEqual({ text: '（語音轉錄失敗：API Key 無效，請於設定檢查）' });
+    expect(injected).toEqual(['（語音轉錄失敗：API Key 無效，請於設定檢查）']);
     expect(p.getState()).toBe('error');
     vi.advanceTimersByTime(1500);
     expect(p.getState()).toBe('idle');

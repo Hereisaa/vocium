@@ -27,7 +27,7 @@
 - **Two ways to trigger**: a **global hotkey** (default `Ctrl+Shift+Space`) or **clicking the icon**. Press `Esc` while listening to cancel.
 - **Customizable hotkey** — a Settings window lets you **record a new combo and it applies instantly**, no restart. A taken/invalid combo is rejected and the old one is kept.
 - **Hover controls** on the icon (fade in only on hover): 🔒 lock/unlock drag · ⎯ minimize to tray · ✕ quit.
-- **Speech‑to‑text via Groq Whisper** (`whisper-large-v3-turbo`, bring‑your‑own‑key). No key? It automatically falls back to an offline **mock** mode so the flow still works.
+- **Speech‑to‑text via Groq Whisper** (`whisper-large-v3-turbo`, bring‑your‑own‑key). No key? It pastes a short on‑screen prompt telling you to add your key in Settings (and STT errors paste a brief reason), so you're never left guessing.
 - **Automatic paste** into the focused field (clipboard + simulated paste). If paste fails it degrades gracefully to "copied — paste manually".
 - **System tray menu**: show/hide icon · STT mode · Settings… · open config location · quit.
 - **Settings persisted** in `%APPDATA%/vocium/vocium-config.json` (hotkey, drag‑lock, icon position, STT provider, …).
@@ -37,7 +37,7 @@
 - **Windows 11** (v1 target — text injection is pure PowerShell, zero native build).
 - **Node.js ≥ 20**
 - **Rust toolchain** + Tauri 2 prerequisites (Microsoft Edge **WebView2** runtime and MSVC build tools) — needed to build/run the shell.
-- *(Optional)* a **Groq API key** for real transcription. Without one, Vocium runs in mock mode.
+- *(Optional)* a **Groq API key** for real transcription. Without one, Vocium prompts you (on paste) to add it in Settings.
 
 > macOS / Linux: the injection interface and stubs are in place but `inject()` is not implemented in v1 (Phase 2).
 
@@ -59,6 +59,18 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 
 > The produced binary is unsigned; installer packaging/signing is a later‑phase item.
 
+## Get a free Groq API key (BYOK)
+
+Vocium is **bring‑your‑own‑key**: there is no Vocium server and no bundled key. Your speech audio goes **directly from your machine to Groq** for transcription — nowhere else. No key → Vocium still works: it pastes a short prompt telling you to add your key in Settings (no fake transcription, no error animation).
+
+1. Open **https://console.groq.com** and sign in with Google / GitHub (**no credit card**).
+2. **API Keys** → **Create API Key** → copy the `gsk_...` value.
+3. Put it in `groqApiKey` (config below) **or** paste it in the in‑app **Settings…** window. It is stored only on your machine and is git‑ignored. The easiest path: open the in‑app **Settings…** window and paste it into the **Groq API Key** field — it applies immediately (the transcription service restarts).
+
+> **Free tier** — Groq's free developer tier is **rate‑limited, not usage‑billed**, and is plenty for personal voice typing. Your live limits: https://console.groq.com/settings/limits
+>
+> **Privacy (please read)** — with `sttProvider: "groq"` your spoken audio **leaves your computer** (sent to Groq for transcription). To keep everything fully offline, set `sttProvider: "mock"`.
+
 ## Configure
 
 Settings live in `%APPDATA%\vocium\vocium-config.json` (created on first run). Example — **never commit your real key**:
@@ -67,7 +79,7 @@ Settings live in `%APPDATA%\vocium\vocium-config.json` (created on first run). E
 {
   "hotkey": "Ctrl+Shift+Space",
   "sttProvider": "groq",            // "groq" | "mock"
-  "groqApiKey": "<your-groq-key>",  // local only; falls back to mock if empty
+  "groqApiKey": "<your-groq-key>",  // local only; if empty, paste shows a "set your key" prompt
   "groqModel": "whisper-large-v3-turbo",
   "maxListenMs": 30000,
   "dragLocked": false
@@ -129,7 +141,7 @@ MIT
 - **兩種觸發**：全域快捷鍵（預設 `Ctrl+Shift+Space`）或點擊 ICON；聆聽中按 `Esc` 取消。
 - **可自訂快捷鍵**：設定視窗可**錄製新組合並即時生效**，無需重開；組合被占用或無效會擋下並保留原快捷鍵。
 - **懸浮控制鈕**（滑鼠移上才淡入）：🔒 鎖定/解除拖曳 · ⎯ 縮小到系統匣 · ✕ 結束。
-- **STT＝Groq Whisper**（`whisper-large-v3-turbo`，自備金鑰）。未設金鑰時自動回退離線 **mock** 模式，流程照樣走通。
+- **STT＝Groq Whisper**（`whisper-large-v3-turbo`，自備金鑰）。未設金鑰時會貼上一句「請到設定填入 API Key」的提示（STT 發生錯誤則貼上簡短原因），不會讓你摸不著頭緒。
 - **自動貼上**到焦點輸入框（剪貼簿＋模擬貼上）；失敗時優雅降級為「已複製，請手動貼上」。
 - **系統匣選單**：顯示/隱藏 ICON · STT 模式 · 設定… · 開啟設定檔位置 · 結束。
 - **設定持久化**於 `%APPDATA%/vocium/vocium-config.json`（快捷鍵、拖曳鎖定、ICON 位置、STT 來源…）。
@@ -139,7 +151,7 @@ MIT
 - **Windows 11**（v1 範疇 — 文字注入純 PowerShell，零 native build）。
 - **Node.js ≥ 20**
 - **Rust 工具鏈** ＋ Tauri 2 前置（Edge **WebView2** Runtime 與 MSVC build tools）。
-- *(選用)* **Groq API 金鑰** 以啟用真實轉錄；未設則為 mock 模式。
+- *(選用)* **Groq API 金鑰** 以啟用真實轉錄；未設時會於貼上時提示你到設定填入。
 
 > macOS / Linux：注入介面與 stub 已就位，但 v1 `inject()` 未實作（Phase 2）。
 
@@ -161,6 +173,18 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 
 > 產物未簽章；安裝程式打包/簽章列為後期項目。
 
+### 取得免費 Groq API 金鑰（BYOK 自備金鑰）
+
+Vocium 採 **自備金鑰（BYOK）**：沒有 Vocium 伺服器、不內建任何金鑰。你的語音音訊**由你的電腦直接送往 Groq** 轉錄，不經任何第三方。未設金鑰時 App 照樣可用：pipeline 走正常流程，貼上一句「請到設定填入 API Key」的引導訊息（非 mock 假文字，也不觸發錯誤動畫）。
+
+1. 開啟 **https://console.groq.com**，用 Google／GitHub 登入（**免信用卡**）。
+2. **API Keys** → **Create API Key** → 複製 `gsk_...`。
+3. 填入下方設定檔的 `groqApiKey`，**或**貼進程式內 **設定…** 視窗。金鑰僅存本機且已被 git 忽略。最簡單：開啟程式內 **設定…** 視窗，於 **Groq API Key** 欄位貼上即可，存檔後立即生效（轉錄服務會重啟）。
+
+> **免費額度** — Groq 免費開發者方案是**限速制、非用量計費**，個人語音輸入綽綽有餘。你的即時額度：https://console.groq.com/settings/limits
+>
+> **隱私（請務必閱讀）** — `sttProvider: "groq"` 時你的語音音訊會**離開本機**（送往 Groq 轉錄）。要完全離線，請設 `sttProvider: "mock"`。
+
 ### 設定
 
 設定檔位於 `%APPDATA%\vocium\vocium-config.json`（首次執行自動建立）。範例 — **切勿把真實金鑰提交進版控**：
@@ -169,7 +193,7 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 {
   "hotkey": "Ctrl+Shift+Space",
   "sttProvider": "groq",            // "groq" | "mock"
-  "groqApiKey": "<你的-groq-金鑰>",  // 僅存本機；留空則回退 mock
+  "groqApiKey": "<你的-groq-金鑰>",  // 僅存本機；留空則貼上「請設定金鑰」提示
   "groqModel": "whisper-large-v3-turbo",
   "maxListenMs": 30000,
   "dragLocked": false

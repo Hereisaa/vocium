@@ -20,7 +20,7 @@
 - [ ] `core/state-machine.ts` + 測試（全狀態轉移、CANCEL、FAIL/RESET、重入忽略）
 - [ ] `core/config.ts` + 測試（預設/壞檔回退/合併、groqApiKey 不入版控）
 - [ ] `core/stt/groq-stt.ts` + 測試（注入 fetch：multipart 組裝、200 解析、金鑰缺失/4xx/網路錯誤 reject）
-- [ ] `core/stt/mock-stt.ts` + `stt-adapter.ts` 工廠 + 測試（預設 groq、金鑰缺回退 mock、failMode）
+- [ ] `core/stt/mock-stt.ts` + `stt-adapter.ts` 工廠 + 測試（預設 groq、金鑰缺不回退 mock（sidecar 層處理 noKey）、failMode）
 - [ ] `core/inject/injector.ts` 介面 + `windows.ts` + `macos.ts`/`linux.ts` stub + 測試（工廠選平台、stub 拋 NotImplemented）
 
 ### M3 Sidecar / MCP server
@@ -44,20 +44,29 @@
 - [ ] code-reviewer sub-agent 審查並修正
 - [ ] 手動驗收清單（SPEC §6）逐項核對；GUI 互動項標「待實機」
 - [ ] README 使用說明、`docs/projects/vocium/SUMMARY.md`（依工作區 SOP）
+- [x] App 內 API Key 欄位；無金鑰→注入引導訊息（取代 Mock 假文字）；STT 錯誤→分類簡語注入＋錯誤動畫；Mock 降為僅測試用；`set_groq_key` 重啟生效（2026-05-17）
 
 ## Phase 2 — 跨平台與 BrainMesh 整合（後續，非本次）
+
+### 技術債／後續清理
+
+- [ ] 重構：`stt_provider` 推導邏輯在 `read_config` / `get_config` / `set_groq_key` 三處重複（且 `read_config` 用 `is_empty()` 而 get_config/set_groq_key 用 `trim().is_empty()`，空白金鑰行為微不一致）；抽 `derive_provider(dir)->(provider, groq_key_set)` 共用
+
+### 跨平台與整合
 
 - [ ] `MacInjector` 實作（CGEvent / AppleScript keystroke + 輔助使用權限引導）
 - [ ] `LinuxInjector` 實作（X11 xdotool；Wayland 標已知限制）
 - [ ] BrainMesh 端：將 Vocium sidecar 註冊為可 spawn 的 MCP 工具，驗證 `transcribe_clip` / `inject_text`
 - [ ] STT 串流/分段以降低延遲；音訊改串流傳遞（取代 base64 一次性）
 - [ ] Groq 用量/費用估算顯示；STT provider 切換 UI（groq ↔ mock）
+- [ ] **多 STT provider 擴充（含本地）** — 架構已以 `SttAdapter` 介面隔離（FR-STT-1），新增 provider 為侷限變更：`src/core/stt/<provider>-stt.ts` 一個 class + `stt-adapter.ts` 工廠一分支 + `config.ts` 欄位（`loadConfig` 既有 `{...DEFAULTS,...parsed}` → 舊設定相容）+ UI 一項；**不動狀態機/MCP/sidecar/injector**。候選：本地 Whisper（`whisper.cpp` server／`faster-whisper`／LocalAI／Ollama，多為 OpenAI 相容 HTTP，沿用注入 fetch）、OpenAI Whisper、Gemini 音訊轉錄。註：Claude 無 STT API，不在此列。純行程內本地模型（直接 spawn 二進位）需多注入 `spawn` dep，屆時把工廠 `GroqDeps` 改名共用 `SttDeps`。
 
 ## Phase 3 — 體驗強化
 
 - [ ] idle 滑鼠穿透（hover 區域動態切換）
 - [ ] 多麥克風選擇、輸入增益
 - [ ] 轉錄後處理：標點、口語贅詞清理（可選）
+- [ ] **繁簡轉換（台灣使用者）** — Whisper 中文預設輸出簡體（已於 2026-05-17 探針實證：台灣 TTS 輸入仍得簡體）；於 STT pipeline 後加可選 OpenCC `s2twp` 轉換 step，config 開關（建議預設開），不動 Adapter/架構。屬個人自用必要項（[[feedback-personal-use-first]]）
 - [ ] 自訂快捷鍵 UI、開機自啟、i18n（中／英）
 
 ## Phase 4 — 發佈
@@ -74,7 +83,7 @@
 | Windows 文字注入需 native 模組 | 採 PowerShell Set-Clipboard + SendKeys，零 native build；失敗回退手動貼上 |
 | always-on-top 視窗搶焦點導致無法貼回原 app | 視窗 non-activating + 注入前延遲 + clipboard 後援 |
 | 全域快捷鍵被其他程式佔用 | 註冊失敗容錯 + Tray 提示，可改鍵 |
-| Groq 金鑰外洩 | 僅存本機 config，`.gitignore` 排除；缺金鑰自動回退 mock |
+| Groq 金鑰外洩 | 僅存本機 config，`.gitignore` 排除；缺金鑰注入引導訊息提示使用者設定（不回退 mock） |
 | Groq 費用/網路不穩 | 可一鍵切 `mock`；錯誤走 error 狀態不崩潰 |
 | sidecar 需 Node runtime | 開發期假設已裝 Node；Phase 4 以 pkg 封裝二進位 |
 | Tauri/MCP SDK API 差異 | 鎖定主版本；MCP 以 in-memory client 整合測試把關 |

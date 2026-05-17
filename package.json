@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sidecar": "node dist/sidecar/index.js",
+    "probe:groq": "node scripts/probe-groq.mjs",
     "icons": "node scripts/gen-icons.mjs",
     "banner": "node scripts/gen-banner.mjs",
     "dev": "npm run build && tauri dev --config app-tauri/src-tauri/tauri.conf.json"
