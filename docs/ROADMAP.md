@@ -46,6 +46,28 @@
 - [ ] README 使用說明、`docs/projects/vocium/SUMMARY.md`（依工作區 SOP）
 - [x] App 內 API Key 欄位；無金鑰→注入引導訊息（取代 Mock 假文字）；STT 錯誤→分類簡語注入＋錯誤動畫；Mock 降為僅測試用；`set_groq_key` 重啟生效（2026-05-17）
 
+## 下一階段 — Settings 三大功能（規劃中，2026-05-17 定）
+
+> 三項皆**做在 Settings 視窗內**，且 ②③ 同屬「轉錄後處理鏈」。
+> 既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關）。
+> 皆不動狀態機 / MCP / sidecar / Injector。
+
+### A. 繁簡轉換（Settings 內）
+- [ ] Whisper 中文預設輸出**簡體**（已實證：台灣 TTS 輸入仍得簡體）。Settings 增「中文輸出」選項：**繁體(台灣) / 簡體 / 不轉換**（建議預設繁體台灣）。
+- STT pipeline 後加可選 OpenCC `s2twp` 轉換 step；config 持久化。屬個人自用必要項（[[feedback-personal-use-first]]）。
+
+### B. 多家雲端 AI + 本地 AI 串接（Settings 內，STT 來源選擇）
+- [ ] Settings 增「STT 來源」區：provider 選擇 + 金鑰 / baseURL / 模型 欄位。
+- 雲端：Groq（現有）、OpenAI Whisper、Gemini 音訊轉錄（**Claude 無 STT API，不列**）。
+- 本地：`whisper.cpp` server / `faster-whisper` / LocalAI / Ollama（多為 OpenAI 相容 HTTP，沿用注入 fetch）。
+- 架構已以 `SttAdapter` 介面隔離（FR-STT-1）→ 新增 = `src/core/stt/<provider>-stt.ts` 一 class + `stt-adapter.ts` 工廠一分支 + `config.ts` 欄位（`{...DEFAULTS,...parsed}` 舊設定相容）+ Settings 一區。純行程內本地模型（直接 spawn 二進位）需注入 `spawn`，屆時工廠 `GroqDeps`→共用 `SttDeps`。
+
+### C. AI 潤稿（Settings 內，轉錄後處理）
+- [ ] 轉錄完成後，可選將文字交 LLM 潤飾（清理口語贅詞、補標點、語句通順；**不改原意**）再注入。
+- Settings 增開關 + AI 供應商 / 模型 / 金鑰 + 風格（輕度修飾 / 完整潤稿 / 自訂 prompt）。
+- 與 B 共用 provider 設定基礎，但**潤稿可用任何 LLM（含 Claude / OpenAI / Gemini / 本地 LLM）**——與 STT 不同（STT 無 Claude）。
+- 實作為 STT pipeline 後、注入前的可選 step（與繁簡轉換、贅詞清理同屬轉錄後處理鏈）。**預設關閉**（增加延遲與成本，使用者自選）。
+
 ## Phase 2 — 跨平台與 BrainMesh 整合（後續，非本次）
 
 ### 技術債／後續清理
@@ -58,15 +80,15 @@
 - [ ] `LinuxInjector` 實作（X11 xdotool；Wayland 標已知限制）
 - [ ] BrainMesh 端：將 Vocium sidecar 註冊為可 spawn 的 MCP 工具，驗證 `transcribe_clip` / `inject_text`
 - [ ] STT 串流/分段以降低延遲；音訊改串流傳遞（取代 base64 一次性）
-- [ ] Groq 用量/費用估算顯示；STT provider 切換 UI（groq ↔ mock）
-- [ ] **多 STT provider 擴充（含本地）** — 架構已以 `SttAdapter` 介面隔離（FR-STT-1），新增 provider 為侷限變更：`src/core/stt/<provider>-stt.ts` 一個 class + `stt-adapter.ts` 工廠一分支 + `config.ts` 欄位（`loadConfig` 既有 `{...DEFAULTS,...parsed}` → 舊設定相容）+ UI 一項；**不動狀態機/MCP/sidecar/injector**。候選：本地 Whisper（`whisper.cpp` server／`faster-whisper`／LocalAI／Ollama，多為 OpenAI 相容 HTTP，沿用注入 fetch）、OpenAI Whisper、Gemini 音訊轉錄。註：Claude 無 STT API，不在此列。純行程內本地模型（直接 spawn 二進位）需多注入 `spawn` dep，屆時把工廠 `GroqDeps` 改名共用 `SttDeps`。
+- [ ] Groq 用量/費用估算顯示
+- [ ] **多 STT provider（含本地）** → 見上方「下一階段 — Settings 三大功能 §B」（細節集中於該處，避免重複）
 
 ## Phase 3 — 體驗強化
 
 - [ ] idle 滑鼠穿透（hover 區域動態切換）
 - [ ] 多麥克風選擇、輸入增益
-- [ ] 轉錄後處理：標點、口語贅詞清理（可選）
-- [ ] **繁簡轉換（台灣使用者）** — Whisper 中文預設輸出簡體（已於 2026-05-17 探針實證：台灣 TTS 輸入仍得簡體）；於 STT pipeline 後加可選 OpenCC `s2twp` 轉換 step，config 開關（建議預設開），不動 Adapter/架構。屬個人自用必要項（[[feedback-personal-use-first]]）
+- [ ] 轉錄後處理：標點、口語贅詞清理（可選）→ 併入「下一階段 §C AI 潤稿」範疇（AI 化）
+- [ ] **繁簡轉換** → 見上方「下一階段 — Settings 三大功能 §A」（細節集中於該處）
 - [ ] 自訂快捷鍵 UI、開機自啟、i18n（中／英）
 
 ## Phase 4 — 發佈

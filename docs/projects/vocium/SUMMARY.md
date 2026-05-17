@@ -58,3 +58,11 @@ Vocium 是 VoxKey 的 MCP 化重作版本。架構：Tauri 2 殼（Rust，薄，
 測試：`vitest 59/59`（新增 `describe-error.test.ts` 分類純單元 + pipeline noKey/error/success 路徑測試）。
 
 已知後續（技術債）：`stt_provider` 推導邏輯在 `read_config` / `get_config` / `set_groq_key` 三處重複，且 `is_empty()` 與 `trim().is_empty()` 空白行為微不一致；待抽 `derive_provider()` 共用（見 ROADMAP §技術債）。
+
+## §9 下一階段規劃（Settings 三大功能，2026-05-17 定）
+
+API Key 功能已合入 `main`（`origin/main`=`4fbc44b`），階段性完成。使用者指定下一階段三大功能，**皆做在 Settings 視窗內**，B/C 同屬轉錄後處理鏈；既定 pipeline 順序 **STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機/MCP/sidecar/Injector。詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」、`docs/SPEC.md` §1.3。
+
+- **A. 繁簡轉換**：Whisper 中文輸出簡體；Settings「中文輸出」（繁體(台灣)/簡體/不轉換，預設繁體），STT 後加 OpenCC `s2twp` step。個人自用必要（[[feedback-personal-use-first]]）。
+- **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」provider 選擇。雲端 Groq/OpenAI/Gemini（Claude 無 STT）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。`SttAdapter` 已隔離，新增為侷限變更。
+- **C. AI 潤稿**：轉錄後可選 LLM 潤飾（清贅詞/標點/通順，不改原意）；Settings 開關+供應商/模型/風格；可用任何 LLM（含 Claude）；預設關閉。取代原 ROADMAP「轉錄後處理：標點/贅詞」並 AI 化。

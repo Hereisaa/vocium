@@ -35,6 +35,15 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - BrainMesh 端的整合（v1 只負責讓 Vocium 成為合規 MCP server；BrainMesh 連接屬其專案範疇）。
 - 帳號系統、雲端同步、使用統計上報。
 - 安裝程式打包與簽章、sidecar 二進位封裝（ROADMAP 後期）。
+- **繁簡轉換、多家雲端/本地 AI STT 串接、AI 潤稿**（皆為下一階段 Settings 功能，非 v1 — 見 §1.3）。
+
+### 1.3 後續規劃（Roadmap，非 v1；皆做在 Settings 內）
+
+詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。
+
+- **A. 繁簡轉換**：Whisper 中文預設輸出簡體；Settings「中文輸出」選項（繁體(台灣)/簡體/不轉換，預設繁體台灣），STT 後加可選 OpenCC `s2twp` step。
+- **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」（provider + 金鑰/baseURL/模型）。雲端 Groq(現有)/OpenAI/Gemini（Claude 無 STT，不列）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。架構已以 `SttAdapter`（FR-STT-1）隔離，新增為侷限變更（新 adapter + 工廠分支 + config + Settings 一區）。
+- **C. AI 潤稿**：轉錄後可選交 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入；Settings 開關 + 供應商/模型/金鑰 + 風格。可用任何 LLM（含 Claude/OpenAI/Gemini/本地），預設關閉。
 
 ## 2. 使用者情境
 
