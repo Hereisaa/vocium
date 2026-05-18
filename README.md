@@ -18,7 +18,7 @@
 
 ---
 
-Press a hotkey, speak, and AI transcribes your voice and pastes it straight into the focused input field — no focus stolen, no server, no bundled credentials.
+Press a hotkey, speak, and AI transcribes your voice and pastes it straight into the focused input field — no focus stolen, no server, no bundled credentials. It is also **MCP‑native**: any AI assistant or script can reuse its speech‑to‑text and text‑injection as tools.
 
 ## Features
 
@@ -29,6 +29,7 @@ Press a hotkey, speak, and AI transcribes your voice and pastes it straight into
 - **Chinese output switch** — force Traditional or Simplified.
 - **Multi‑provider STT** — **Groq**, **OpenAI Whisper**, **Gemini**; bring‑your‑own‑key, stored only on your device.
 - **Local STT** — coming soon.
+- **MCP‑native** — a standalone MCP server: any MCP host (Claude Desktop, Cursor, agents, scripts) can call its speech‑to‑text and text‑injection tools.
 
 ---
 
@@ -122,6 +123,34 @@ Visual specs are self‑contained HTML files — open locally in a browser:
 ## Architecture
 
 A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic over a single MCP protocol. Details in [`docs/SPEC.md`](docs/SPEC.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Use as an MCP tool
+
+The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop, Cursor, an Agent SDK, scripts…) can reuse Vocium without rebuilding speech‑to‑text or OS text injection. It exposes two headless tools:
+
+**`transcribe_clip`** — `{ audioBase64, mimeType, language? }` → `{ text }`. Transcribes the supplied audio with your configured provider and applies your Traditional/Simplified preference. Read‑only and side‑effect‑free: the caller receives the text and decides what to do with it.
+
+**`inject_text`** — `{ text }` → `{ ok }`. Types the given text into the OS‑focused window (clipboard + simulated paste). Independent of STT — inject any string. It lands in whichever window has focus at call time, so the caller is responsible for focus.
+
+Register it in an MCP host (after `npm run build`):
+
+```json
+{
+  "mcpServers": {
+    "vocium": { "command": "node", "args": ["<path>/vocium/dist/sidecar/index.js"] }
+  }
+}
+```
+
+The host spawns the sidecar over stdio on demand — nothing to keep running, and the desktop app does not need to be open.
+
+Example — *"Use vocium to transcribe `./meeting.m4a`, then summarize it in Traditional Chinese."* The assistant calls `transcribe_clip`, then works from the returned text.
+
+### Where the API key comes from
+
+MCP callers never pass or see an API key. Vocium reads it from the local config on the machine running the sidecar — `%APPDATA%\vocium\vocium-config.json` (set it once via **Tray → Settings… → Speech-to-Text**, or edit the file). That machine must have Vocium configured with a provider key; the calling agent stays key‑free.
+
+> The caller supplies the audio (Vocium does not open the microphone headlessly); `inject_text` is Windows‑only for now.
 
 ## Roadmap
 

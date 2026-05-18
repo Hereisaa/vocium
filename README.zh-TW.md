@@ -18,17 +18,18 @@
 
 ---
 
-按下快捷鍵，開口說話，AI 即時將語音轉為文字並自動貼入目前焦點的輸入框——不搶焦點，無伺服器，不內建任何憑證。
+按下快捷鍵，開口說話，AI 即時將語音轉為文字並自動貼入目前焦點的輸入框——不搶焦點，無伺服器，不內建任何憑證。它同時是 **MCP 原生**：任何 AI 助手或腳本都能把它的語音轉文字與文字注入當成工具直接呼叫。
 
 ## 功能
 
-- **懸浮 ICON** — 鎖定/解除拖曳 · 縮小到系統匣 · 不搶焦點。
+- **懸浮 ICON** — 鎖定/解除拖曳 · 縮小到系統匣 · 不搶焦點
 - **五種狀態** — 待命 · 聆聽 · 轉錄 · 完成 · 錯誤
 - **輸入模式、可自訂快捷鍵** — 切換模式（預設）或 按鍵發話
 - **靜音修剪 VAD** — 自動剪剪輯無聲片段
 - **中文繁／簡輸出切換** — 中文可強制設置 繁體／簡體
-- **多家雲端 STT** — **Groq**、**OpenAI Whisper**、**Gemini**，自備金鑰（BYOK）僅存本機。
+- **多家雲端 STT** — **Groq**、**OpenAI Whisper**、**Gemini**，自備金鑰（BYOK）僅存本機
 - **本機 STT** — Coming Soon
+- **MCP 原生** — 內建獨立 MCP server：任何 MCP host（Claude Desktop、Cursor、agent、腳本）都能呼叫它的語音轉文字與文字注入工具
 
 ---
 
@@ -124,7 +125,36 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 
 ## 架構
 
-輕薄的 Tauri 2（Rust）殼驅動一個 Node sidecar，以單一 MCP 協定對外暴露核心邏輯。細節見 [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+輕薄的 Tauri 2（Rust）殼驅動一個 Node sidecar，以單一 MCP 協定對外暴露核心邏輯。
+細節見 [`docs/SPEC.md`](docs/SPEC.md)、[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+## 作為 MCP 工具使用
+
+Node sidecar 本身是一個**獨立 MCP server**——任何 MCP host（Claude Desktop、Cursor、Agent SDK、腳本…）都能直接重用 Vocium，不必自己重造語音轉文字或系統文字注入。對外提供兩個 headless 工具：
+
+**`transcribe_clip`** — `{ audioBase64, mimeType, language? }` → `{ text }`。用你本機設定的來源轉錄音訊，並套用你的繁／簡偏好。唯讀、無副作用：呼叫端拿到文字後自行決定怎麼處理。
+
+**`inject_text`** — `{ text }` → `{ ok }`。把文字打進作業系統目前焦點的視窗（剪貼簿＋模擬貼上）。與 STT 無關，可注入任意字串。會落在「呼叫當下焦點所在」的視窗，焦點由呼叫端負責。
+
+在 MCP host 設定中註冊（先 `npm run build`）：
+
+```json
+{
+  "mcpServers": {
+    "vocium": { "command": "node", "args": ["<path>/vocium/dist/sidecar/index.js"] }
+  }
+}
+```
+
+Host 會在需要時以 stdio spawn sidecar——你不必保持任何東西在跑，桌面 app 也不需開著。
+
+範例 — *「用 vocium 把 `./會議.m4a` 轉成逐字稿，再用繁體中文摘要。」* 助手會呼叫 `transcribe_clip`，再從回傳文字接續處理。
+
+### API 金鑰從哪來
+
+MCP 呼叫端不會傳入也看不到金鑰。Vocium 從「執行 sidecar 那台機器」的本機設定讀取——`%APPDATA%\vocium\vocium-config.json`（用 **系統匣 → 設定… → 語音轉文字** 設定一次，或直接編輯該檔）。所以那台機器必須已在 Vocium 設好來源金鑰；呼叫端全程不碰金鑰。
+
+> 呼叫端需自備音訊（Vocium 不會替無頭程式開麥克風）；`inject_text` 目前僅支援 Windows。
 
 
 ## Roadmap
