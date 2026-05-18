@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createVoiceSession } from '../core/state-machine.js';
 import { MockSttAdapter } from '../core/stt/mock-stt.js';
 import { createSttAdapter } from '../core/stt/stt-adapter.js';
+import { resolveActive } from '../core/stt/resolve-active.js';
 import { createInjector } from '../core/inject/injector.js';
 import type { Injector } from '../core/inject/types.js';
 import { loadConfig, readZhMode } from '../core/config.js';
@@ -21,12 +22,13 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
 
   const cfgDir = opts.configDir ?? configDir();
   const cfg = loadConfig(fs as any, path as any, cfgDir);
-  const mockMode = opts.sttText !== undefined || cfg.sttProvider === 'mock';
-  const noKey = !mockMode && cfg.sttProvider === 'groq' && !cfg.groqApiKey.trim();
+  const active = resolveActive(cfg);
+  const mockMode = opts.sttText !== undefined || active.mockMode;
+  const noKey = opts.sttText === undefined && active.noKey;
   const stt = opts.sttText !== undefined
     ? new MockSttAdapter({ text: opts.sttText, delayMs: 0 })
     : createSttAdapter(cfg, { fetch: globalThis.fetch });
-  const effectiveProvider = (mockMode || noKey) ? 'mock' : 'groq';
+  const effectiveProvider = (mockMode || noKey) ? 'mock' : active.provider;
 
   const emitState = (state: string, prev: string) => {
     server.server.notification({

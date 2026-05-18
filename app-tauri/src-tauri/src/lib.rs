@@ -103,8 +103,6 @@ fn read_config() -> VociumConfig {
     let dir = config_dir();
     let file = dir.join("vocium-config.json");
     let mut hotkey = "Ctrl+Shift+Space".to_string();
-    let mut provider_cfg = "groq".to_string();
-    let mut groq_key = String::new();
     let mut icon_offset_x = 0i32;
     let mut drag_locked = false;
 
@@ -112,12 +110,6 @@ fn read_config() -> VociumConfig {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
             if let Some(h) = v.get("hotkey").and_then(|x| x.as_str()) {
                 hotkey = h.to_string();
-            }
-            if let Some(p) = v.get("sttProvider").and_then(|x| x.as_str()) {
-                provider_cfg = p.to_string();
-            }
-            if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
-                groq_key = k.to_string();
             }
             if let Some(o) = v.get("iconOffsetX").and_then(|x| x.as_i64()) {
                 icon_offset_x = o as i32;
@@ -128,12 +120,8 @@ fn read_config() -> VociumConfig {
         }
     }
 
-    // Effective STT mode mirrors createSttAdapter(): groq only if key present.
-    let stt_provider = if provider_cfg == "groq" && !groq_key.trim().is_empty() {
-        "groq".to_string()
-    } else {
-        "mock".to_string()
-    };
+    // Effective STT mode (groq/openai/gemini only if its key present).
+    let (stt_provider, _) = derive_active(&dir);
 
     VociumConfig {
         hotkey,
@@ -200,10 +188,21 @@ fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String>
     let h = app.clone();
     app.global_shortcut()
         .on_shortcut(sc, move |_a, _s, ev| {
-            if ev.state == ShortcutState::Pressed {
+            let dir = h.state::<ShellState>().config.config_dir.clone();
+            let ptt = read_input_mode(&dir) == "ptt";
+            // toggle mode: fire once on Pressed (legacy behaviour).
+            // ptt mode: Pressed -> start_listening, Released -> stop_listening.
+            // The state machine's reentrancy guard absorbs key auto-repeat.
+            let tool = match (ptt, ev.state) {
+                (false, ShortcutState::Pressed) => Some("toggle"),
+                (true, ShortcutState::Pressed) => Some("start_listening"),
+                (true, ShortcutState::Released) => Some("stop_listening"),
+                _ => None,
+            };
+            if let Some(t) = tool {
                 let hh = h.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = invoke_tool(hh, "toggle", json!({})).await;
+                    let _ = invoke_tool(hh, t, json!({})).await;
                 });
             }
         })
@@ -487,6 +486,58 @@ async fn audio_error(app: AppHandle, message: String) -> Result<Value, String> {
     invoke_tool(app, "cancel", json!({})).await
 }
 
+/// Single source of truth for "effective active provider + whether its key is
+/// set", read live from vocium-config.json. Mirrors TS resolveActive (design
+/// §5, D1). Replaces the previously-duplicated inline derivation at three sites.
+fn derive_active(dir: &std::path::Path) -> (String, bool) {
+    let file = dir.join("vocium-config.json");
+    let v: Value = std::fs::read_to_string(&file)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| json!({}));
+    let provider = v.get("sttProvider").and_then(|x| x.as_str()).unwrap_or("groq");
+    let key_field = match provider {
+        "openai" => "openaiApiKey",
+        "gemini" => "geminiApiKey",
+        "mock" => return ("mock".to_string(), false),
+        _ => "groqApiKey",
+    };
+    let key = v.get(key_field).and_then(|x| x.as_str()).unwrap_or("");
+    let key_set = !key.trim().is_empty();
+    // `provider == "mock"` is unreachable here (the "mock" match arm early-returns); guard kept so a future match→if refactor stays correct.
+    let eff = if provider == "mock" || !key_set { "mock" } else { provider };
+    (eff.to_string(), key_set)
+}
+
+/// Read inputMode live from vocium-config.json. Returns "ptt" only when the
+/// stored value is exactly "ptt"; any other value (including missing/corrupt)
+/// falls back to "toggle" (legacy behaviour, safe default).
+fn read_input_mode(dir: &std::path::Path) -> String {
+    let file = dir.join("vocium-config.json");
+    std::fs::read_to_string(&file)
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .and_then(|v| v.get("inputMode").and_then(|x| x.as_str()).map(String::from))
+        .filter(|m| m == "ptt")
+        .unwrap_or_else(|| "toggle".to_string())
+}
+
+/// Industry-standard masked preview: first4•••last4, never the full key.
+fn mask_key(raw: &str) -> String {
+    let t = raw.trim();
+    if t.is_empty() {
+        return String::new();
+    }
+    let chars: Vec<char> = t.chars().collect();
+    if chars.len() > 8 {
+        let first: String = chars[..4].iter().collect();
+        let last: String = chars[chars.len() - 4..].iter().collect();
+        format!("{first}•••{last}")
+    } else {
+        "•".repeat(8)
+    }
+}
+
 /// Read-modify-write a single key into vocium-config.json. Never destroys a
 /// corrupt/missing file's recoverable content (falls back to a fresh object).
 fn patch_config(dir: &std::path::Path, key: &str, val: Value) -> Result<(), String> {
@@ -508,15 +559,15 @@ fn patch_config(dir: &std::path::Path, key: &str, val: Value) -> Result<(), Stri
 }
 
 /// Expose shell-config-derived values (effective STT provider, hotkey, drag
-/// lock state) to the webview. Shell-config-derived only — NOT a sidecar tool.
+/// lock state, per-provider key info) to the webview. Shell-config-derived
+/// only — NOT a sidecar tool.
 #[tauri::command]
 fn get_config(app: AppHandle) -> Result<Value, String> {
     let s = app.state::<ShellState>();
-    // hotkey/dragLocked/groqApiKey can change at runtime via the settings
+    // hotkey/dragLocked/keys can change at runtime via the settings
     // commands, so read them live from the file the commands write.
     let file = s.config.config_dir.join("vocium-config.json");
     let (mut hotkey, mut drag_locked) = (s.config.hotkey.clone(), s.config.drag_locked);
-    let (mut provider_cfg, mut groq_key) = ("groq".to_string(), String::new());
     let mut zh_convert = "twp".to_string();
     if let Ok(raw) = std::fs::read_to_string(&file) {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
@@ -526,42 +577,41 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
             if let Some(d) = v.get("dragLocked").and_then(|x| x.as_bool()) {
                 drag_locked = d;
             }
-            if let Some(p) = v.get("sttProvider").and_then(|x| x.as_str()) {
-                provider_cfg = p.to_string();
-            }
-            if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
-                groq_key = k.to_string();
-            }
             if let Some(z) = v.get("zhConvert").and_then(|x| x.as_str()) {
                 if z == "twp" || z == "cn" { zh_convert = z.to_string(); }
             }
         }
     }
-    let groq_key_trimmed = groq_key.trim();
-    let groq_key_set = !groq_key_trimmed.is_empty();
-    // Industry-standard preview: first 4 + ••• + last 4. NEVER the full key.
-    // (Groq keys are ~56 chars; first 4 is the constant `gsk_` prefix, last 4
-    // is the only mild exposure — standard dashboard practice.)
-    let groq_key_mask = if groq_key_set {
-        let chars: Vec<char> = groq_key_trimmed.chars().collect();
-        if chars.len() > 8 {
-            let first: String = chars[..4].iter().collect();
-            let last: String = chars[chars.len() - 4..].iter().collect();
-            format!("{first}•••{last}")
-        } else {
-            "•".repeat(8) // too short to safely reveal edges
-        }
-    } else {
-        String::new()
-    };
-    let stt_provider = if provider_cfg == "groq" && groq_key_set { "groq" } else { "mock" };
+    let (stt_provider, _) = derive_active(&s.config.config_dir);
+    let read_str = |v: &Value, k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("").to_string();
+    let cfgv: Value = std::fs::read_to_string(&file).ok()
+        .and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_else(|| json!({}));
+    let providers = json!({
+        "groq":   { "keySet": !read_str(&cfgv,"groqApiKey").trim().is_empty(),
+                    "mask": mask_key(&read_str(&cfgv,"groqApiKey")),
+                    "model": read_str(&cfgv,"groqModel") },
+        "openai": { "keySet": !read_str(&cfgv,"openaiApiKey").trim().is_empty(),
+                    "mask": mask_key(&read_str(&cfgv,"openaiApiKey")),
+                    "model": read_str(&cfgv,"openaiModel"),
+                    "baseUrl": read_str(&cfgv,"openaiBaseUrl") },
+        "gemini": { "keySet": !read_str(&cfgv,"geminiApiKey").trim().is_empty(),
+                    "mask": mask_key(&read_str(&cfgv,"geminiApiKey")),
+                    "model": read_str(&cfgv,"geminiModel") }
+    });
+    let input_mode = read_input_mode(&s.config.config_dir);
+    let vad_trim = cfgv.get("vadTrim").and_then(|x| x.as_bool()).unwrap_or(false);
     Ok(json!({
         "sttProvider": stt_provider,
+        "activeProvider": read_str(&cfgv,"sttProvider"),
         "hotkey": hotkey,
         "dragLocked": drag_locked,
-        "groqKeySet": groq_key_set,
-        "groqKeyMask": groq_key_mask,
-        "zhConvert": zh_convert
+        "providers": providers,
+        "inputMode": input_mode,
+        "vadTrim": vad_trim,
+        "zhConvert": zh_convert,
+        // Back-compat: kept until settings.js migrates to providers.groq.*; remove the next two lines then.
+        "groqKeySet": !read_str(&cfgv,"groqApiKey").trim().is_empty(),
+        "groqKeyMask": mask_key(&read_str(&cfgv,"groqApiKey"))
     }))
 }
 
@@ -637,29 +687,125 @@ async fn set_groq_key(app: AppHandle, key: String) -> Result<Value, String> {
     *app.state::<ShellState>().client.lock().unwrap() = Some(new_client);
 
     // Re-derive effective provider from the file we just wrote.
-    let file = dir.join("vocium-config.json");
-    let mut provider_cfg = "groq".to_string();
-    let mut groq_key = String::new();
-    if let Ok(raw) = std::fs::read_to_string(&file) {
-        if let Ok(v) = serde_json::from_str::<Value>(&raw) {
-            if let Some(p) = v.get("sttProvider").and_then(|x| x.as_str()) {
-                provider_cfg = p.to_string();
-            }
-            if let Some(k) = v.get("groqApiKey").and_then(|x| x.as_str()) {
-                groq_key = k.to_string();
-            }
-        }
-    }
-    let stt_provider = if provider_cfg == "groq" && !groq_key.trim().is_empty() {
-        "groq"
-    } else {
-        "mock"
-    };
+    let (stt_provider, _) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
     log(&format!("[set_groq_key] applied; provider now {stt_provider}"));
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
+}
+
+// ---- Multi-provider helpers -------------------------------------------------
+
+fn provider_key_field(p: &str) -> Option<&'static str> {
+    match p {
+        "groq" => Some("groqApiKey"),
+        "openai" => Some("openaiApiKey"),
+        "gemini" => Some("geminiApiKey"),
+        _ => None,
+    }
+}
+
+async fn restart_sidecar_apply(app: &AppHandle) -> Result<(), String> {
+    let (dir, log) = {
+        let s = app.state::<ShellState>();
+        (s.config.config_dir.clone(), s.log.clone())
+    };
+    shutdown_sidecar(app);
+    let logs_dir = dir.join("logs");
+    match spawn_sidecar(app, log.clone(), &logs_dir) {
+        Ok(c) => {
+            *app.state::<ShellState>().client.lock().unwrap() = Some(c);
+        }
+        Err(e) => {
+            log(&format!("[restart] sidecar restart failed: {e}"));
+            *app.state::<ShellState>().client.lock().unwrap() = None;
+            return Err(e);
+        }
+    }
+    let (stt_provider, _) = derive_active(&dir);
+    if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
+        let _ = item.set_text(format!("STT：{stt_provider}"));
+    }
+    Ok(())
+}
+
+/// Persist one provider's key + model (+ baseUrl for openai) and restart the
+/// sidecar so the adapter is rebuilt. Empty `key` leaves the stored key
+/// unchanged (matches the "blank = no change" Settings convention).
+#[tauri::command]
+async fn set_provider_key(
+    app: AppHandle,
+    provider: String,
+    key: String,
+    model: String,
+    base_url: Option<String>,
+) -> Result<Value, String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    let field = provider_key_field(&provider).ok_or_else(|| "bad provider".to_string())?;
+    if !key.trim().is_empty() {
+        patch_config(&dir, field, json!(key))?;
+    }
+    let model_field = match provider.as_str() {
+        "openai" => "openaiModel",
+        "gemini" => "geminiModel",
+        _ => "groqModel", // "groq" + any future; provider_key_field already rejected unknown providers
+    };
+    if !model.trim().is_empty() {
+        patch_config(&dir, model_field, json!(model))?;
+    }
+    if provider == "openai" {
+        if let Some(b) = base_url {
+            if !b.trim().is_empty() {
+                patch_config(&dir, "openaiBaseUrl", json!(b))?;
+            }
+        }
+    }
+    restart_sidecar_apply(&app).await?;
+    let (stt_provider, _) = derive_active(&dir);
+    Ok(json!({ "ok": true, "sttProvider": stt_provider }))
+}
+
+/// Switch the active STT provider. 'local' is rejected (design D4: never
+/// persisted; the webview keeps the dropdown on 'local' purely informationally).
+#[tauri::command]
+async fn set_stt_provider(app: AppHandle, provider: String) -> Result<Value, String> {
+    if !matches!(provider.as_str(), "groq" | "openai" | "gemini" | "mock") {
+        return Err("invalid provider".to_string());
+    }
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "sttProvider", json!(provider))?;
+    restart_sidecar_apply(&app).await?;
+    let (stt_provider, _) = derive_active(&dir);
+    Ok(json!({ "ok": true, "sttProvider": stt_provider }))
+}
+
+/// Clear one provider's stored key, then restart the sidecar.
+#[tauri::command]
+async fn clear_provider_key(app: AppHandle, provider: String) -> Result<Value, String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    let field = provider_key_field(&provider).ok_or_else(|| "bad provider".to_string())?;
+    patch_config(&dir, field, json!(""))?;
+    restart_sidecar_apply(&app).await?;
+    let (stt_provider, _) = derive_active(&dir);
+    Ok(json!({ "ok": true, "sttProvider": stt_provider }))
+}
+
+/// inputMode persist (no sidecar restart — only the shell shortcut cares).
+#[tauri::command]
+fn save_input_mode(app: AppHandle, mode: String) -> Result<(), String> {
+    if mode != "toggle" && mode != "ptt" {
+        return Err("invalid mode".to_string());
+    }
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "inputMode", json!(mode))
+}
+
+/// vadTrim persist (no restart — the webview reads it live via get_config).
+#[tauri::command]
+fn save_vad_trim(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "vadTrim", json!(enabled))
 }
 
 /// Persist iconOffsetX into the shared config file (drag-to-reposition).
@@ -725,7 +871,12 @@ pub fn run() {
             quit_app,
             set_hotkey,
             set_hotkey_enabled,
-            set_groq_key
+            set_groq_key,
+            set_provider_key,
+            set_stt_provider,
+            clear_provider_key,
+            save_input_mode,
+            save_vad_trim
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

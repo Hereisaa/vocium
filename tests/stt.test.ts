@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { GroqSttAdapter } from '../src/core/stt/groq-stt.js';
 import { MockSttAdapter } from '../src/core/stt/mock-stt.js';
 import { createSttAdapter } from '../src/core/stt/stt-adapter.js';
+import { OpenAiSttAdapter } from '../src/core/stt/openai-stt.js';
+import { GeminiSttAdapter } from '../src/core/stt/gemini-stt.js';
 
 const audio = { audio: Buffer.from('fake-opus'), mimeType: 'audio/webm' };
 
@@ -50,16 +52,25 @@ describe('MockSttAdapter', () => {
 });
 
 describe('createSttAdapter factory', () => {
-  it('groq + key -> GroqSttAdapter', () => {
-    const a = createSttAdapter({ sttProvider: 'groq', groqApiKey: 'k', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });
-    expect(a).toBeInstanceOf(GroqSttAdapter);
+  const base = {
+    sttProvider: 'groq', groqApiKey: 'k', groqModel: 'm',
+    openaiApiKey: 'k', openaiModel: 'whisper-1', openaiBaseUrl: 'https://api.openai.com/v1',
+    geminiApiKey: 'k', geminiModel: 'gemini-1.5-flash', mockText: 't',
+  };
+  it('groq -> GroqSttAdapter', () => {
+    expect(createSttAdapter({ ...base, sttProvider: 'groq' } as any, { fetch: (() => {}) as any }))
+      .toBeInstanceOf(GroqSttAdapter);
   });
-  it('groq without key -> still GroqSttAdapter (pipeline handles noKey)', () => {
-    const a = createSttAdapter({ sttProvider: 'groq', groqApiKey: '', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });
-    expect(a).toBeInstanceOf(GroqSttAdapter);
+  it('openai -> OpenAiSttAdapter', () => {
+    expect(createSttAdapter({ ...base, sttProvider: 'openai' } as any, { fetch: (() => {}) as any }))
+      .toBeInstanceOf(OpenAiSttAdapter);
+  });
+  it('gemini -> GeminiSttAdapter', () => {
+    expect(createSttAdapter({ ...base, sttProvider: 'gemini' } as any, { fetch: (() => {}) as any }))
+      .toBeInstanceOf(GeminiSttAdapter);
   });
   it('mock -> MockSttAdapter', () => {
-    const a = createSttAdapter({ sttProvider: 'mock', groqApiKey: 'k', groqModel: 'm', mockText: 't' } as any, { fetch: (() => {}) as any });
-    expect(a).toBeInstanceOf(MockSttAdapter);
+    expect(createSttAdapter({ ...base, sttProvider: 'mock' } as any, { fetch: (() => {}) as any }))
+      .toBeInstanceOf(MockSttAdapter);
   });
 });

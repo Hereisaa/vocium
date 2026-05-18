@@ -57,6 +57,13 @@
       </div>
     </div>
   </div>
+  <!-- VAD assets: onnxruntime-web sets global `var ort`; vad-web UMD reads self.ort
+       and exports self.vad (with NonRealTimeVAD). Loaded before app.js so that
+       trimBlobSilence() can check `self.vad` at runtime.
+       These scripts are vendored to ui/vad/ via: npm run vad:assets -->
+  <script src="vad/ort.wasm.min.js"></script>
+  <script>self.ort = typeof ort !== 'undefined' ? ort : undefined;</script>
+  <script src="vad/vad.bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

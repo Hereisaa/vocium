@@ -65,6 +65,46 @@ describe('config', () => {
     const cfg = loadConfig(fs as any, path as any, '/cfg');
     expect(cfg.dragLocked).toBe(true);
   });
+
+  it('defaults: new provider/inputMode/vad fields', () => {
+    const fs = fakeFs();
+    const cfg = loadConfig(fs as any, path as any, '/cfg');
+    expect(cfg.openaiApiKey).toBe('');
+    expect(cfg.openaiModel).toBe('whisper-1');
+    expect(cfg.openaiBaseUrl).toBe('https://api.openai.com/v1');
+    expect(cfg.geminiApiKey).toBe('');
+    expect(cfg.geminiModel).toBe('gemini-1.5-flash');
+    expect(cfg.inputMode).toBe('toggle');
+    expect(cfg.vadTrim).toBe(false);
+  });
+
+  it("normalizes unknown/'local' sttProvider to 'groq' on load", () => {
+    const fs = fakeFs(JSON.stringify({ sttProvider: 'local' }));
+    expect(loadConfig(fs as any, path as any, '/cfg').sttProvider).toBe('groq');
+    const fs2 = fakeFs(JSON.stringify({ sttProvider: 'wat' }));
+    expect(loadConfig(fs2 as any, path as any, '/cfg').sttProvider).toBe('groq');
+  });
+
+  it("keeps a valid new provider value", () => {
+    const fs = fakeFs(JSON.stringify({ sttProvider: 'openai' }));
+    expect(loadConfig(fs as any, path as any, '/cfg').sttProvider).toBe('openai');
+  });
+
+  it('normalizes non-string sttProvider to groq', () => {
+    const fs = fakeFs(JSON.stringify({ sttProvider: 42 }));
+    expect(loadConfig(fs as any, path as any, '/cfg').sttProvider).toBe('groq');
+  });
+
+  it('coerces bad inputMode/vadTrim and round-trips valid ones', () => {
+    const bad = fakeFs(JSON.stringify({ inputMode: 'garbage', vadTrim: 'true' }));
+    const c1 = loadConfig(bad as any, path as any, '/cfg');
+    expect(c1.inputMode).toBe('toggle');
+    expect(c1.vadTrim).toBe(false);
+    const good = fakeFs(JSON.stringify({ inputMode: 'ptt', vadTrim: true }));
+    const c2 = loadConfig(good as any, path as any, '/cfg');
+    expect(c2.inputMode).toBe('ptt');
+    expect(c2.vadTrim).toBe(true);
+  });
 });
 
 describe('zhConvert mode', () => {

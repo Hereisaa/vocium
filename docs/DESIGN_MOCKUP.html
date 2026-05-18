@@ -677,15 +677,28 @@
       .sbtn.ok { background:var(--listen); border-color:var(--listen); color:#0e1117;
         animation: sbtnok .9s ease; }
       @keyframes sbtnok { 0% { transform:scale(1); } 30% { transform:scale(1.04); } 100% { transform:scale(1); } }
-      .seg { display:flex; width:100%; border:1px solid var(--stroke); border-radius:8px;
-        overflow:hidden; background:var(--panel-2); }
-      .seg-opt { flex:1; text-align:center; padding:8px 0; font-size:12px; cursor:pointer;
-        color:var(--text-dim); background:transparent; user-select:none;
+      /* shadcn ToggleGroup 風：中性軌 + 抬升 active，低飽和無豔色（變體1採用） */
+      .seg { display:flex; width:100%; border:1px solid var(--stroke);
+        border-radius:8px; background:var(--panel-2); padding:3px; gap:3px; }
+      .seg-opt { flex:1; text-align:center; padding:7px 0; font-size:12px;
+        cursor:pointer; color:var(--text-dim); background:transparent;
+        border-radius:6px; user-select:none;
         transition:background .15s ease, color .15s ease; }
-      .seg-opt:not(.active):hover { background:rgba(255,255,255,.06); color:var(--text); }
-      .seg-opt + .seg-opt { border-left:1px solid var(--stroke); }
-      .seg-opt.active { background:var(--accent); color:#0e1117; font-weight:600; }
-      .keywrap { position:relative; flex:1; min-width:0; }
+      .seg-opt:not(.active):hover { color:var(--text); }
+      .seg-opt.active { background:#2a3340; color:var(--text); font-weight:600;
+        box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+      /* 分頁（role=tablist）＝底線頁籤，非按鈕。同 markup，靠 role 區分 */
+      .seg[role="tablist"] { background:none; border:none;
+        border-bottom:1px solid var(--stroke); border-radius:0;
+        padding:0; gap:2px; }
+      .seg[role="tablist"] .seg-opt { flex:0 0 auto; border-radius:0;
+        padding:9px 14px 11px; border-bottom:2px solid transparent;
+        margin-bottom:-1px; }
+      .seg[role="tablist"] .seg-opt.active { background:none;
+        color:var(--text); box-shadow:none; border-bottom-color:#6f9c95; }
+      .seg[role="tablist"] .seg-opt:not(.active):hover { background:none;
+        color:var(--text); }
+      .keywrap { position:relative; width:100%; min-width:0; }
       .keyinput { width:100%; background:#0d0f14; border:1px solid #2a2f3a;
         color:#e8eaf0; border-radius:8px; padding:8px 34px 8px 10px; font:inherit; }
       .eye { position:absolute; right:8px; top:50%; transform:translateY(-50%);
@@ -693,9 +706,21 @@
         color:var(--text-dim); }
       .eye:hover { opacity:1; }
       .eye svg { display:block; }
-      .clearkey { color:var(--error); font-size:12px; font-weight:600; cursor:pointer;
-        background:none; border:none; padding:0; white-space:nowrap; }
+      .clearkey { color:var(--error); font-size:11px; font-weight:600; cursor:pointer;
+        background:none; border:none; padding:0; white-space:nowrap;
+        align-self:flex-end; margin-top:2px; }
       .clearkey:hover { text-decoration:underline; }
+      /* STT 來源 / 模型 下拉欄、提示框、淡化態 */
+      .selfield { width:100%; background:#0d0f14; border:1px solid #2a2f3a;
+        color:#e8eaf0; border-radius:8px; padding:8px 10px; font-size:13px;
+        display:flex; align-items:center; justify-content:space-between;
+        cursor:pointer; }
+      .selfield.cust { color:var(--text-dim); }
+      .selfield .chev { color:var(--text-dim); font-size:11px; }
+      .s-hint { font-size:12px; color:var(--text-dim); line-height:1.65;
+        background:var(--panel-2); border:1px solid var(--stroke);
+        border-radius:8px; padding:9px 11px; }
+      .soon { opacity:.55; }
 
       .tokens {
         display: flex;
@@ -1061,9 +1086,8 @@
           <div class="t-name">Node Sidecar（TypeScript）— 單一 MCP server</div>
           <div class="t-desc">
             StateMachine（純） · SttAdapter（<b style="color: var(--text)"
-              >Groq 預設</b
-            >
-            / Mock fallback） · Injector（Windows 實作；Mac/Linux stub）·
+              >多雲端來源</b
+            >） · Injector（文字注入目標應用程式）·
             啟動背景預熱注入 host<br />工具：toggle · start/stop_listening ·
             cancel · submit_audio · transcribe_clip · inject_text · get_state
           </div>
@@ -1139,14 +1163,20 @@
         </tr>
       </table>
 
-      <h2>6 · 設定視窗（快捷鍵 · API Key · 中文輸出）</h2>
+      <h2>6 · 設定視窗（三分頁：一般 · 語音轉文字 · AI 潤稿）</h2>
+      <p style="color:var(--text-dim);font-size:13px;margin:-8px 0 18px;line-height:1.7">
+        設定視窗分為三個分頁：一般、語音轉文字、AI 潤稿。一般包含快捷鍵、中文輸出、輸入模式與靜音修剪；語音轉文字可選擇來源、填入 API 金鑰並挑選模型；AI 潤稿即將推出。
+      </p>
       <div class="grid grid-2">
 
-        <!-- Card 1: 預設檢視 -->
+        <!-- ===== 分頁：一般 ===== -->
+        <!-- Card 1: 一般 · 預設 -->
         <div class="card">
           <div class="settings">
             <div class="s-body">
-              <!-- hotkey field -->
+              <div class="seg" role="tablist">
+                <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
               <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
@@ -1155,25 +1185,26 @@
                   </div>
                   <div class="recbtn">錄製</div>
                 </div>
-                <div class="s-err" id="err" style="display:none"></div>
               </div>
-              <!-- Groq API Key field -->
-              <div class="field">
-                <div class="flabel">Groq API Key</div>
-                <div class="hkrow">
-                  <div class="keywrap">
-                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
-                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                  </div>
-                  <span class="clearkey">✕ 清除金鑰</span>
-                </div>
-              </div>
-              <!-- 中文輸出 field -->
               <div class="field">
                 <div class="flabel">中文輸出（中文字繁／簡）</div>
                 <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">輸入模式</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">切換</span>
+                  <span class="seg-opt" role="radio">按住說</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">靜音修剪（VAD）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">關</span>
+                  <span class="seg-opt" role="radio">開</span>
                 </div>
               </div>
             </div>
@@ -1183,96 +1214,17 @@
             </div>
           </div>
           <div class="tag">
-            <b>預設檢視</b> 三欄位：快捷鍵 / API Key（遮罩，已設定顯示 ✕ 清除）/ 中文輸出二段式；無自製標題列（用系統原生視窗框）
+            <b>一般 · 預設</b>包含快捷鍵、中文輸出、輸入模式（切換／按住說）與靜音修剪（VAD）四項設定。
           </div>
         </div>
 
-        <!-- Card 2: 中文輸出＝簡體 -->
+        <!-- Card 2: 一般 · 錄製衝突 + PTT/VAD 啟用態 -->
         <div class="card">
           <div class="settings">
             <div class="s-body">
-              <div class="field">
-                <div class="flabel">全域快捷鍵</div>
-                <div class="hkrow">
-                  <div class="hkcombo">
-                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
-                  </div>
-                  <div class="recbtn">錄製</div>
-                </div>
+              <div class="seg" role="tablist">
+                <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
               </div>
-              <div class="field">
-                <div class="flabel">Groq API Key</div>
-                <div class="hkrow">
-                  <div class="keywrap">
-                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
-                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                  </div>
-                  <span class="clearkey">✕ 清除金鑰</span>
-                </div>
-              </div>
-              <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
-                <div class="seg" role="radiogroup">
-                  <span class="seg-opt" role="radio" data-mode="twp">繁體（台灣）</span>
-                  <span class="seg-opt active" role="radio" data-mode="cn">簡體</span>
-                </div>
-              </div>
-            </div>
-            <div class="s-foot">
-              <div class="sbtn">取消</div>
-              <div class="sbtn primary">儲存並套用</div>
-            </div>
-          </div>
-          <div class="tag">
-            <b>中文輸出</b> 二段式繁/簡，全寬等分；選中半邊 accent 高亮；改設定後按「儲存並套用」生效（每次轉錄即時讀，無需重啟）
-          </div>
-        </div>
-
-        <!-- Card 3: 儲存成功回饋 -->
-        <div class="card">
-          <div class="settings">
-            <div class="s-body">
-              <div class="field">
-                <div class="flabel">全域快捷鍵</div>
-                <div class="hkrow">
-                  <div class="hkcombo">
-                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
-                  </div>
-                  <div class="recbtn">錄製</div>
-                </div>
-              </div>
-              <div class="field">
-                <div class="flabel">Groq API Key</div>
-                <div class="hkrow">
-                  <div class="keywrap">
-                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
-                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                  </div>
-                  <span class="clearkey">✕ 清除金鑰</span>
-                </div>
-              </div>
-              <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
-                <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
-                </div>
-              </div>
-            </div>
-            <div class="s-foot">
-              <div class="sbtn">取消</div>
-              <div class="sbtn primary ok">✓ 已套用</div>
-            </div>
-          </div>
-          <div class="tag">
-            <b>儲存回饋</b> [儲存並套用] 按下 press 動畫；成功後按鈕 success-pulse「✓ 已套用」約 1s 後復原；移除常駐提示語，回饋集中於此
-          </div>
-        </div>
-
-        <!-- Card 4: 快捷鍵錄製中／衝突 -->
-        <div class="card">
-          <div class="settings">
-            <div class="s-body">
               <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
@@ -1284,20 +1236,24 @@
                 <div class="s-err">⚠ 此組合已被其他程式占用，註冊失敗 — 仍保留原快捷鍵 Ctrl+Shift+Space。</div>
               </div>
               <div class="field">
-                <div class="flabel">Groq API Key</div>
-                <div class="hkrow">
-                  <div class="keywrap">
-                    <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
-                    <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                  </div>
-                  <span class="clearkey">✕ 清除金鑰</span>
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
                 </div>
               </div>
               <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="flabel">輸入模式</div>
                 <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio" data-mode="twp">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio" data-mode="cn">簡體</span>
+                  <span class="seg-opt" role="radio">切換</span>
+                  <span class="seg-opt active" role="radio">按住說</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">靜音修剪（VAD）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt" role="radio">關</span>
+                  <span class="seg-opt active" role="radio">開</span>
                 </div>
               </div>
             </div>
@@ -1307,7 +1263,212 @@
             </div>
           </div>
           <div class="tag">
-            <b>快捷鍵</b> 錄製中即時擷取；放開自動結束；衝突回退保留舊鍵並以 #err 顯示（錯誤訊息保留，非提示語）
+            <b>一般 · 錄製衝突 + 啟用態</b>錄製快捷鍵時若組合已被占用，顯示警告並保留原快捷鍵；輸入模式切換至「按住說」、靜音修剪開啟的狀態。
+          </div>
+        </div>
+
+        <!-- ===== 分頁：語音轉文字 ===== -->
+        <!-- Card 3: 語音轉文字 · Groq（預設） -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt" role="tab">一般</span><span class="seg-opt active" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">STT 來源</div>
+                <div class="selfield"><span>Groq</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">Groq API Key</div>
+                <div class="keywrap">
+                  <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                  <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                </div>
+                <span class="clearkey">✕ 清除金鑰</span>
+              </div>
+              <div class="field">
+                <div class="flabel">模型</div>
+                <div class="selfield"><span>whisper-large-v3-turbo</span><span class="chev">▾</span></div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>語音轉文字 · Groq（預設）</b>切換語音來源時會自動帶出該來源已儲存的金鑰與模型。
+          </div>
+        </div>
+
+        <!-- Card 4: 語音轉文字 · OpenAI（多 Base URL） -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt" role="tab">一般</span><span class="seg-opt active" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">STT 來源</div>
+                <div class="selfield"><span>OpenAI</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">OpenAI API Key</div>
+                <div class="keywrap">
+                  <div class="keyinput" aria-hidden="true">sk-••••••a17c</div>
+                  <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                </div>
+                <span class="clearkey">✕ 清除金鑰</span>
+              </div>
+              <div class="field">
+                <div class="flabel">模型</div>
+                <div class="selfield"><span>whisper-1</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">Base URL（選填）</div>
+                <div class="keyinput" aria-hidden="true" style="padding:8px 10px;color:var(--text-dim)">https://api.openai.com/v1</div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>語音轉文字 · OpenAI</b> 多一欄 Base URL（選填，相容自架 OpenAI 相容服務）；其餘欄位結構不變
+          </div>
+        </div>
+
+        <!-- Card 5: 語音轉文字 · Gemini 模型「自訂…」 -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt" role="tab">一般</span><span class="seg-opt active" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">STT 來源</div>
+                <div class="selfield"><span>Gemini</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">Gemini API Key</div>
+                <div class="keywrap">
+                  <div class="keyinput" aria-hidden="true">AIza••••••9Qd0</div>
+                  <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                </div>
+                <span class="clearkey">✕ 清除金鑰</span>
+              </div>
+              <div class="field">
+                <div class="flabel">模型</div>
+                <div class="selfield cust"><span>自訂…</span><span class="chev">▾</span></div>
+                <div class="keyinput" aria-hidden="true" style="padding:8px 10px;margin-top:8px">gemini-2.5-flash-preview</div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>語音轉文字 · 模型「自訂…」</b>模型可從清單選取，或選「自訂…」自行輸入模型名稱。
+          </div>
+        </div>
+
+        <!-- Card 6: 語音轉文字 · 本地 stub -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt" role="tab">一般</span><span class="seg-opt active" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">STT 來源</div>
+                <div class="selfield"><span>本地</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">本地語音轉文字</div>
+                <div class="s-hint">本地 STT 即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini）。<br>目前啟用來源維持 <b style="color:var(--text)">Groq</b> 不變。</div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>語音轉文字 · 本地</b>本地語音轉文字即將推出；選取時顯示提示，目前啟用的雲端來源維持不變。
+          </div>
+        </div>
+
+        <!-- ===== 分頁：AI 潤稿＋儲存回饋 ===== -->
+        <!-- Card 7: AI 潤稿 · stub -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt active" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field soon">
+                <div class="flabel">AI 潤稿</div>
+                <div class="s-hint">轉錄後 AI 潤飾（清贅詞／補標點，不改原意）即將推出。<br>屆時此頁含：開關 · 供應商 · 金鑰 · 模型 · 風格。</div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary">儲存並套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>AI 潤稿</b>即將推出：轉錄後可選用 AI 清理贅詞、補標點，不改變原意。
+          </div>
+        </div>
+
+        <!-- Card 8: 儲存成功回饋 -->
+        <div class="card">
+          <div class="settings">
+            <div class="s-body">
+              <div class="seg" role="tablist">
+                <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">全域快捷鍵</div>
+                <div class="hkrow">
+                  <div class="hkcombo">
+                    <span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span>
+                  </div>
+                  <div class="recbtn">錄製</div>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">輸入模式</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">切換</span>
+                  <span class="seg-opt" role="radio">按住說</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="flabel">靜音修剪（VAD）</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">關</span>
+                  <span class="seg-opt" role="radio">開</span>
+                </div>
+              </div>
+            </div>
+            <div class="s-foot">
+              <div class="sbtn">取消</div>
+              <div class="sbtn primary ok">✓ 已套用</div>
+            </div>
+          </div>
+          <div class="tag">
+            <b>儲存回饋</b>按下「儲存並套用」後按鈕變為「✓ 已套用」並短暫動畫，約一秒後自動復原。
           </div>
         </div>
 
@@ -1346,7 +1507,7 @@
       </div>
 
       <footer>
-        Vocium · MVP 設計定案 · 動畫即實作規格
+        Vocium · 介面設計
       </footer>
     </div>
   </body>

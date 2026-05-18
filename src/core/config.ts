@@ -1,15 +1,24 @@
 // src/core/config.ts
+export type SttProvider = 'groq' | 'openai' | 'gemini' | 'mock';
+
 export interface VociumConfig {
   hotkey: string;
   cancelKey: string;
-  sttProvider: 'groq' | 'mock';
+  sttProvider: SttProvider;
   groqApiKey: string;
   groqModel: string;
+  openaiApiKey: string;
+  openaiModel: string;
+  openaiBaseUrl: string;
+  geminiApiKey: string;
+  geminiModel: string;
   mockText: string;
   maxListenMs: number;
   iconOffsetX: number;
   dragLocked: boolean;
   zhConvert: 'twp' | 'cn';
+  inputMode: 'toggle' | 'ptt';
+  vadTrim: boolean;
 }
 
 export const DEFAULTS: VociumConfig = {
@@ -18,12 +27,24 @@ export const DEFAULTS: VociumConfig = {
   sttProvider: 'groq',
   groqApiKey: '',
   groqModel: 'whisper-large-v3-turbo',
+  openaiApiKey: '',
+  openaiModel: 'whisper-1',
+  openaiBaseUrl: 'https://api.openai.com/v1',
+  geminiApiKey: '',
+  geminiModel: 'gemini-1.5-flash',
   mockText: '這是一段由 Vocium 模擬語音輸入產生的文字。',
   maxListenMs: 30000,
   iconOffsetX: 0,
   dragLocked: false,
   zhConvert: 'twp',
+  inputMode: 'toggle',
+  vadTrim: false,
 };
+
+const VALID_PROVIDERS: ReadonlySet<string> = new Set(['groq', 'openai', 'gemini', 'mock']);
+function normalizeProvider(v: unknown): SttProvider {
+  return typeof v === 'string' && VALID_PROVIDERS.has(v) ? (v as SttProvider) : 'groq';
+}
 
 interface FsLike {
   existsSync(p: string): boolean;
@@ -45,7 +66,11 @@ export function loadConfig(fs: FsLike, path: PathLike, dir: string): VociumConfi
   if (fs.existsSync(file)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return { ...DEFAULTS, ...parsed };
+      const merged = { ...DEFAULTS, ...parsed } as VociumConfig;
+      merged.sttProvider = normalizeProvider(merged.sttProvider);
+      if (merged.inputMode !== 'ptt') merged.inputMode = 'toggle';
+      merged.vadTrim = merged.vadTrim === true;
+      return merged;
     } catch {
       // keep corrupt file intact to avoid destroying a recoverable groqApiKey
       return { ...DEFAULTS };

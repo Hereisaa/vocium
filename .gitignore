@@ -25,3 +25,9 @@ Thumbs.db
 # NOTE: app-tauri/src-tauri/Cargo.lock is intentionally COMMITTED.
 # Vocium is an application (not a library) → a pinned lockfile gives
 # reproducible builds. (Previously this file ignored Cargo.lock — fixed.)
+
+# brainstorming visual-companion artifacts (internal AI process)
+.superpowers/
+
+# vad-web + onnxruntime-web vendored browser assets (large/binary; reproducible via npm run vad:assets)
+app-tauri/ui/vad/

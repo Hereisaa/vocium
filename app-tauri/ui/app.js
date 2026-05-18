@@ -96,6 +96,148 @@ function blobToBase64(blob) {
   });
 }
 
+// ── VAD silence trimming (opt-in, design D3) ────────────────────────────────
+//
+// trimBlobSilence: decodes blob → 16 kHz mono Float32 → runs Silero
+// NonRealTimeVAD → re-encodes kept speech frames as 16-bit mono WAV blob.
+//
+// CONTRACT (non-negotiable):
+//   • ANY throw / rejection returns the ORIGINAL blob unchanged.
+//   • Zero speech detected returns the ORIGINAL blob (never silence-only clip).
+//   • This function MUST NOT block or corrupt submit_audio on failure.
+//
+// NOTE: @ricky0123/vad-web NonRealTimeVAD.run() already returns trimmed speech
+// segments (it applies its own internal speech padding/redemption). We concatenate
+// those segments directly. The pure src/core/audio/trim-silence.ts (keep speech±pad
+// union) is the deterministic, unit-tested reference model for that behavior but is
+// NOT imported here (webview has no bundler); the library performs the actual trim.
+
+const VAD_BASE_PATH = './vad/';       // served from app-tauri/ui/vad/
+const VAD_ORT_WASM_PATH = './vad/';   // ort-wasm-simd-threaded.wasm lives here
+const VAD_FRAME_SAMPLES = 1536;       // Silero legacy model fixed frame size @16 kHz
+
+/** Encode an array of Float32 PCM frames (each VAD_FRAME_SAMPLES long) into
+ *  a 16-bit mono WAV Blob at 16 000 Hz. */
+function pcmToWavBlob(frames) {
+  const totalSamples = frames.reduce((s, f) => s + f.length, 0);
+  const sampleRate = 16000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = totalSamples * blockAlign;
+  const headerSize = 44;
+  const buf = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buf);
+
+  // Write WAV header using offset-based DataView helpers
+  let o = 0;
+  const w8 = (s) => { for (let i = 0; i < s.length; i++) view.setUint8(o++, s.charCodeAt(i)); };
+  const w32 = (v) => { view.setUint32(o, v, true); o += 4; };
+  const w16 = (v) => { view.setUint16(o, v, true); o += 2; };
+
+  w8('RIFF');
+  w32(36 + dataSize);   // ChunkSize
+  w8('WAVE');
+  w8('fmt ');
+  w32(16);              // Subchunk1Size (PCM)
+  w16(1);               // AudioFormat (PCM = 1)
+  w16(numChannels);
+  w32(sampleRate);
+  w32(byteRate);
+  w16(blockAlign);
+  w16(bitsPerSample);
+  w8('data');
+  w32(dataSize);
+
+  // PCM samples: clamp Float32 [-1,1] to Int16
+  for (const frame of frames) {
+    for (let i = 0; i < frame.length; i++) {
+      const s = Math.max(-1, Math.min(1, frame[i]));
+      view.setInt16(o, s < 0 ? s * 32768 : s * 32767, true);
+      o += 2;
+    }
+  }
+
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+/** Main VAD trim function. Returns a WAV Blob (trimmed) or the original Blob on
+ *  any error / no-speech / VAD unavailable. Never throws. */
+async function trimBlobSilence(originalBlob) {
+  try {
+    // Step 1: ensure vad-web bundle is loaded (idempotent).
+    if (typeof self.vad === 'undefined' || typeof self.vad.NonRealTimeVAD === 'undefined') {
+      throw new Error('vad bundle not loaded');
+    }
+
+    // Step 2: decode blob → AudioBuffer via OfflineAudioContext.
+    const arrayBuf = await originalBlob.arrayBuffer();
+    // AudioContext.decodeAudioData requires AudioContext, not offline, for
+    // some codecs. Use a short-lived AudioContext for decoding.
+    const decodeCtx = new AudioContext();
+    let sourceBuf;
+    try {
+      sourceBuf = await decodeCtx.decodeAudioData(arrayBuf);
+    } finally {
+      decodeCtx.close().catch(() => {});
+    }
+
+    // Step 3: resample to 16 kHz mono via OfflineAudioContext.
+    const targetSampleRate = 16000;
+    const durationSec = sourceBuf.duration;
+    const targetSamples = Math.ceil(durationSec * targetSampleRate);
+    const offCtx = new OfflineAudioContext(1, targetSamples, targetSampleRate);
+    const srcNode = offCtx.createBufferSource();
+    srcNode.buffer = sourceBuf;
+    srcNode.connect(offCtx.destination);
+    srcNode.start(0);
+    const renderedBuf = await offCtx.startRendering();
+    const pcm16k = renderedBuf.getChannelData(0); // Float32Array @16 kHz mono
+
+    // Step 4: run NonRealTimeVAD — yields {audio, start, end} speech segments.
+    const vadInstance = await self.vad.NonRealTimeVAD.new({
+      baseAssetPath: VAD_BASE_PATH,
+      onnxWASMBasePath: VAD_ORT_WASM_PATH,
+    });
+
+    // Track original sample count for duration-based decision below.
+    const originalSamples = pcm16k.length;
+
+    // Collect all speech segment audio chunks.
+    const speechChunks = [];
+    for await (const { audio } of vadInstance.run(pcm16k, targetSampleRate)) {
+      speechChunks.push(audio); // each audio is a Float32Array of speech frames
+    }
+
+    if (speechChunks.length === 0) {
+      // No speech detected — return original blob untouched.
+      console.warn('[vocium] VAD: no speech detected, using original audio');
+      return originalBlob;
+    }
+
+    // Step 5: re-encode the collected speech segments to a WAV blob.
+    // NonRealTimeVAD already returns only the speech audio (trimmed);
+    // we apply our own pad logic by treating each yielded chunk as a contiguous
+    // kept region. Wrap each chunk as a pseudo-frame for pcmToWavBlob.
+    const trimmedBlob = pcmToWavBlob(speechChunks);
+
+    // Decide by DURATION not bytes: trimmed WAV is larger than source opus by design;
+    // the win is shorter audio → faster/cheaper STT, less hallucination (design D3).
+    const keptSamples = speechChunks.reduce((s, c) => s + c.length, 0);
+    if (keptSamples >= originalSamples * 0.98) {
+      // VAD removed <2% — essentially no silence found; trimming not worthwhile.
+      return originalBlob;
+    }
+
+    return trimmedBlob;
+
+  } catch (err) {
+    console.warn('[vocium] VAD trim failed, using original audio:', err && err.message ? err.message : err);
+    return originalBlob; // guaranteed fallback — never throws
+  }
+}
+
 async function startRecording() {
   // Already recording? ignore (re-entry guard).
   if (recorder && recorder.state === 'recording') return;
@@ -143,11 +285,23 @@ async function startRecording() {
       return;
     }
     try {
-      const blob = new Blob(chunks, { type: mimeType });
+      let blob = new Blob(chunks, { type: mimeType });
       chunks = [];
+      // D3 opt-in: trim silence if vadTrim is enabled in config.
+      // Any VAD failure falls back to the original blob (trimBlobSilence never throws).
+      try {
+        const cfg = await invoke('get_config');
+        if (cfg && cfg.vadTrim) {
+          blob = await trimBlobSilence(blob);
+        }
+      } catch (_cfgErr) {
+        // get_config or vadTrim check failed — proceed with original blob.
+      }
+      // Determine the effective mimeType for the (possibly WAV-converted) blob.
+      const effectiveMime = blob.type || mimeType;
       const audioBase64 = await blobToBase64(blob);
       // Sidecar pipeline: submit_audio -> transcribing -> injecting -> idle.
-      await invoke('submit_audio', { audioBase64, mimeType });
+      await invoke('submit_audio', { audioBase64, mimeType: effectiveMime });
     } catch (e) {
       reportAudioError(`送出音訊失敗：${e && e.message ? e.message : e}`);
     }
@@ -234,6 +388,10 @@ listen('state', (event) => {
 // the recorder re-entry guards make the confirm a no-op). The shell command is
 // async (off Tauri's main thread) so this never freezes regardless of latency.
 // Perceived click→listening latency ≈ 0; the only real wait left is STT.
+//
+// Design D2 / SPEC FR-TRG-4: the floating orb click is ALWAYS toggle-style
+// (click=start, click=stop). inputMode (toggle/ptt) intentionally affects ONLY
+// the global hotkey, not the orb — you can't "hold" a click. Do not wire PTT here.
 async function triggerToggle() {
   const from = currentState;
   if (from === 'idle') {

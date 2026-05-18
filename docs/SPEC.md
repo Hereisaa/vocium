@@ -1,6 +1,6 @@
 # Vocium — 桌面語音輸入工具 SPEC
 
-> 版本：v0.1 (MVP)　日期：2026-05-17　狀態：部分實作（FR-STT-4/5、FR-CFG-6 已實作）
+> 版本：v0.2　日期：2026-05-18　狀態：§A 繁簡轉換 + §B 多雲端 STT + PTT + VAD 已實作；§C AI 潤稿 為下一階段
 
 ## 1. 產品概述
 
@@ -19,7 +19,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - 兩種觸發方式：**點擊懸浮 ICON** 與**全域快捷鍵**（預設 `Ctrl+Shift+Space`）。
 - 一個明確的語音工作階段狀態機（idle → listening → transcribing → injecting → idle）。
 - 麥克風錄音（Tauri webview，`getUserMedia` + `MediaRecorder`）。
-- STT Adapter 介面，內建 **GroqSttAdapter（v1 預設，真實轉錄）** 與 **MockSttAdapter（測試／使用者主動離線）**。
+- STT Adapter 介面，內建 **GroqSttAdapter（預設）**、**OpenAiSttAdapter**、**GeminiSttAdapter**（雲端三家）與 **MockSttAdapter（測試／使用者主動離線）**；`createSttAdapter` 工廠依 `resolveActive(cfg)` 單一出口決定。
 - 轉錄結果**自動注入**目前焦點視窗（剪貼簿 + 模擬貼上），並同時保留在剪貼簿供手動貼上。
 - Node sidecar 對外為**單一 MCP server**；Tauri 殼以 MCP client 身分驅動。
 - MCP 工具表可被任意 MCP client（含未來 BrainMesh）呼叫，達成 headless 重用。
@@ -28,22 +28,28 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - 純邏輯模組（狀態機、STT adapter、config、injector 介面）具單元測試。
 - 跨平台 `Injector` 抽象層**就位**：`WindowsInjector` v1 實作完成；`MacInjector` / `LinuxInjector` 為介面就位 stub。
 
-### 1.2 不在範圍（Out of Scope, MVP）
+### 1.2 不在範圍（Out of Scope, v1+v2）
 
 - macOS / Linux **實際可跑**（介面與 stub 就位，但 v1 僅驗證 Windows 11；mac/Linux 注入為 Phase 2）。
 - STT 串流/分段、多語言後處理、標點與口語贅詞清理、語音指令。
 - BrainMesh 端的整合（v1 只負責讓 Vocium 成為合規 MCP server；BrainMesh 連接屬其專案範疇）。
 - 帳號系統、雲端同步、使用統計上報。
 - 安裝程式打包與簽章、sidecar 二進位封裝（ROADMAP 後期）。
-- **繁簡轉換、多家雲端/本地 AI STT 串接、AI 潤稿**（皆為下一階段 Settings 功能，非 v1 — 見 §1.3）。
+- **本地 STT 實際實作**（whisper.cpp / faster-whisper / LocalAI / Ollama — stub 及下拉選項已就位，但實際推論延後；見 §1.3）。
+- **AI 潤稿**（§C — 轉錄後處理鏈最後一步，Settings IA 已預留 tab，實作為下一階段；見 §1.3）。
 
-### 1.3 後續規劃（Roadmap，非 v1；皆做在 Settings 內）
+### 1.3 已完成與後續規劃
 
 詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。
 
-- **A. 中文輸出（繁／簡）** ✅（已實作）：Whisper 中文時繁時簡；Settings 二段式「中文輸出（中文字繁／簡）」＝**繁體（台灣）/ 簡體**（config `zhConvert`，預設 `twp`），opencc-js `cn→twp`／`twp→cn` 雙向強制（已是目標字體則 passthrough）；每次轉錄即時讀設定不重啟；由「儲存並套用」按鈕套用；套用 submitAudio+transcribeClip，不轉引導/錯誤訊息。
-- **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」（provider + 金鑰/baseURL/模型）。雲端 Groq(現有)/OpenAI/Gemini（Claude 無 STT，不列）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。架構已以 `SttAdapter`（FR-STT-1）隔離，新增為侷限變更（新 adapter + 工廠分支 + config + Settings 一區）。
-- **C. AI 潤稿**：轉錄後可選交 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入；Settings 開關 + 供應商/模型/金鑰 + 風格。可用任何 LLM（含 Claude/OpenAI/Gemini/本地），預設關閉。
+> FR 級權威設計（D1–D8）見
+> `docs/superpowers/specs/2026-05-18-vocium-multi-stt-ptt-vad-design.md`（gitignored，內部文件）。
+
+- **A. 中文輸出（繁／簡）** ✅（已實作，2026-05-17）：Whisper 中文時繁時簡；Settings 二段式「中文輸出（中文字繁／簡）」＝**繁體（台灣）/ 簡體**（config `zhConvert`，預設 `twp`），opencc-js `cn→twp`／`twp→cn` 雙向強制（已是目標字體則 passthrough）；每次轉錄即時讀設定不重啟；由「儲存並套用」按鈕套用；套用 submitAudio+transcribeClip，不轉引導/錯誤訊息。
+- **B. 多家雲端 STT + 切換 UI + 本地 stub** ✅（已實作，2026-05-18）：Settings「STT 來源」**下拉**（方案 A）。Groq（預設）/OpenAI/Gemini 三家雲端（Claude 無 STT，不列）+ **本地 stub**（下拉可見，不可套用，顯示「即將推出」，`sttProvider` 不持久化 `'local'`）；**每家金鑰/模型獨立持久化**（扁平具名欄位，保留 `groqApiKey` 向後相容）。詳見 FR-STT-6/FR-STT-7/FR-CFG-7。**本地 STT 實際實作延後**。
+- **B2. 輸入模式 toggle / push-to-talk** ✅（已實作，2026-05-18）：`inputMode:'toggle'|'ptt'`（預設 toggle）；Settings 二段式。Rust global-shortcut 處理 Pressed/Released；**只影響快捷鍵，ICON 恆 toggle**（決策 D2）。詳見 FR-TRG-4。
+- **B3. 靜音修剪 VAD** ✅（已實作，2026-05-18）：`vadTrim`（預設關，opt-in，決策 D3/D6）；`@ricky0123/vad-web` NonRealTimeVAD 於 webview，`submit_audio` 前修剪靜音段；**只修剪非 endpointing**，不動狀態機時序；任何 VAD 失敗 → 原始 blob 繼續。詳見 FR-AUD-5。
+- **C. AI 潤稿**（下一階段）：轉錄後可選交 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入；Settings 開關 + 供應商/模型/金鑰 + 風格。可用任何 LLM（含 Claude/OpenAI/Gemini/本地），預設關閉。Settings IA 已預留「AI 潤稿」分頁（目前為「即將推出」stub）。
 
 ## 2. 使用者情境
 
@@ -89,6 +95,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - FR-TRG-1：全域快捷鍵預設 `Ctrl+Shift+Space`，可由 config 變更；註冊失敗（被佔用）時 Tray 顯示警告且不崩潰。Tauri `globalShortcut` 為 toggle 觸發。
 - FR-TRG-2：點擊 ICON → 前端呼叫 MCP `toggle`。
 - FR-TRG-3：`Esc` 於 listening 時送 `CANCEL`（聆聽中由前端註冊鍵盤事件 / 全域快捷鍵）。
+- FR-TRG-4：**輸入模式 toggle / push-to-talk**（2026-05-18 實作）：`inputMode:'toggle'|'ptt'`（config，預設 `'toggle'`）。Rust global-shortcut 同時處理 `Pressed` 與 `Released`：`toggle` 模式 → `Pressed` 觸發 `toggle`（等同現行行為）；`ptt` 模式 → `Pressed` 呼叫 `start_listening`，`Released` 呼叫 `stop_listening`。**ICON 點擊恆為 toggle，不受 inputMode 影響**（決策 D2）；狀態機 / MCP / sidecar 不動。`save_input_mode` Tauri 命令持久化並立即更新 Rust shortcut 邏輯（不重啟 sidecar）。
 
 ### 3.4 錄音（FR-AUD）
 
@@ -96,15 +103,18 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - FR-AUD-2：Tauri 設定允許 webview media 權限（`webview` capability + 平台麥克風權限）。
 - FR-AUD-3：靜音/逾時保護：listening 超過 `maxListenMs`（預設 30s，config 可調）自動觸發停止。
 - FR-AUD-4：無可用麥克風或權限被拒 → 前端送 MCP `report_audio_error` → 狀態機 `FAIL`。
+- FR-AUD-5：**opt-in 靜音修剪 VAD**（2026-05-18 實作）：`vadTrim:bool`（config，預設 `false`，opt-in；決策 D3/D6）。啟用時，webview 於 `MediaRecorder` 停止後、`submit_audio` 呼叫前，以 `@ricky0123/vad-web` NonRealTimeVAD 離線修剪靜音段（保留語音±padding union）；VAD assets vendored 至 `app-tauri/ui/vad/`（gitignored，`npm run vad:assets` 複製）。**只做修剪，不做 endpointing**，不動狀態機時序；任何 VAD 失敗（例外、空結果）→ best-effort fallback，原始 blob 繼續送出，不進 error 狀態。`save_vad_trim` Tauri 命令持久化（不重啟 sidecar）。
 
 ### 3.5 STT Adapter（FR-STT）
 
 - FR-STT-1：介面 `SttAdapter.transcribe(input: { audio: Buffer; mimeType: string; language?: string }): Promise<{ text: string; durationMs?: number }>`。
 - FR-STT-2：**`GroqSttAdapter`（v1 預設）**：建構式接受 `{ apiKey, model='whisper-large-v3-turbo' }`。`transcribe()` 以 `multipart/form-data` POST 至 `https://api.groq.com/openai/v1/audio/transcriptions`，欄位 `file`（audio blob）、`model`、`response_format=json`、選填 `language`；回應 `{ text }`。逾時、4xx/5xx、網路錯誤皆 reject 明確 Error。`apiKey` 缺失時 reject `Error('Groq API key not configured')`。
 - FR-STT-3：`MockSttAdapter`：回傳預設句子（可由 config `mockText` 自訂），模擬 600–1200ms 延遲；用於測試與使用者主動選擇離線（sttProvider:'mock'）；`failMode` 參數可觸發 reject 以測失敗路徑。
-- FR-STT-4：Adapter 由 `createSttAdapter(config)` 工廠建立：`sttProvider==='mock'` → `MockSttAdapter`（僅測試／sidecar `opts.sttText` 注入）；否則 `GroqSttAdapter`。`sttProvider==='groq'` 但金鑰為空時**不回退 Mock**：sidecar 計算 `noKey`，pipeline 走正常流程注入引導訊息 `（尚未設定 API Key，請開啟 Vocium 設定填入 Groq API Key）`（listening→transcribing→injected，無錯誤動畫），Tray「STT」標籤顯示 `mock`。
-- FR-STT-5：`describeSttError(e)` 為 total 純函式，將 STT 例外分類為簡語，由 pipeline 注入後播錯誤動畫且不 rethrow：API Key 無效（401／invalid key）、請求過於頻繁（429／rate limit）、網路異常（fetch failed／ENOTFOUND／ECONNREFUSED／EAI_AGAIN）、請求逾時（timeout／AbortError／ETIMEDOUT）、其他服務錯誤（其餘，含 5xx）。`transcribeClip` 在 `noKey` 時亦回傳引導訊息（不 raw throw 給 MCP 消費者）。
-- FR-CFG-6：Settings 視窗提供遮罩 Groq API Key 欄位（顯示／隱藏切換、清除金鑰、輸入留空＝不變更）。`get_config` 回傳 `groqKeySet:bool`（**不回傳原始金鑰**）。`set_groq_key` 命令 `patch_config` 後重啟 sidecar 使新金鑰生效並更新 Tray「STT」標籤；重啟失敗回 Err（Settings 顯示錯誤、清空 client 避免 30s 卡住）。
+- FR-STT-4：Adapter 由 `createSttAdapter(config)` 工廠建立：`sttProvider==='mock'` → `MockSttAdapter`（僅測試／sidecar `opts.sttText` 注入）；否則 `GroqSttAdapter`（**注意：此為原始 v1 行為；多 provider 泛化已由 FR-STT-6 `resolveActive` 取代——非 mock 時依 `sttProvider` 選 Groq/OpenAI/Gemini**）。`sttProvider==='groq'` 但金鑰為空時**不回退 Mock**：sidecar 計算 `noKey`，pipeline 走正常流程注入引導訊息 `（尚未設定 API Key，請開啟 Vocium 設定填入 Groq API Key）`（listening→transcribing→injected，無錯誤動畫），Tray「STT」標籤顯示 `mock`。
+- FR-STT-5：`describeSttError(e)` 為 total 純函式，將 STT 例外分類為簡語，由 pipeline 注入後播錯誤動畫且不 rethrow：API Key 無效（401／invalid key）、請求過於頻繁（429／rate limit）、網路異常（fetch failed／ENOTFOUND／ECONNREFUSED／EAI_AGAIN）、請求逾時（timeout／AbortError／ETIMEDOUT）、其他服務錯誤（其餘，含 5xx）。`transcribeClip` 在 `noKey` 時亦回傳引導訊息（不 raw throw 給 MCP 消費者）。此錯誤處理路徑已泛化，適用所有 provider。
+- FR-CFG-6：Settings 視窗提供遮罩 Groq API Key 欄位（顯示／隱藏切換、清除金鑰、輸入留空＝不變更）。`get_config` 回傳 `groqKeySet:bool`（**不回傳原始金鑰**）。`set_groq_key` 命令 `patch_config` 後重啟 sidecar 使新金鑰生效並更新 Tray「STT」標籤；重啟失敗回 Err（Settings 顯示錯誤、清空 client 避免 30s 卡住）。（與 FR-CFG-7 並行；`set_groq_key` 保留作向後相容。）
+- FR-STT-6：**多雲端 STT adapter + 泛化工廠**（2026-05-18 實作）：新增 `OpenAiSttAdapter`（`https://api.openai.com/v1/audio/transcriptions`，可自訂 `openaiBaseUrl` 相容第三方端點）與 `GeminiSttAdapter`（`generativelanguage.googleapis.com` Gemini 1.5 系列）。`createSttAdapter(config)` 工廠改由 `resolveActive(cfg)` 單一出口決定活躍 provider（`sttProvider` 欄位；`'local'` / 未知值防禦正規化為 `'groq'`，不持久化）。`describeSttError` / noKey 路徑泛化，所有 provider 共用。
+- FR-STT-7：**精選模型清單 + 自訂逃生口**（2026-05-18 實作）：`src/core/stt/models.ts` 為單一常數來源，按 provider 列出精選 STT 模型（Groq whisper 系列、OpenAI whisper 系列、Gemini 1.5/2.0 系列）及各家 `DEFAULT_MODEL`；webview `app-tauri/ui/settings.js` 中 `STT_MODELS` 為**刻意的鏡像副本**（webview 無 bundler，故設計上複製一份，兩處需同步維護）。Settings 下拉顯示精選清單，末項「自訂…」可輸入任意 model string，作為清單落後時的逃生口（決策 D7）。**無 runtime model-list fetch**（各家 /models 端點無可靠 STT 旗標，且需金鑰）。
 
 ### 3.6 文字注入（FR-INJ）
 
@@ -117,10 +127,11 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 ### 3.7 設定（FR-CFG）
 
 - FR-CFG-1：config JSON 存於 OS app-data 目錄（Windows：`%APPDATA%/vocium/vocium-config.json`）。
-- FR-CFG-2：欄位：`hotkey`、`cancelKey`、`sttProvider`（預設 `'groq'`）、`groqApiKey`、`groqModel`（預設 `whisper-large-v3-turbo`）、`mockText`、`maxListenMs`、`iconOffsetX`、`dragLocked`（預設 false）。
+- FR-CFG-2：欄位：`hotkey`、`cancelKey`、`sttProvider`（預設 `'groq'`；`'groq'|'openai'|'gemini'|'mock'`）、`groqApiKey`、`groqModel`（預設 `whisper-large-v3-turbo`）、`openaiApiKey`、`openaiModel`、`openaiBaseUrl`（可選，自訂端點）、`geminiApiKey`、`geminiModel`（預設 `gemini-1.5-flash`）、`inputMode`（`'toggle'|'ptt'`，預設 `'toggle'`）、`vadTrim`（`bool`，預設 `false`）、`mockText`、`maxListenMs`、`iconOffsetX`、`dragLocked`（預設 false）。`sttProvider:'local'` 及未知值防禦正規化為 `'groq'`，不持久化（決策 D4）。
 - FR-CFG-3：缺檔/壞檔時回退預設值並重寫，不崩潰。
 - FR-CFG-4：config 載入/合併/儲存為純模組，可單測（注入 fs/path）。
-- FR-CFG-5：`groqApiKey` **僅存本機 config，絕不寫入版本控制**（`.gitignore` 排除 config 檔）。
+- FR-CFG-5：所有 provider API key（`groqApiKey`、`openaiApiKey`、`geminiApiKey`）**僅存本機 config，絕不寫入版本控制**（`.gitignore` 排除 config 檔）。
+- FR-CFG-7：**多 provider 設定持久化 + 遮罩回傳**（2026-05-18 實作）：各 provider 金鑰/模型欄位獨立持久化（扁平具名欄位，`groqApiKey` 保留向後相容）。`get_config` 回傳 `providers:{groq,openai,gemini:{keySet:bool,mask:string,model,baseUrl?}}` 結構以及頂層 `activeProvider`、`inputMode`、`vadTrim`、`sttProvider`；同時保留頂層 `groqKeySet`/`groqKeyMask` 供向後相容。新增 Tauri 命令：`set_provider_key(provider,key)`、`set_stt_provider(provider)`、`clear_provider_key(provider)`、`save_input_mode(mode)`、`save_vad_trim(val)`。Rust 內部抽 `derive_active(dir)→(provider,keySet)` + `mask_key(key)` helper，消除三處重複，統一 `trim().is_empty()` 一致性。Tray「STT」標籤顯示真實 active provider（`effectiveProvider`）。
 
 ### 3.8 系統匣（FR-TRY）
 
@@ -152,7 +163,7 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 
 - NFR-1（效能）：idle 時 CPU ≈ 0%；ICON 動畫使用 CSS（GPU 合成），不使用 JS 計時重繪。Tauri 殼採系統 webview，常駐記憶體遠低於 Electron。
 - NFR-2（穩定）：任一例外不得使 sidecar 或殼崩潰；STT/注入錯誤皆走 error 狀態並推播。
-- NFR-3（隱私）：v1 預設 Groq，音訊會離開本機送 Groq——README 與首次啟動須明確告知。`groqApiKey` 僅存本機、不入版控。離線/不願上傳者可設 `sttProvider:'mock'`。
+- NFR-3（隱私）：預設使用 Groq，選 OpenAI/Gemini 時音訊同樣離開本機——README 與 Settings 須明確告知。所有 provider API key 僅存本機、不入版控（`.gitignore` 排除）。離線/不願上傳者可設 `sttProvider:'mock'`；本地 STT 實際推論支援列為後期 roadmap。
 - NFR-4（可測試）：核心邏輯與傳輸層解耦，`npm test` 不啟動 Tauri / 不需網路即可跑（Groq adapter 以注入 fetch 測試）。
 - NFR-5（可維護）：core / sidecar(mcp) / injector / app-tauri 分層；單一檔案單一職責。
 - NFR-6（可重用）：核心零殼依賴，透過單一 MCP 協定服務多 client，為 BrainMesh 插件化的前提。
@@ -167,7 +178,7 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 | 核心邏輯 | 純 TS 模組 | 狀態機、STT adapter、config、Injector 介面（無殼/傳輸依賴） |
 | MCP | `@modelcontextprotocol/sdk` | stdio MCP server + notifications |
 | 測試 | Vitest | 核心邏輯 + MCP 整合（in-memory client） |
-| STT | Groq Whisper REST（v1 預設） | `whisper-large-v3-turbo`，multipart |
+| STT | Groq Whisper REST（預設）/ OpenAI Whisper / Gemini 1.5 | 三家雲端 BYOK；`resolveActive` 決定活躍 provider |
 
 ### 5.1 模組與檔案職責（規劃，實作時得微調）
 
@@ -182,9 +193,12 @@ projects/vocium/
 │   │   ├── state-machine.ts     # createVoiceSession({onState}) 純狀態機
 │   │   ├── config.ts            # loadConfig/saveConfig/DEFAULTS（注入 fs/path）
 │   │   ├── stt/
-│   │   │   ├── stt-adapter.ts   # createSttAdapter(config) 工廠
-│   │   │   ├── groq-stt.ts      # GroqSttAdapter（v1 預設，真實 multipart）
-│   │   │   └── mock-stt.ts      # MockSttAdapter（測試/離線 fallback）
+│   │   │   ├── stt-adapter.ts   # createSttAdapter(config) 工廠；resolveActive(cfg) 單一出口
+│   │   │   ├── models.ts        # 精選模型清單 + DEFAULT_MODEL（單一常數來源，D7）
+│   │   │   ├── groq-stt.ts      # GroqSttAdapter（預設，真實 multipart）
+│   │   │   ├── openai-stt.ts    # OpenAiSttAdapter（含自訂 baseUrl）
+│   │   │   ├── gemini-stt.ts    # GeminiSttAdapter（generativelanguage REST）
+│   │   │   └── mock-stt.ts      # MockSttAdapter（測試/離線）
 │   │   └── inject/
 │   │       ├── injector.ts      # Injector 介面 + createInjector(platform)
 │   │       ├── windows.ts       # WindowsInjector（PowerShell，v1）
@@ -209,12 +223,12 @@ projects/vocium/
 
 ## 6. 驗收標準（MVP Done Definition）
 
-1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（含 Groq 以注入 fetch 測）/ Injector 介面 / MCP 整合）。
+1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（Groq + OpenAI + Gemini + Mock，注入 fetch）/ Injector 介面 / MCP 整合 / zh-convert / VAD trim / describe-error）。目前：**vitest 106/106**、tsc clean、cargo 0/0。
 2. sidecar 可獨立啟動為 MCP server，`get_state` 回 `idle`。
 3. Tauri 啟動後桌面頂部置中出現懸浮 ICON。
 4. 點擊 ICON 或按 `Ctrl+Shift+Space`：ICON 進入 listening 動畫。
-5. 再次觸發：ICON 轉 transcribing → injecting；**設定 Groq 金鑰時，所說內容真實轉錄並貼入焦點輸入框**（如記事本）。
-6. 未設金鑰時 pipeline 走正常流（listening→transcribing→injected，無錯誤動畫），注入引導訊息「（尚未設定 API Key，請開啟 Vocium 設定填入 Groq API Key）」；Tray「STT」標籤顯示 mock。
+5. 再次觸發：ICON 轉 transcribing → injecting；**設定任一雲端 provider 金鑰（Groq/OpenAI/Gemini）時，所說內容真實轉錄並貼入焦點輸入框**（如記事本）。
+6. 未設活躍 provider 金鑰時 pipeline 走正常流（listening→transcribing→injected，無錯誤動畫），注入 noKey 引導訊息；Tray「STT」標籤顯示 mock。
 7. `Esc` 於聆聽中取消，不注入；失敗路徑顯示 error 動畫並回 idle。
 8. Tray 選單可隱藏/顯示 ICON 並結束程式。
 9. 任一 MCP client 呼叫 `transcribe_clip` 可不經 GUI 取得文字；`inject_text` 可注入任意文字。
