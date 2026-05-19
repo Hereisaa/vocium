@@ -346,11 +346,7 @@ fn spawn_sidecar(
     log: LogFn,
     logs_dir: &std::path::Path,
 ) -> Result<Arc<McpClient>, String> {
-    let entry = dev_dist_script();
-    log(&format!("[spawn] node entry = {}", entry.display()));
-    if !entry.exists() {
-        log("[spawn] WARNING: sidecar entry does not exist — run `npm run build`");
-    }
+    let launch = resolve_sidecar();
 
     // Route sidecar stderr to a file. Previously Stdio::inherit() into a
     // CREATE_NO_WINDOW GUI process silently discarded every sidecar crash/log,
@@ -368,22 +364,35 @@ fn spawn_sidecar(
         }
     };
 
-    let mut cmd = Command::new("node");
-    cmd.arg(&entry)
-        .stdin(Stdio::piped())
+    let mut cmd = match &launch {
+        SidecarLaunch::Binary(p) => {
+            log(&format!("[spawn] sidecar binary = {}", p.display()));
+            Command::new(p)
+        }
+        SidecarLaunch::NodeScript(s) => {
+            log(&format!("[spawn] dev fallback: node {}", s.display()));
+            let mut c = Command::new("node");
+            c.arg(s);
+            c
+        }
+    };
+    cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(stderr);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW so the spawned node has no console flash.
+        // CREATE_NO_WINDOW: suppress the console window for the spawned sidecar.
         cmd.creation_flags(0x0800_0000);
     }
     let child = cmd.spawn().map_err(|e| {
-        log(&format!("[spawn] failed to spawn node: {e}"));
-        format!("failed to spawn sidecar `node {}`: {e}", entry.display())
+        log(&format!("[spawn] failed to spawn sidecar: {e}"));
+        match &launch {
+            SidecarLaunch::Binary(p) => format!("failed to spawn sidecar `{}`: {e}", p.display()),
+            SidecarLaunch::NodeScript(s) => format!("failed to spawn sidecar `node {}`: {e}", s.display()),
+        }
     })?;
-    log(&format!("[spawn] node started (pid={})", child.id()));
+    log(&format!("[spawn] sidecar started (pid={})", child.id()));
 
     let app_handle = app.clone();
     let listener = Arc::new(move |state: String, prev: String| {
