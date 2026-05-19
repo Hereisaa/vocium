@@ -88,11 +88,58 @@
         </div>
       </div>
 
-      <!-- ===== AI 潤稿 (stub) ===== -->
+      <!-- ===== AI 潤稿 ===== -->
       <div class="s-pane" id="pane-polish">
-        <div class="field soon">
-          <div class="flabel">AI 潤稿</div>
-          <div class="s-stub">轉錄後 AI 潤飾（清贅詞／補標點，不改原意）即將推出。<br>屆時此頁含：開關 · 供應商 · 金鑰 · 模型 · 風格。</div>
+        <div class="field">
+          <div class="flabel">啟用 AI 潤稿</div>
+          <div class="seg" id="polishEnabledSeg" role="radiogroup" aria-label="啟用 AI 潤稿">
+            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-pen="off">關</span>
+            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pen="on">開</span>
+          </div>
+        </div>
+        <div id="polishFields">
+          <div class="field">
+            <div class="flabel" id="polishProvLabel">來源</div>
+            <select class="selfield" id="polishProvSel" aria-labelledby="polishProvLabel">
+              <option value="groq">Groq</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+              <option value="claude">Claude</option>
+              <option value="local">本地</option>
+            </select>
+          </div>
+          <div id="polishCloudFields">
+            <div class="field">
+              <div class="flabel" id="polishKeyLabel">API Key</div>
+              <div class="keywrap">
+                <input id="polishKeyInput" type="password" placeholder="貼上金鑰後按儲存"
+                       autocomplete="off" spellcheck="false" class="keyinput" aria-labelledby="polishKeyLabel" />
+                <span class="eye" id="polishKeyToggle" role="button" title="顯示/隱藏" aria-label="顯示或隱藏金鑰"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              </div>
+              <span class="clearkey" id="polishKeyClear" role="button" hidden>✕ 清除金鑰</span>
+            </div>
+            <div class="field">
+              <div class="flabel" id="polishModelLabel">模型</div>
+              <select class="selfield" id="polishModelSel" aria-labelledby="polishModelLabel"></select>
+              <input id="polishModelCustom" class="keyinput" style="display:none;margin-top:8px"
+                     placeholder="輸入 model id" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
+            </div>
+            <div class="field">
+              <div class="flabel">風格</div>
+              <div class="seg" id="polishStyleSeg" role="radiogroup" aria-label="潤稿風格">
+                <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-pstyle="light">輕度</span>
+                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="full">完整</span>
+                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="custom">自訂</span>
+              </div>
+              <textarea id="polishCustomPrompt" class="keyinput" rows="3"
+                        style="display:none;margin-top:8px;resize:vertical"
+                        placeholder="自訂潤稿指令（保留原意與原語言）" aria-label="自訂潤稿 prompt"></textarea>
+            </div>
+          </div>
+          <div class="field" id="polishLocalStub" style="display:none">
+            <div class="flabel">本地 AI 潤稿</div>
+            <div class="s-stub">本地 AI 潤稿即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini / Claude）。</div>
+          </div>
         </div>
       </div>
     </div>

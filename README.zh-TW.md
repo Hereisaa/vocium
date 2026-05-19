@@ -130,11 +130,13 @@ npx tauri build --config app-tauri/src-tauri/tauri.conf.json
 
 ## 作為 MCP 工具使用
 
-Node sidecar 本身是一個**獨立 MCP server**——任何 MCP host（Claude Desktop、Cursor、Agent SDK、腳本…）都能直接重用 Vocium，不必自己重造語音轉文字或系統文字注入。對外提供兩個 headless 工具：
+Node sidecar 本身是一個**獨立 MCP server**——任何 MCP host（Claude Desktop、Cursor、Agent SDK、腳本…）都能直接重用 Vocium，不必自己重造語音轉文字或系統文字注入。對外提供三個 headless 工具：
 
 **`transcribe_clip`** — `{ audioBase64, mimeType, language? }` → `{ text }`。用你本機設定的來源轉錄音訊，並套用你的繁／簡偏好。唯讀、無副作用：呼叫端拿到文字後自行決定怎麼處理。
 
 **`inject_text`** — `{ text }` → `{ ok }`。把文字打進作業系統目前焦點的視窗（剪貼簿＋模擬貼上）。與 STT 無關，可注入任意字串。會落在「呼叫當下焦點所在」的視窗，焦點由呼叫端負責。
+
+**`polish_text`** — `{ text, style? }` → `{ text }`。用本機設定的 LLM provider 與金鑰潤飾文字（清贅詞、補標點、通順，不改原意）。Headless、由 host 控制：MCP host 決定是否呼叫，不受桌面 `polishEnabled` 開關影響。和其他工具一樣，金鑰從執行 sidecar 那台機器的本機 Vocium config 讀取，呼叫端不傳金鑰。
 
 在 MCP host 設定中註冊（先 `npm run build`）：
 
@@ -163,8 +165,9 @@ MCP 呼叫端不會傳入也看不到金鑰。Vocium 從「執行 sidecar 那台
 
 - **中文輸出（繁／簡）** ✅
 - **多家雲端 STT** — Groq／OpenAI／Gemini，BYOK、PTT、VAD ✅
-- **AI 潤稿** — 可選 LLM 潤飾（清贅詞、補標點、通順）再注入；預設關閉。
+- **AI 潤稿** — 可選 LLM 潤飾（清贅詞、補標點、通順）再注入；預設關閉。✅
 - **本地 STT** — whisper.cpp／faster-whisper／LocalAI／Ollama。裝置端轉錄；下一個規劃項目。
+- **本地 LLM 潤稿** — 裝置端潤稿。延後。
 
 詳見 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 

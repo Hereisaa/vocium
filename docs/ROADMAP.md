@@ -52,7 +52,7 @@
 > 既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關）。
 > 皆不動狀態機 / MCP / sidecar / Injector。
 >
-> **A 已完成（2026-05-17）；B/B2/B3 已完成（2026-05-18，vitest 106/106，tsc clean，cargo 0/0）；C 為下一實作階段。**
+> **A 已完成（2026-05-17）；B/B2/B3 已完成（2026-05-18）；C 已完成（2026-05-19，vitest 137/137，tsc clean，cargo 0/0）。本地 LLM 潤稿延後。**
 
 ### A. 中文輸出（繁／簡）（Settings 內）
 - [x] Whisper 中文時繁時簡 → Settings 二段式切換**繁體（台灣）/ 簡體**（config `zhConvert`，預設 twp；非開關非三選項）。 （2026-05-17 完成）
@@ -96,11 +96,14 @@
       VAD assets vendored 至 `app-tauri/ui/vad/`（gitignored，`npm run vad:assets`）。
       `save_vad_trim` 即時持久化。
 
-### C. AI 潤稿（Settings 內，轉錄後處理）
-- [ ] 轉錄完成後，可選將文字交 LLM 潤飾（清理口語贅詞、補標點、語句通順；**不改原意**）再注入。
-- Settings 增開關 + AI 供應商 / 模型 / 金鑰 + 風格（輕度修飾 / 完整潤稿 / 自訂 prompt）。
-- 與 B 共用 provider 設定基礎，但**潤稿可用任何 LLM（含 Claude / OpenAI / Gemini / 本地 LLM）**——與 STT 不同（STT 無 Claude）。
-- 實作為 STT pipeline 後、注入前的可選 step（與繁簡轉換、贅詞清理同屬轉錄後處理鏈）。**預設關閉**（增加延遲與成本，使用者自選）。
+### C. AI 潤稿（Settings 內，轉錄後處理）✅（已完成 2026-05-19）
+
+- [x] 轉錄完成後，可選將文字交雲端 LLM 潤飾（清理口語贅詞、補標點、語句通順；**不改原意**）再注入。
+- [x] Settings「AI 潤稿」分頁：開關 + AI 供應商（groq/openai/gemini/claude）/ 模型 / 金鑰 + 風格（輕度 / 完整 / 自訂 prompt）。
+- [x] Claude 使用獨立金鑰；groq/openai/gemini 沿用同家 STT 金鑰（除非設定覆蓋金鑰）。
+- [x] 任何失敗（無金鑰/逾時/例外）→ best-effort，使用原始文字，不中斷語音輸入流程；**預設關閉**。
+- [x] `polish_text` MCP 工具：headless，host 決定是否呼叫，不受桌面 `polishEnabled` 開關影響。
+- [ ] **本地 LLM 潤稿**（on-device，whisper.cpp 風格本地推論）— 延後，不在本版範圍。
 
 ## Phase 2 — 跨平台與 BrainMesh 整合（後續，非本次）
 

@@ -17,10 +17,14 @@ export interface PipelineDeps {
   /** Resolved per-call from the live setting (no sidecar restart needed).
    *  'twp' → force Traditional(TW), 'cn' → force Simplified. */
   getZhMode?: () => 'twp' | 'cn';
+  /** Resolved per-call (live). Returns possibly-polished text; total (any
+   *  failure returns the input). styleOverride is used by the polish_text MCP
+   *  tool. Default: identity (polish disabled). */
+  polish?: (text: string, styleOverride?: 'light' | 'full' | 'custom') => Promise<string>;
 }
 export interface AudioPayload { audioBase64: string; mimeType: string; language?: string; }
 
-export function createPipeline({ session, stt, injector, noKey = false, getZhMode = () => 'twp' }: PipelineDeps) {
+export function createPipeline({ session, stt, injector, noKey = false, getZhMode = () => 'twp', polish = async (t: string) => t }: PipelineDeps) {
   let resetTimer: ReturnType<typeof setTimeout> | null = null;
   function fail() {
     session.send('FAIL');
@@ -62,7 +66,9 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
         const raw = await stt.transcribe({
           audio: Buffer.from(p.audioBase64, 'base64'), mimeType: p.mimeType, language: p.language,
         });
-        const text = convertZh(raw.text, getZhMode());
+        const zh = convertZh(raw.text, getZhMode());
+        let text = zh;
+        try { text = await polish(zh); } catch { /* polish best-effort (design E6): fall back to zh */ }
         session.send('TRANSCRIBED'); // -> injecting
         const r = await injector.inject(text);
         if (!r.ok) { fail(); return { text }; }
@@ -87,5 +93,8 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
       return { ...raw, text: convertZh(raw.text, getZhMode()) };
     },
     async injectText(text: string) { return injector.inject(text); },
+    async polishOnly(text: string, style?: 'light' | 'full' | 'custom') {
+      return polish(text, style);
+    },
   };
 }

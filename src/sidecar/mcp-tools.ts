@@ -22,4 +22,12 @@ export function registerTools(server: McpServer, p: Pipeline) {
   server.tool('submit_audio', audioShape, async (a) => ok(await p.submitAudio(a)));
   server.tool('transcribe_clip', audioShape, async (a) => ok(await p.transcribeClip(a)));
   server.tool('inject_text', { text: z.string() }, async (a) => ok(await p.injectText(a.text)));
+  server.tool(
+    'polish_text',
+    { text: z.string(), style: z.enum(['light', 'full', 'custom']).optional() },
+    // The act of calling polish_text IS the opt-in: always pass a defined style so
+    // the closure's `styleOverride === undefined && !polishEnabled` guard is never
+    // hit via the MCP tool path. Default style = 'light'. (SPEC FR-MCP / design E8)
+    async (a) => ok({ text: await p.polishOnly(a.text, a.style ?? 'light') }),
+  );
 }

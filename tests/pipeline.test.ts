@@ -207,4 +207,62 @@ describe('pipeline', () => {
     const p2 = mk();
     expect(await p2.transcribeClip({ audioBase64: 'AA==', mimeType: 'audio/webm' })).toEqual({ text: GUIDANCE_MSG });
   });
+
+  it('submitAudio: polish enabled transforms text before inject', async () => {
+    const states: string[] = [];
+    const session = createVoiceSession({ onState: (s) => states.push(s) });
+    const stt = { transcribe: async () => ({ text: 'um hello' }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector,
+      polish: async (t: string) => t.replace('um ', '') });
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(injected).toEqual(['hello']);
+  });
+  it('submitAudio: default polish (none) leaves text unchanged', async () => {
+    const { p, injected } = setup('plain');
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(injected).toEqual(['plain']);
+  });
+  it('transcribeClip is never polished', async () => {
+    const stt = { transcribe: async () => ({ text: 'um raw' }) };
+    const session = createVoiceSession({ onState: () => {} });
+    const injector = { inject: async () => ({ ok: true }) };
+    const p = createPipeline({ session, stt, injector,
+      polish: async () => 'SHOULD-NOT-BE-USED' });
+    const r = await p.transcribeClip({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(r.text).toBe('um raw');
+  });
+  it('polishOnly delegates to the injected polish closure with style', async () => {
+    let seen: { t: string; style: string | undefined } | undefined;
+    const p = createPipeline({
+      session: createVoiceSession({ onState: () => {} }),
+      stt: { transcribe: async () => ({ text: '' }) },
+      injector: { inject: async () => ({ ok: true }) },
+      polish: async (t: string, style?: string) => { seen = { t, style }; return `P:${t}`; },
+    });
+    // no-style path (style === undefined)
+    expect(await p.polishOnly('hi')).toBe('P:hi');
+    // with-style path
+    expect(await p.polishOnly('hi', 'full')).toBe('P:hi');
+    expect(seen).toEqual({ t: 'hi', style: 'full' });
+  });
+
+  it('submitAudio: throwing polish falls back to zh, no error state', async () => {
+    const states: string[] = [];
+    const session = createVoiceSession({ onState: (s) => states.push(s) });
+    const stt = { transcribe: async () => ({ text: 'hello' }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector,
+      polish: async () => { throw new Error('boom'); } });
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(injected).toEqual(['hello']);
+    expect(states).toContain('idle');
+    expect(states).not.toContain('error');
+    expect(p.getState()).toBe('idle');
+  });
 });
