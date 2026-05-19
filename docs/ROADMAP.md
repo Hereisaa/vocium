@@ -115,7 +115,7 @@
 ### 跨平台與整合
 
 - [x] `MacInjector` 實作：`pbcopy` + `osascript` Cmd+V，base64 文字（CJK 安全），與 Windows 相同 `InjectResult` 合約，輔助使用拒絕時降級引導 — **macOS dev parity（`npm run dev`）done（2026-05-19）**。`NSMicrophoneUsageDescription` 已隨 `src-tauri/Info.plist` 出貨（Tauri v2 合併）。
-- 未來（當前範疇外）：`.app`/`.dmg` 打包、Apple 簽章與公證、`.icns`、macOS menubar 單色 template tray 圖示、將 Node 打包進 `.app` 使雙擊免 shell PATH。
+- 未來（當前範疇外）：Apple 簽章與公證（P2）、macOS menubar 單色 template tray 圖示。`.app`/`.dmg`+`.icns` 打包及 Bun 編譯 sidecar（P1）已完成。
 - [ ] BrainMesh 端：將 Vocium sidecar 註冊為可 spawn 的 MCP 工具，驗證 `transcribe_clip` / `inject_text`
 - [ ] STT 串流/分段以降低延遲；音訊改串流傳遞（取代 base64 一次性）
 - [ ] Groq 用量/費用估算顯示
@@ -131,10 +131,9 @@
 
 ## Phase 4 — 發佈
 
-- [ ] Node sidecar 封裝，免使用者裝 Node（受眾 3：下載即用）— **方向已定**：方案 **B（推薦）**＝把 sidecar 編成單一自帶執行檔（Node SEA / `bun build --compile`）並以 Tauri 原生 `externalBin` sidecar 隨附；那顆 binary 仍是同一個 MCP server，**保住 MCP 可重用紅線（受眾 2 不受影響）**；體積小於整包 Node、Tauri 一級支援。方案 **A（退路）**＝內嵌整包 Node runtime + 將 `dist/` 打包成 Tauri resource、改 `sidecar_entry()`/spawn 從 resource dir 解析（當 B 因 ESM/動態 import/特定套件單檔編譯卡關時切換）。最終 A/B 與簽署範圍待「打包可用化」專案 brainstorming 定案。
-- [ ] Tauri 打包（Windows `.msi`/`.nsis`；macOS `.app`/`.dmg` + `.icns` — 注入已 done 2026-05-19 不再受阻）；`tauri.conf` 補 macOS bundle target + `beforeBuildCommand: npm run build`
-- [ ] CI/CD：GitHub Actions matrix（windows/macos）`tauri build`，打 tag 自動掛 GitHub Release（讓「預編譯安裝檔」對受眾 3 真正成立）
-- [ ] 自動更新（可選）、簽章與 SmartScreen 處理
+- [x] P1：獨立可運行 App — Bun 編譯 sidecar via Tauri `externalBin`，std::process 解析（binary 優先 > node-dev 回退），macOS `.app`/`.dmg`+`.icns`，`beforeBuildCommand`。免系統 Node。**Done (2026-05-20)**。
+- [ ] P2（獨立）：程式簽署 / Apple 公證 / Windows SmartScreen + 首次啟動 UX 文件。
+- [ ] P3（獨立）：CI matrix 交叉建置、打 tag 自動 GitHub Release、Homebrew Cask / Scoop / winget manifest。
 - [ ] 個人自用優先，公開發佈為最後階段
 
 ## 風險與緩解
@@ -146,6 +145,6 @@
 | 全域快捷鍵被其他程式佔用 | 註冊失敗容錯 + Tray 提示，可改鍵 |
 | API 金鑰外洩 | 所有 provider 金鑰僅存本機 config，`.gitignore` 排除；缺金鑰注入引導訊息提示使用者設定（不回退 mock） |
 | STT 費用/網路不穩 | 可一鍵切 `mock`；可切換至其他 provider；錯誤走 error 狀態不崩潰 |
-| sidecar 需 Node runtime | 開發期假設已裝 Node；Phase 4 以 pkg 封裝二進位 |
+| sidecar 需 Node runtime | 開發期假設已裝 Node；打包版以 Bun 編譯 binary 隨附（FR-PKG-1），終端使用者免裝 Node |
 | Tauri/MCP SDK API 差異 | 鎖定主版本；MCP 以 in-memory client 整合測試把關 |
 | Rust toolchain 門檻 | 文件標明前置需求；BrainMesh 開發環境已具 Rust，一致 |

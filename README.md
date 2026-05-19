@@ -56,13 +56,16 @@ npm run build          # compile the TypeScript sidecar
 npm run dev            # build + launch the desktop app (tauri dev)
 ```
 
-For a local installable build:
+### Packaging
+
+`npm run package` builds a standalone installer — `.msi`/`.nsis` (Windows) or `.app`/`.dmg` (macOS) — that runs with **no Node.js on the end user's machine** (the sidecar is bundled as a compiled binary). Requires [Bun](https://bun.sh) installed (build-time only):
 
 ```bash
-npx tauri build --config app-tauri/src-tauri/tauri.conf.json
+npm install
+npm run package
 ```
 
-> The produced binary is unsigned; installer packaging/signing is a later‑phase item.
+Installers are written to `app-tauri/src-tauri/target/release/bundle/`. Unsigned (right-click → Open on macOS first launch); code signing is planned.
 
 ### Configure
 

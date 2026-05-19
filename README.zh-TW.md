@@ -56,13 +56,16 @@ npm run build          # 編譯 TypeScript sidecar
 npm run dev            # 編譯並啟動桌面程式（tauri dev）
 ```
 
-本機打包：
+### 打包
+
+`npm run package` 產生獨立安裝檔 — Windows `.msi`/`.nsis` 或 macOS `.app`/`.dmg` — 終端使用者機器**免裝 Node.js**（sidecar 以編譯後 binary 隨附）。需先安裝 [Bun](https://bun.sh)（僅建置期需要）：
 
 ```bash
-npx tauri build --config app-tauri/src-tauri/tauri.conf.json
+npm install
+npm run package
 ```
 
-> 產物未簽章；安裝程式打包／簽章列為後期項目。
+安裝檔產生於 `app-tauri/src-tauri/target/release/bundle/`。未簽署（macOS 首次啟動右鍵 → 打開）；程式簽署為後續規劃。
 
 ### 設定
 
