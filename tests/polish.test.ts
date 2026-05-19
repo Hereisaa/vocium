@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STYLE_PROMPTS, SAFETY_SUFFIX, buildSystemPrompt } from '../src/core/polish/prompts.js';
+import { STYLE_PROMPTS, SAFETY_SUFFIX, buildSystemPrompt, ZH_SCRIPT_PROMPTS } from '../src/core/polish/prompts.js';
 import { polishText } from '../src/core/polish/polish.js';
 
 describe('polish prompts', () => {
@@ -17,6 +17,26 @@ describe('polish prompts', () => {
   });
   it('buildSystemPrompt(custom, empty) falls back to light preset', () => {
     expect(buildSystemPrompt('custom', '   ')).toBe(`${STYLE_PROMPTS.light}\n${SAFETY_SUFFIX}`);
+  });
+  it('ZH_SCRIPT_PROMPTS: twp/cn are distinct, mention Traditional/Simplified, and forbid translating non-Chinese', () => {
+    expect(ZH_SCRIPT_PROMPTS.twp).not.toBe(ZH_SCRIPT_PROMPTS.cn);
+    expect(ZH_SCRIPT_PROMPTS.twp).toMatch(/Traditional/i);
+    expect(ZH_SCRIPT_PROMPTS.cn).toMatch(/Simplified/i);
+    // must not override SAFETY_SUFFIX "preserve original language": never force Chinese on non-Chinese
+    expect(ZH_SCRIPT_PROMPTS.twp).toMatch(/non-?Chinese/i);
+    expect(ZH_SCRIPT_PROMPTS.cn).toMatch(/non-?Chinese/i);
+  });
+  it('buildSystemPrompt without zhScript is unchanged (backward compatible)', () => {
+    expect(buildSystemPrompt('light', '')).toBe(`${STYLE_PROMPTS.light}\n${SAFETY_SUFFIX}`);
+    expect(buildSystemPrompt('full', '')).toBe(`${STYLE_PROMPTS.full}\n${SAFETY_SUFFIX}`);
+  });
+  it('buildSystemPrompt with zhScript appends the script directive before SAFETY_SUFFIX', () => {
+    expect(buildSystemPrompt('light', '', 'twp')).toBe(
+      `${STYLE_PROMPTS.light}\n${ZH_SCRIPT_PROMPTS.twp}\n${SAFETY_SUFFIX}`);
+    expect(buildSystemPrompt('full', '', 'cn')).toBe(
+      `${STYLE_PROMPTS.full}\n${ZH_SCRIPT_PROMPTS.cn}\n${SAFETY_SUFFIX}`);
+    expect(buildSystemPrompt('custom', 'make it formal', 'twp')).toBe(
+      `make it formal\n${ZH_SCRIPT_PROMPTS.twp}\n${SAFETY_SUFFIX}`);
   });
 });
 
@@ -80,5 +100,33 @@ describe('polishText (total)', () => {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) } as any; };
     await polishText('x', { ...resolved, provider: 'openai' }, { fetch: fetch as any });
     expect(url).toContain('openai.com');
+  });
+  it('zhScript twp: system prompt carries the Traditional directive (groq)', async () => {
+    let sys = '';
+    const fetch = async (_u: string, init: any) => {
+      sys = JSON.parse(init.body).messages[0].content;
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) } as any;
+    };
+    await polishText('文字', { ...resolved, zhScript: 'twp' as const }, { fetch: fetch as any });
+    expect(sys).toContain(ZH_SCRIPT_PROMPTS.twp);
+  });
+  it('zhScript cn: gemini systemInstruction carries the Simplified directive', async () => {
+    let sys = '';
+    const fetch = async (_u: string, init: any) => {
+      sys = JSON.parse(init.body).systemInstruction.parts[0].text;
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'g' }] } }] }) } as any;
+    };
+    await polishText('文字', { ...resolved, provider: 'gemini' as const, model: 'gemini-1.5-flash', zhScript: 'cn' as const }, { fetch: fetch as any });
+    expect(sys).toContain(ZH_SCRIPT_PROMPTS.cn);
+  });
+  it('no zhScript: system prompt has no zh directive (claude system field)', async () => {
+    let sys = '';
+    const fetch = async (_u: string, init: any) => {
+      sys = JSON.parse(init.body).system;
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'c' }] }) } as any;
+    };
+    await polishText('文字', { ...resolved, provider: 'claude' as const, model: 'claude-3-5-haiku-latest' }, { fetch: fetch as any });
+    expect(sys).not.toContain(ZH_SCRIPT_PROMPTS.twp);
+    expect(sys).not.toContain(ZH_SCRIPT_PROMPTS.cn);
   });
 });

@@ -161,7 +161,7 @@ MCP 呼叫端不會傳入也看不到金鑰。Vocium 從「執行 sidecar 那台
 
 ## Roadmap
 
-後處理 pipeline：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選）。
+後處理 pipeline：**STT → AI 潤稿 → 繁簡轉換 → 注入**（各步可選）。
 
 - **中文輸出（繁／簡）** ✅
 - **多家雲端 STT** — Groq／OpenAI／Gemini，BYOK、PTT、VAD ✅

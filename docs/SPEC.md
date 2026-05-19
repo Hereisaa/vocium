@@ -40,7 +40,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 
 ### 1.3 已完成與後續規劃
 
-詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。A/B/B2/B3/C 皆已實作；本地 LLM 潤稿（on-device）延後。
+詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → AI 潤稿 → 繁簡轉換 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。A/B/B2/B3/C 皆已實作；本地 LLM 潤稿（on-device）延後。
 
 > FR 級權威設計（D1–D8）見
 > `docs/superpowers/specs/2026-05-18-vocium-multi-stt-ptt-vad-design.md`（gitignored，內部文件）。
@@ -162,7 +162,7 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 
 ### 3.10 AI 潤稿（FR-POL）
 
-- FR-POL-1：AI 潤稿為 `submitAudio` pipeline 的**可選步驟**，執行順序：STT → 繁簡轉換 → **AI 潤稿** → 注入。任何失敗（無金鑰、逾時、例外）→ best-effort，直接使用前一步輸出的原始文字，不進 error 狀態，不中斷語音輸入流程。
+- FR-POL-1：AI 潤稿為 `submitAudio` pipeline 的**可選步驟**，執行順序：**STT → AI 潤稿 → 繁簡轉換 → 注入**。潤稿在 STT 之後、繁簡轉換之前執行（原始 STT 文字輸入潤稿模組）；繁簡轉換為最後的確定性正規化（對潤稿輸出做轉換），確保無論潤稿 LLM 輸出何種字體，最終注入的文字都符合使用者的繁／簡設定。`transcribe_clip` 不套用潤稿。任何失敗（無金鑰、逾時、例外）→ best-effort（Totality，E6），直接使用 STT 原始文字（繁簡轉換仍套用），不進 error 狀態，不中斷語音輸入流程。潤稿 system prompt 含 zh-script 指令（`twp`→繁體／`cn`→簡體），僅偏置中文輸出字體作為防禦縱深，不翻譯非中文內容為中文（與「保留原語言」規則疊加）。
 - FR-POL-2：provider / 金鑰解析：支援 `groq` / `openai` / `gemini` / `claude` 四家；`claude` 使用獨立的 `claudeApiKey`；`groq` / `openai` / `gemini` 潤稿若未設定覆蓋金鑰，則沿用同家 STT 金鑰（`groqApiKey`/`openaiApiKey`/`geminiApiKey`）。
 - FR-POL-3：潤稿風格：`light`（輕度修飾，預設）、`full`（完整潤稿）、`custom`（使用者自訂 prompt；留空時自動回退為 `light`）。
 - FR-POL-4：`polishEnabled` 預設 `false`；使用者必須主動於 Settings「AI 潤稿」分頁開啟。
@@ -232,7 +232,7 @@ projects/vocium/
 
 ## 6. 驗收標準（MVP Done Definition）
 
-1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（Groq + OpenAI + Gemini + Mock，注入 fetch）/ Injector 介面 / MCP 整合 / zh-convert / VAD trim / describe-error / AI polish）。目前：**vitest 137/137**、tsc clean、cargo 0/0。
+1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（Groq + OpenAI + Gemini + Mock，注入 fetch）/ Injector 介面 / MCP 整合 / zh-convert / VAD trim / describe-error / AI polish）。目前：**vitest 146/146**、tsc clean、cargo 0/0。
 2. sidecar 可獨立啟動為 MCP server，`get_state` 回 `idle`。
 3. Tauri 啟動後桌面頂部置中出現懸浮 ICON。
 4. 點擊 ICON 或按 `Ctrl+Shift+Space`：ICON 進入 listening 動畫。

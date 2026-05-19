@@ -15,6 +15,7 @@ export interface ResolvedPolish {
   style: PolishStyle;
   customPrompt: string;
   apiKey: string;
+  zhScript?: 'twp' | 'cn';
 }
 
 interface KeySlice {
@@ -47,7 +48,7 @@ export async function polishText(
   deps: PolishDeps,
 ): Promise<string> {
   if (!text.trim() || !r.apiKey.trim()) return text;
-  const system = buildSystemPrompt(r.style, r.customPrompt);
+  const system = buildSystemPrompt(r.style, r.customPrompt, r.zhScript);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), POLISH_TIMEOUT_MS);
   try {

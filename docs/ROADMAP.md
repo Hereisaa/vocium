@@ -49,10 +49,10 @@
 ## 下一階段 — Settings 三大功能（A/B/B2/B3 已完成；C 為下一步）
 
 > 三項皆**做在 Settings 視窗內**，且 ②③ 同屬「轉錄後處理鏈」。
-> 既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關）。
+> 既定 pipeline 順序：**STT → AI 潤稿 → 繁簡轉換 → 注入**（各步可選、可關）。
 > 皆不動狀態機 / MCP / sidecar / Injector。
 >
-> **A 已完成（2026-05-17）；B/B2/B3 已完成（2026-05-18）；C 已完成（2026-05-19，vitest 137/137，tsc clean，cargo 0/0）。本地 LLM 潤稿延後。**
+> **A 已完成（2026-05-17）；B/B2/B3 已完成（2026-05-18）；C 已完成（2026-05-19，vitest 146/146，tsc clean，cargo 0/0）。本地 LLM 潤稿延後。**
 
 ### A. 中文輸出（繁／簡）（Settings 內）
 - [x] Whisper 中文時繁時簡 → Settings 二段式切換**繁體（台灣）/ 簡體**（config `zhConvert`，預設 twp；非開關非三選項）。 （2026-05-17 完成）

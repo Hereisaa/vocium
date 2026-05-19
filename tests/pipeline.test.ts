@@ -265,4 +265,50 @@ describe('pipeline', () => {
     expect(states).not.toContain('error');
     expect(p.getState()).toBe('idle');
   });
+
+  it('reorder: convertZh runs AFTER polish (Simplified polish + twp → injected Traditional)', async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '今天天氣' }) }; // raw STT text (Traditional)
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    // polish returns Simplified — must be normalized back to twp by convertZh AFTER polish
+    const p = createPipeline({ session, stt, injector,
+      getZhMode: () => 'twp',
+      polish: async (_t: string) => '今天天气很好' });
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(injected).toHaveLength(1);
+    // convertZh ran LAST: the Simplified '气' from polish must be Traditional '氣' on inject
+    expect(injected[0]).toContain('氣');
+    expect(injected[0]).not.toContain('气');
+  });
+
+  it('reorder: polish receives RAW stt text, not pre-converted', async () => {
+    let seen = '';
+    const session = createVoiceSession({ onState: () => {} });
+    const stt = { transcribe: async () => ({ text: '简体输入' }) }; // raw simplified
+    const injector = { inject: async () => ({ ok: true }) };
+    const p = createPipeline({ session, stt, injector,
+      getZhMode: () => 'twp',
+      polish: async (t: string) => { seen = t; return t; } });
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    expect(seen).toBe('简体输入'); // polish got RAW, NOT convertZh'd first
+  });
+
+  it('reorder: throwing polish still converts the raw text (totality + zh preserved)', async () => {
+    const states: string[] = [];
+    const session = createVoiceSession({ onState: (s) => states.push(s) });
+    const stt = { transcribe: async () => ({ text: '简体' }) };
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    const p = createPipeline({ session, stt, injector,
+      getZhMode: () => 'twp',
+      polish: async () => { throw new Error('boom'); } });
+    p.toggle();
+    await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
+    // polish threw → fall back to RAW, but convertZh STILL runs last → Traditional
+    expect(injected[0]).toBe('簡體');
+    expect(states).not.toContain('error'); // pipeline treats polish failure as non-error
+  });
 });
