@@ -19,6 +19,13 @@ export interface VociumConfig {
   zhConvert: 'twp' | 'cn';
   inputMode: 'toggle' | 'ptt';
   vadTrim: boolean;
+  polishEnabled: boolean;
+  polishProvider: 'groq' | 'openai' | 'gemini' | 'claude';
+  polishModel: string;
+  polishStyle: 'light' | 'full' | 'custom';
+  polishCustomPrompt: string;
+  polishApiKey: string;
+  claudeApiKey: string;
 }
 
 export const DEFAULTS: VociumConfig = {
@@ -39,11 +46,27 @@ export const DEFAULTS: VociumConfig = {
   zhConvert: 'twp',
   inputMode: 'toggle',
   vadTrim: false,
+  polishEnabled: false,
+  polishProvider: 'groq',
+  polishModel: 'llama-3.3-70b-versatile',
+  polishStyle: 'light',
+  polishCustomPrompt: '',
+  polishApiKey: '',
+  claudeApiKey: '',
 };
 
 const VALID_PROVIDERS: ReadonlySet<string> = new Set(['groq', 'openai', 'gemini', 'mock']);
 function normalizeProvider(v: unknown): SttProvider {
   return typeof v === 'string' && VALID_PROVIDERS.has(v) ? (v as SttProvider) : 'groq';
+}
+
+const POLISH_PROVIDERS: ReadonlySet<string> = new Set(['groq', 'openai', 'gemini', 'claude']);
+function normalizePolishProvider(v: unknown): 'groq' | 'openai' | 'gemini' | 'claude' {
+  return typeof v === 'string' && POLISH_PROVIDERS.has(v)
+    ? (v as 'groq' | 'openai' | 'gemini' | 'claude') : 'groq';
+}
+function normalizePolishStyle(v: unknown): 'light' | 'full' | 'custom' {
+  return v === 'full' || v === 'custom' ? v : 'light';
 }
 
 interface FsLike {
@@ -70,6 +93,9 @@ export function loadConfig(fs: FsLike, path: PathLike, dir: string): VociumConfi
       merged.sttProvider = normalizeProvider(merged.sttProvider);
       if (merged.inputMode !== 'ptt') merged.inputMode = 'toggle';
       merged.vadTrim = merged.vadTrim === true;
+      merged.polishProvider = normalizePolishProvider(merged.polishProvider);
+      merged.polishStyle = normalizePolishStyle(merged.polishStyle);
+      merged.polishEnabled = merged.polishEnabled === true;
       return merged;
     } catch {
       // keep corrupt file intact to avoid destroying a recoverable groqApiKey
@@ -92,5 +118,52 @@ export function readZhMode(fs: FsLike, path: PathLike, dir: string): 'twp' | 'cn
       ? parsed.zhConvert : DEFAULTS.zhConvert;
   } catch {
     return DEFAULTS.zhConvert;
+  }
+}
+
+export interface PolishConfig {
+  polishEnabled: boolean;
+  polishProvider: 'groq' | 'openai' | 'gemini' | 'claude';
+  polishModel: string;
+  polishStyle: 'light' | 'full' | 'custom';
+  polishCustomPrompt: string;
+  polishApiKey: string;
+  claudeApiKey: string;
+  groqApiKey: string;
+  openaiApiKey: string;
+  geminiApiKey: string;
+}
+
+/** Read ONLY the polish-relevant fields, live. Never writes, never throws.
+ *  Missing/corrupt/invalid → safe defaults (mirrors readZhMode). */
+export function readPolishConfig(fs: FsLike, path: PathLike, dir: string): PolishConfig {
+  const d: PolishConfig = {
+    polishEnabled: DEFAULTS.polishEnabled,
+    polishProvider: DEFAULTS.polishProvider,
+    polishModel: DEFAULTS.polishModel,
+    polishStyle: DEFAULTS.polishStyle,
+    polishCustomPrompt: DEFAULTS.polishCustomPrompt,
+    polishApiKey: '', claudeApiKey: '',
+    groqApiKey: '', openaiApiKey: '', geminiApiKey: '',
+  };
+  try {
+    const file = path.join(dir, FILE);
+    if (!fs.existsSync(file)) return d;
+    const p = JSON.parse(fs.readFileSync(file, 'utf8')) ?? {};
+    const str = (k: string) => (typeof p[k] === 'string' ? p[k] : '');
+    return {
+      polishEnabled: p.polishEnabled === true,
+      polishProvider: normalizePolishProvider(p.polishProvider),
+      polishModel: str('polishModel') || DEFAULTS.polishModel,
+      polishStyle: normalizePolishStyle(p.polishStyle),
+      polishCustomPrompt: str('polishCustomPrompt'),
+      polishApiKey: str('polishApiKey'),
+      claudeApiKey: str('claudeApiKey'),
+      groqApiKey: str('groqApiKey'),
+      openaiApiKey: str('openaiApiKey'),
+      geminiApiKey: str('geminiApiKey'),
+    };
+  } catch {
+    return d;
   }
 }

@@ -22,6 +22,17 @@ const modelCustom = document.getElementById('modelCustom');
 const baseUrlField = document.getElementById('baseUrlField');
 const baseUrlInput = document.getElementById('baseUrlInput');
 
+const polishProvSel     = document.getElementById('polishProvSel');
+const polishCloudFields = document.getElementById('polishCloudFields');
+const polishLocalStub   = document.getElementById('polishLocalStub');
+const polishKeyLabel    = document.getElementById('polishKeyLabel');
+const polishKeyInput    = document.getElementById('polishKeyInput');
+const polishKeyToggle   = document.getElementById('polishKeyToggle');
+const polishKeyClear    = document.getElementById('polishKeyClear');
+const polishModelSel    = document.getElementById('polishModelSel');
+const polishModelCustom = document.getElementById('polishModelCustom');
+const polishCustomPrompt = document.getElementById('polishCustomPrompt');
+
 // ── Model lists (mirrors core/stt/models.ts — duplication is intentional) ──
 const STT_MODELS = {
   groq:   ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'],
@@ -29,6 +40,14 @@ const STT_MODELS = {
   gemini: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
 };
 const CUSTOM = '__custom__';
+
+// ── Polish model lists (mirrors core/stt/models.ts POLISH_MODELS — duplication is intentional) ──
+const POLISH_MODELS = {
+  groq:   ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+  openai: ['gpt-4o-mini', 'gpt-4o'],
+  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro'],
+  claude: ['claude-3-5-haiku-latest', 'claude-3-5-sonnet-latest'],
+};
 
 // ── Cached config (populated by refreshFromConfig) ──────────────────────────
 let cachedCfg = null;       // full get_config snapshot
@@ -138,6 +157,180 @@ function renderProvider(provider) {
 
 provSel.addEventListener('change', () => renderProvider(provSel.value));
 
+// ── Polish provider / model wiring ───────────────────────────────────────────
+const POLISH_PROVIDER_LABELS = {
+  groq:   'Groq API Key',
+  openai: 'OpenAI API Key',
+  gemini: 'Gemini API Key',
+  claude: 'Claude API Key',
+};
+
+/** Populate #polishModelSel options for a given provider. */
+function fillPolishModels(provider, current) {
+  const list = POLISH_MODELS[provider] || [];
+  polishModelSel.innerHTML = '';
+  list.forEach((id) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id;
+    polishModelSel.appendChild(opt);
+  });
+  // Add custom option
+  const customOpt = document.createElement('option');
+  customOpt.value = CUSTOM;
+  customOpt.textContent = '自訂…';
+  polishModelSel.appendChild(customOpt);
+
+  const inList = current && list.includes(current);
+  if (current && !inList) {
+    polishModelSel.value = CUSTOM;
+    polishModelCustom.value = current;
+    polishModelCustom.style.display = '';
+  } else {
+    polishModelSel.value = current || list[0] || '';
+    polishModelCustom.value = '';
+    polishModelCustom.style.display = 'none';
+  }
+}
+
+polishModelSel.addEventListener('change', () => {
+  if (polishModelSel.value === CUSTOM) {
+    polishModelCustom.style.display = '';
+    polishModelCustom.focus();
+  } else {
+    polishModelCustom.style.display = 'none';
+  }
+});
+
+// Single source of truth for the "no key set" placeholder text (shared by STT and polish key fields).
+const KEY_PLACEHOLDER_UNSET = '貼上金鑰後按儲存';
+
+// Last polish key snapshot for placeholder restore without round-trip.
+let lastPolishKeySet  = false;
+let lastPolishKeyMask = '';
+// Desired empty-state placeholder for the current polish provider (Fix 1).
+let polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+
+function applyPolishKeyState(keySet, keyMask) {
+  lastPolishKeySet  = !!keySet;
+  lastPolishKeyMask = keyMask || '';
+  polishKeyClear.hidden = !lastPolishKeySet;
+  resetPolishClearConfirm();
+  if (polishKeyInput.value) return; // user is typing — leave it alone
+  polishKeyInput.placeholder = lastPolishKeySet
+    ? (lastPolishKeyMask || '••••••••')
+    : polishSharedPlaceholder;
+}
+
+function updatePolishToggleVisibility() {
+  if (polishKeyInput.value) {
+    polishKeyToggle.style.display = '';
+  } else {
+    polishKeyToggle.style.display = 'none';
+    polishKeyInput.type = 'password';
+    polishKeyToggle.innerHTML = EYE_OPEN_SVG;
+  }
+}
+
+/**
+ * Render the per-provider fields for the polish tab from the cached config snapshot.
+ * If provider === 'local', hide polishCloudFields and show stub.
+ */
+function renderPolishProvider(provider) {
+  if (provider === 'local') {
+    polishCloudFields.style.display = 'none';
+    polishLocalStub.style.display = '';
+    return;
+  }
+  polishCloudFields.style.display = '';
+  polishLocalStub.style.display = 'none';
+
+  // Key label
+  polishKeyLabel.textContent = POLISH_PROVIDER_LABELS[provider] || `${provider} API Key`;
+
+  // Apply key state + fill models from cached config
+  if (cachedCfg && cachedCfg.polish) {
+    const p = cachedCfg.polish;
+    if (provider === 'claude') {
+      // claude always has its own key slot — use normal unset placeholder
+      polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+      applyPolishKeyState(p.hasClaudeKey, p.claudeKeyMask);
+    } else {
+      // groq / openai / gemini — show override key state; if no override but STT key
+      // for same provider is available, surface a "will reuse" placeholder.
+      if (p.hasPolishOverride) {
+        // has a dedicated polish key — use normal unset placeholder for empty-state restores
+        polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+        applyPolishKeyState(true, p.polishKeyMask);
+      } else {
+        const sharedAvail = p.sharedKeyAvailable && p.sharedKeyAvailable[provider];
+        // Fix 4: sharedLabel only needed when sharedAvail
+        polishSharedPlaceholder = sharedAvail
+          ? `沿用語音轉文字的 ${POLISH_PROVIDER_LABELS[provider].replace(' API Key', '')} 金鑰（留空＝沿用）`
+          : KEY_PLACEHOLDER_UNSET;
+        applyPolishKeyState(false, '');
+      }
+    }
+    fillPolishModels(provider, p.model || '');
+  } else {
+    polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+    applyPolishKeyState(false, '');
+    fillPolishModels(provider, '');
+  }
+}
+
+polishProvSel.addEventListener('change', () => renderPolishProvider(polishProvSel.value));
+
+// ── Polish style seg custom prompt visibility ────────────────────────────────
+// (wired after polishStyleSeg is created, below in seg section)
+
+// ── Polish key helpers ────────────────────────────────────────────────────────
+// Two-step confirm state for polish "✕ 清除金鑰" action.
+let polishClearConfirm = false;
+let polishClearConfirmTimer = null;
+
+function resetPolishClearConfirm() {
+  polishClearConfirm = false;
+  if (polishClearConfirmTimer) { clearTimeout(polishClearConfirmTimer); polishClearConfirmTimer = null; }
+  if (!polishKeyClear.hidden) polishKeyClear.textContent = '✕ 清除金鑰';
+}
+
+polishKeyClear.addEventListener('click', () => {
+  if (polishKeyClear.hidden) return;
+  if (polishProvSel.value === 'local') return;
+  if (!polishClearConfirm) {
+    polishClearConfirm = true;
+    polishKeyClear.textContent = '✕ 再按一次確認清除';
+    if (polishClearConfirmTimer) clearTimeout(polishClearConfirmTimer);
+    polishClearConfirmTimer = setTimeout(resetPolishClearConfirm, 3000);
+    return;
+  }
+  // Second click — actually clear
+  resetPolishClearConfirm();
+  const which = polishProvSel.value === 'claude' ? 'claude' : 'polish';
+  invoke('clear_polish_key', { which })
+    .then(() => {
+      polishKeyInput.value = '';
+      updatePolishToggleVisibility();
+      return refreshFromConfig();
+    })
+    .catch((reason) => {
+      console.error('[settings] clear_polish_key failed:', reason);
+    });
+});
+
+polishKeyToggle.addEventListener('click', () => {
+  if (!polishKeyInput.value) return;
+  const reveal = polishKeyInput.type === 'password';
+  polishKeyInput.type = reveal ? 'text' : 'password';
+  polishKeyToggle.innerHTML = reveal ? EYE_OFF_SVG : EYE_OPEN_SVG;
+});
+
+polishKeyInput.addEventListener('input', () => {
+  if (!polishKeyInput.value) applyPolishKeyState(lastPolishKeySet, lastPolishKeyMask);
+  updatePolishToggleVisibility();
+});
+
 // ── Segmented controls ────────────────────────────────────────────────────────
 /**
  * Generic seg-control wirer. Returns { get(), set(v) }.
@@ -187,6 +380,27 @@ function makeSeg(containerEl, attrKey) {
 const imSeg  = makeSeg(document.getElementById('imSeg'),  'im');
 // VAD seg (#vadSeg, data-vad)
 const vadSeg = makeSeg(document.getElementById('vadSeg'), 'vad');
+// Polish enabled seg (#polishEnabledSeg, data-pen)
+const polishEnabledSeg = makeSeg(document.getElementById('polishEnabledSeg'), 'pen');
+// Polish style seg (#polishStyleSeg, data-pstyle)
+const polishStyleSeg   = makeSeg(document.getElementById('polishStyleSeg'),   'pstyle');
+
+// Wire polishStyleSeg change: show/hide custom prompt textarea (mirrors STT modelCustom toggle).
+// makeSeg exposes only get()/set() — no onChange hook — so per-opt listeners are the established
+// idiom (same pattern used throughout this file). keydown gets e.preventDefault() to match
+// makeSeg's own keydown handler and prevent Space from scrolling the pane.
+document.getElementById('polishStyleSeg').querySelectorAll('.seg-opt').forEach((o) => {
+  o.addEventListener('click', () => {
+    polishCustomPrompt.style.display = o.dataset.pstyle === 'custom' ? '' : 'none';
+  });
+  o.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      polishCustomPrompt.style.display = o.dataset.pstyle === 'custom' ? '' : 'none';
+      o.focus();
+    }
+  });
+});
 
 // ── zh seg (preserve existing behavior, refactored minimally to align style) ─
 const zhSeg  = document.getElementById('zhSeg');
@@ -221,7 +435,6 @@ zhOpts.forEach((o) => {
 });
 
 // ── Key field helpers ─────────────────────────────────────────────────────────
-const KEY_PLACEHOLDER_UNSET = '貼上金鑰後按儲存';
 const EYE_OPEN_SVG =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF_SVG =
@@ -389,8 +602,22 @@ async function refreshFromConfig() {
     currentZh = (cfg && cfg.zhConvert === 'cn') ? 'cn' : 'twp';
     pendingZh  = currentZh;
     renderZh();
+
+    // polish
+    if (cfg && cfg.polish) {
+      const p = cfg.polish;
+      polishEnabledSeg.set(p.enabled ? 'on' : 'off');
+      // provider: never set to 'local' (local is never persisted)
+      const prov = (p.provider && p.provider !== 'local') ? p.provider : 'groq';
+      polishProvSel.value = prov;
+      renderPolishProvider(prov);
+      polishStyleSeg.set(p.style || 'light');
+      polishCustomPrompt.value = p.customPrompt || '';
+      polishCustomPrompt.style.display = (p.style === 'custom') ? '' : 'none';
+    }
   } catch (e) { console.error('[settings] get_config failed:', e); }
   updateToggleVisibility();
+  updatePolishToggleVisibility();
   renderCombo(pendingSpec || currentSpec);
 }
 
@@ -496,6 +723,30 @@ saveBtn.addEventListener('click', async () => {
     }
   }
 
+  // 6. polish: skip entirely if provider is 'local' (never persist local)
+  if (polishProvSel.value !== 'local') {
+    const pStyle = polishStyleSeg.get();
+    const pModel = polishModelSel.value === CUSTOM
+      ? polishModelCustom.value.trim()
+      : polishModelSel.value;
+    const pSel = polishProvSel.value;
+    try {
+      await invoke('save_polish', {
+        enabled: polishEnabledSeg.get() === 'on',
+        provider: pSel,
+        model: pModel,
+        style: pStyle,
+        customPrompt: polishCustomPrompt.value,
+        key: pSel === 'claude' ? '' : polishKeyInput.value,
+        claudeKey: pSel === 'claude' ? polishKeyInput.value : '',
+      });
+      polishKeyInput.value = '';
+    } catch (reason) {
+      showErr(`AI 潤稿設定套用失敗：${reason}`);
+      return;
+    }
+  }
+
   // Success feedback animation on Save button
   // (dedup: a rapid 2nd save must not capture the '✓ 已套用' transient as label)
   if (saveBtn._okTimer) { clearTimeout(saveBtn._okTimer); }
@@ -520,6 +771,8 @@ function dismiss() {
   renderCombo(currentSpec);
   keyInput.value = '';
   resetClearConfirm();
+  polishKeyInput.value = '';
+  resetPolishClearConfirm();
   keyErr.style.display = 'none';
   pendingZh = currentZh;
   renderZh();

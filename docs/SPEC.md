@@ -1,6 +1,6 @@
 # Vocium — 桌面語音輸入工具 SPEC
 
-> 版本：v0.2　日期：2026-05-18　狀態：§A 繁簡轉換 + §B 多雲端 STT + PTT + VAD 已實作；§C AI 潤稿 為下一階段
+> 版本：v0.3　日期：2026-05-19　狀態：§A 繁簡轉換 + §B 多雲端 STT + PTT + VAD + §C AI 潤稿 已實作
 
 ## 1. 產品概述
 
@@ -36,11 +36,11 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - 帳號系統、雲端同步、使用統計上報。
 - 安裝程式打包與簽章、sidecar 二進位封裝（ROADMAP 後期）。
 - **本地 STT 實際實作**（whisper.cpp / faster-whisper / LocalAI / Ollama — stub 及下拉選項已就位，但實際推論延後；見 §1.3）。
-- **AI 潤稿**（§C — 轉錄後處理鏈最後一步，Settings IA 已預留 tab，實作為下一階段；見 §1.3）。
+- **AI 潤稿 §C**：已實作（2026-05-19），見 §1.3；本地 LLM 潤稿延後。
 
 ### 1.3 已完成與後續規劃
 
-詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。
+詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」。三項皆於 Settings 視窗內設定，且 B/C 同屬轉錄後處理鏈，既定 pipeline 順序：**STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機 / MCP / sidecar / Injector。A/B/B2/B3/C 皆已實作；本地 LLM 潤稿（on-device）延後。
 
 > FR 級權威設計（D1–D8）見
 > `docs/superpowers/specs/2026-05-18-vocium-multi-stt-ptt-vad-design.md`（gitignored，內部文件）。
@@ -49,7 +49,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - **B. 多家雲端 STT + 切換 UI + 本地 stub** ✅（已實作，2026-05-18）：Settings「STT 來源」**下拉**（方案 A）。Groq（預設）/OpenAI/Gemini 三家雲端（Claude 無 STT，不列）+ **本地 stub**（下拉可見，不可套用，顯示「即將推出」，`sttProvider` 不持久化 `'local'`）；**每家金鑰/模型獨立持久化**（扁平具名欄位，保留 `groqApiKey` 向後相容）。詳見 FR-STT-6/FR-STT-7/FR-CFG-7。**本地 STT 實際實作延後**。
 - **B2. 輸入模式 toggle / push-to-talk** ✅（已實作，2026-05-18）：`inputMode:'toggle'|'ptt'`（預設 toggle）；Settings 二段式。Rust global-shortcut 處理 Pressed/Released；**只影響快捷鍵，ICON 恆 toggle**（決策 D2）。詳見 FR-TRG-4。
 - **B3. 靜音修剪 VAD** ✅（已實作，2026-05-18）：`vadTrim`（預設關，opt-in，決策 D3/D6）；`@ricky0123/vad-web` NonRealTimeVAD 於 webview，`submit_audio` 前修剪靜音段；**只修剪非 endpointing**，不動狀態機時序；任何 VAD 失敗 → 原始 blob 繼續。詳見 FR-AUD-5。
-- **C. AI 潤稿**（下一階段）：轉錄後可選交 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入；Settings 開關 + 供應商/模型/金鑰 + 風格。可用任何 LLM（含 Claude/OpenAI/Gemini/本地），預設關閉。Settings IA 已預留「AI 潤稿」分頁（目前為「即將推出」stub）。
+- **C. AI 潤稿** ✅（已實作，2026-05-19）：轉錄後可選交雲端 LLM 潤飾（清贅詞/補標點/通順，不改原意）再注入。Settings「AI 潤稿」分頁：開關 + 供應商（groq/openai/gemini/claude）/ 模型 / 金鑰 + 風格（輕度 / 完整 / 自訂 prompt）。預設關閉；任何失敗（無金鑰/逾時/例外）→ 直接使用原始文字，不擋住輸入流程。Claude 使用獨立金鑰；groq/openai/gemini 可沿用 STT 同家金鑰，除非明確設定潤稿覆蓋金鑰。config 即時讀取，不重啟 sidecar（與 `save_vad_trim`/`save_zh_mode` 同機制）。**本地 LLM 潤稿延後**（不在本版範圍）。詳見 FR-POL-1–5。
 
 ## 2. 使用者情境
 
@@ -153,11 +153,20 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
   | `submit_audio` | `{ audioBase64, mimeType }` | `{ text }` | GUI 路徑：送錄音 → 轉錄 → 注入焦點視窗 |
   | `transcribe_clip` | `{ audioBase64, mimeType, language? }` | `{ text }` | **headless**：只轉錄回文字，不注入（BrainMesh 重用） |
   | `inject_text` | `{ text }` | `{ ok }` | **headless**：把任意文字注入焦點視窗 |
+  | `polish_text` | `{ text, style? }` | `{ text }` | **headless**：用本機設定的 LLM provider / 金鑰潤飾文字（清贅詞、補標點、通順，不改原意）。不受桌面 `polishEnabled` 開關影響，由 MCP host 決定是否呼叫；best-effort / total（任何失敗回傳原始文字，不 throw）。金鑰讀自本機 config（呼叫端不傳金鑰）。 |
   | `get_state` | — | `{ state }` | 查詢目前狀態 |
 
 - FR-MCP-2：notification `state_changed`，payload `{ state, prev, sttProvider }`，每次狀態機變更時推播給所有連線 client（驅動 ICON 動畫）。
 - FR-MCP-3：Tauri 殼錄音由 webview 完成；停止後以 `submit_audio` 把音訊交給 sidecar，pipeline（轉錄→注入）在 sidecar 內完成。
 - FR-MCP-4：sidecar 不依賴 Tauri 即可獨立啟動並服務任一 MCP client（headless）；`transcribe_clip` / `inject_text` 不需先 `start_listening`。
+
+### 3.10 AI 潤稿（FR-POL）
+
+- FR-POL-1：AI 潤稿為 `submitAudio` pipeline 的**可選步驟**，執行順序：STT → 繁簡轉換 → **AI 潤稿** → 注入。任何失敗（無金鑰、逾時、例外）→ best-effort，直接使用前一步輸出的原始文字，不進 error 狀態，不中斷語音輸入流程。
+- FR-POL-2：provider / 金鑰解析：支援 `groq` / `openai` / `gemini` / `claude` 四家；`claude` 使用獨立的 `claudeApiKey`；`groq` / `openai` / `gemini` 潤稿若未設定覆蓋金鑰，則沿用同家 STT 金鑰（`groqApiKey`/`openaiApiKey`/`geminiApiKey`）。
+- FR-POL-3：潤稿風格：`light`（輕度修飾，預設）、`full`（完整潤稿）、`custom`（使用者自訂 prompt；留空時自動回退為 `light`）。
+- FR-POL-4：`polishEnabled` 預設 `false`；使用者必須主動於 Settings「AI 潤稿」分頁開啟。
+- FR-POL-5：config 即時讀取，**不需重啟 sidecar**（與 `save_vad_trim`/`save_zh_mode` 同機制）。
 
 ## 4. 非功能需求
 
@@ -217,13 +226,13 @@ projects/vocium/
 
 ### 5.2 MCP 訊息（對應 §3.9）
 
-- Client→Server：`tools/call`（`toggle` / `start_listening` / `stop_listening` / `cancel` / `submit_audio` / `transcribe_clip` / `inject_text` / `get_state`）。
+- Client→Server：`tools/call`（`toggle` / `start_listening` / `stop_listening` / `cancel` / `submit_audio` / `transcribe_clip` / `inject_text` / `polish_text` / `get_state`）。
 - Server→Client：notification `state_changed { state, prev, sttProvider }`；server→client 請求 `request_start_capture` / `request_stop_capture`（指示 Tauri webview 起停錄音）。
 - 音訊以 base64 於 `submit_audio` / `transcribe_clip` 傳遞（v1 簡化；大音訊串流化列 Phase 2）。
 
 ## 6. 驗收標準（MVP Done Definition）
 
-1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（Groq + OpenAI + Gemini + Mock，注入 fetch）/ Injector 介面 / MCP 整合 / zh-convert / VAD trim / describe-error）。目前：**vitest 106/106**、tsc clean、cargo 0/0。
+1. `npm install && npm test` 全綠（狀態機 / config / STT adapter（Groq + OpenAI + Gemini + Mock，注入 fetch）/ Injector 介面 / MCP 整合 / zh-convert / VAD trim / describe-error / AI polish）。目前：**vitest 137/137**、tsc clean、cargo 0/0。
 2. sidecar 可獨立啟動為 MCP server，`get_state` 回 `idle`。
 3. Tauri 啟動後桌面頂部置中出現懸浮 ICON。
 4. 點擊 ICON 或按 `Ctrl+Shift+Space`：ICON 進入 listening 動畫。

@@ -167,3 +167,55 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 
 - § C AI 潤稿（Settings「AI 潤稿」分頁 stub 已預留 IA）
 - 本地 STT 實際實作（whisper.cpp / faster-whisper / LocalAI / Ollama）
+
+## §13 AI 潤稿 §C 實作收官（2026-05-19）
+
+以 `superpowers:subagent-driven-development`（13 task TDD）完成設計定案 E1–E8 對應的全部實作，合入 `feat/ai-polish`。
+
+### 功能範圍
+
+轉錄後可選 LLM 潤飾（清贅詞／補標點／通順，不改原意）。GUI auto-path（Settings AI 潤稿分頁）+ `polish_text` MCP tool 雙入口；預設關閉；任何失敗／無金鑰→原文直接注入，聽寫永不被阻斷。
+
+### 決策 E1–E8
+
+| 決策 | 內容 | 狀態 |
+|------|------|------|
+| E1 | 獨立潤稿金鑰槽（`polishProvider/polishApiKey/polishModel`）＋同來源沿用 STT 金鑰邏輯＋覆寫欄＋Claude 需自有金鑰 | ✅ 實作 |
+| E2 | 潤稿只套 `submitAudio`，永不套 `transcribe_clip`（MCP 轉錄工具不動） | ✅ 實作 |
+| E3 | 雲端 Groq/OpenAI/Gemini/Claude 實作；本地 stub（顯示用，不持久化 `polishProvider='local'`） | ✅ 實作 |
+| E4 | 風格：`light`（輕度）/ `full`（完整）/ `custom`（自訂 prompt）；custom 顯 textarea | ✅ 實作 |
+| E5 | `readPolishConfig` live-read closure（鏡像 `save_vad_trim`），sidecar 不重啟即生效 | ✅ 實作 |
+| E6 | 預設 `polishEnabled:false`；任何失敗／無金鑰→原文，靜默不報錯，聽寫不中斷 | ✅ 實作 |
+| E7 | Pipeline 順序：STT → 繁簡轉換 → AI 潤稿 → 注入 | ✅ 實作 |
+| E8 | `polish_text` MCP tool：`style` override 可繞過 GUI 開關；`transcribe_clip` 不動；total | ✅ 實作 |
+
+### 架構摘要
+
+- `src/core/polish/polish.ts` — pure total `polishText(text, cfg, provider)` 函式（鏡像 `convertZh` 合約）
+- `src/core/polish/prompts.ts` — 三風格 system prompt 常數
+- `src/sidecar/index.ts` — `readPolishConfig` live-read closure（不重啟 sidecar）
+- `src/sidecar/pipeline.ts` — `submitAudio` STT→繁簡→潤稿→注入
+- `src/sidecar/mcp-tools.ts` — `polish_text` MCP tool（E8）
+- `app-tauri/src-tauri/src/lib.rs` — `save_polish` / `clear_polish_key` Tauri 命令（不重啟）
+- `app-tauri/ui/settings.html` + `settings.js` — Settings「AI 潤稿」第三分頁
+
+### 驗收閘門（自動化，2026-05-19）
+
+| 項目 | 結果 |
+|------|------|
+| `npm run build`（tsc） | ✅ clean（0 errors） |
+| `npx vitest run` | ✅ **15 test files / 137 tests passed** |
+| `cargo check` | ✅ `Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 1.94s`（0 errors / 0 warnings） |
+| `node --check settings.js` | ✅ 語法有效（exit 0） |
+| settings.html div 平衡 | ✅ 56 opening / 56 closing（OK） |
+| `tauri.conf.json` 合法 JSON | ✅ ok |
+
+### 待實機驗收（需真實 LLM 金鑰 + 麥克風 + Windows）
+
+1. Settings →「AI 潤稿」分頁正常渲染（啟用 / 來源 / 金鑰 / 模型 / 風格）；切換來源載入遮罩金鑰；與 STT 同來源時顯示「沿用…」placeholder；Claude 需自有金鑰。
+2. 風格＝自訂 顯示 prompt textarea；來源＝本地 顯示 stub 且不寫入（`vocium-config.json` 的 `polishProvider` 永不為 `local`）。
+3. 啟用 + Groq（沿用 Groq STT 金鑰）+ 說話 → 注入文字已潤飾（去贅詞／補標點）。關閉 → 原文（僅繁簡）。壞金鑰／斷網 → 仍注入原文（繁簡後），無錯誤動畫，聽寫不中斷。
+4. MCP：透過 MCP host 呼叫 `polish_text({text})` 用本機設定回傳潤飾文字；無潤稿金鑰時回傳原文不變；`transcribe_clip` 仍回原文；GUI 啟用開關關閉時 `polish_text` 仍可運作。
+5. 設定重開後保留；潤稿設定變更無需重啟 sidecar（改風格，下一句即生效）。
+
+> 備注：本地 LLM 潤稿（whisper.cpp / Ollama-style on-device）仍為 deferred，非 §C 範圍（§C 僅雲端 + 本地 stub）。

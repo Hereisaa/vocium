@@ -126,11 +126,13 @@ A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic ov
 
 ## Use as an MCP tool
 
-The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop, Cursor, an Agent SDK, scripts…) can reuse Vocium without rebuilding speech‑to‑text or OS text injection. It exposes two headless tools:
+The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop, Cursor, an Agent SDK, scripts…) can reuse Vocium without rebuilding speech‑to‑text or OS text injection. It exposes three headless tools:
 
 **`transcribe_clip`** — `{ audioBase64, mimeType, language? }` → `{ text }`. Transcribes the supplied audio with your configured provider and applies your Traditional/Simplified preference. Read‑only and side‑effect‑free: the caller receives the text and decides what to do with it.
 
 **`inject_text`** — `{ text }` → `{ ok }`. Types the given text into the OS‑focused window (clipboard + simulated paste). Independent of STT — inject any string. It lands in whichever window has focus at call time, so the caller is responsible for focus.
+
+**`polish_text`** — `{ text, style? }` → `{ text }`. Cleans up text with your locally‑configured LLM provider and key (removes fillers, fixes punctuation, improves fluency; meaning preserved). Headless and host‑controlled: the MCP host decides when to call it; it works regardless of the desktop app's polish toggle. Like the other tools, the API key is read from the local Vocium config on the machine running the sidecar — the caller never passes a key.
 
 Register it in an MCP host (after `npm run build`):
 
@@ -158,8 +160,9 @@ Post‑processing pipeline: **STT → Traditional/Simplified → AI polish → i
 
 - **Chinese output (Traditional/Simplified)** ✅
 - **Multi‑provider STT** — Groq / OpenAI / Gemini, BYOK, PTT, VAD ✅
-- **AI polishing** — optional LLM pass (clean fillers, punctuation, fluency) before injection; off by default.
+- **AI polishing** — optional LLM pass (clean fillers, punctuation, fluency) before injection; off by default. ✅
 - **Local STT** — whisper.cpp / faster‑whisper / LocalAI / Ollama. On‑device transcription; next planned item.
+- **Local LLM polish** — on‑device polish pass. Deferred.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details.
 

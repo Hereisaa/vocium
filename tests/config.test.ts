@@ -1,6 +1,6 @@
 // tests/config.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import { loadConfig, saveConfig, DEFAULTS, readZhMode } from '../src/core/config.js';
+import { loadConfig, saveConfig, DEFAULTS, readZhMode, readPolishConfig } from '../src/core/config.js';
 
 function fakeFs(initial?: string) {
   const store = new Map<string, string>();
@@ -105,6 +105,32 @@ describe('config', () => {
     expect(c2.inputMode).toBe('ptt');
     expect(c2.vadTrim).toBe(true);
   });
+
+  it('defaults: polish fields', () => {
+    const fs = fakeFs();
+    const c = loadConfig(fs as any, path as any, '/cfg');
+    expect(c.polishEnabled).toBe(false);
+    expect(c.polishProvider).toBe('groq');
+    expect(c.polishModel).toBe('llama-3.3-70b-versatile');
+    expect(c.polishStyle).toBe('light');
+    expect(c.polishCustomPrompt).toBe('');
+    expect(c.polishApiKey).toBe('');
+    expect(c.claudeApiKey).toBe('');
+  });
+  it("normalizes polishProvider 'local'/unknown → groq, style → light, enabled → bool", () => {
+    const fs = fakeFs(JSON.stringify({ polishProvider: 'local', polishStyle: 'zzz', polishEnabled: 'yes' }));
+    const c = loadConfig(fs as any, path as any, '/cfg');
+    expect(c.polishProvider).toBe('groq');
+    expect(c.polishStyle).toBe('light');
+    expect(c.polishEnabled).toBe(false);
+  });
+  it('keeps valid polish values', () => {
+    const fs = fakeFs(JSON.stringify({ polishProvider: 'claude', polishStyle: 'full', polishEnabled: true }));
+    const c = loadConfig(fs as any, path as any, '/cfg');
+    expect(c.polishProvider).toBe('claude');
+    expect(c.polishStyle).toBe('full');
+    expect(c.polishEnabled).toBe(true);
+  });
 });
 
 describe('zhConvert mode', () => {
@@ -141,5 +167,36 @@ describe('zhConvert mode', () => {
     expect(readZhMode(bad as any, path as any, '/d')).toBe('twp');
     const absent = { existsSync: () => true, readFileSync: () => JSON.stringify({ hotkey: 'X' }), writeFileSync: () => {}, mkdirSync: () => {} };
     expect(readZhMode(absent as any, path as any, '/d')).toBe('twp');
+  });
+});
+
+describe('readPolishConfig', () => {
+  const path = { join: (...xs: string[]) => xs.join('/') };
+  it('missing file → safe defaults, no write, no throw', () => {
+    let wrote = false;
+    const fs = {
+      existsSync: () => false,
+      readFileSync: () => { throw new Error('x'); },
+      writeFileSync: () => { wrote = true; },
+      mkdirSync: () => { wrote = true; },
+    };
+    const p = readPolishConfig(fs as any, path as any, '/d');
+    expect(p).toEqual({
+      polishEnabled: false, polishProvider: 'groq',
+      polishModel: 'llama-3.3-70b-versatile', polishStyle: 'light',
+      polishCustomPrompt: '', polishApiKey: '', claudeApiKey: '',
+      groqApiKey: '', openaiApiKey: '', geminiApiKey: '',
+    });
+    expect(wrote).toBe(false);
+  });
+  it('corrupt JSON → safe defaults', () => {
+    const fs = { existsSync: () => true, readFileSync: () => '{bad', writeFileSync: () => {}, mkdirSync: () => {} };
+    expect(readPolishConfig(fs as any, path as any, '/d').polishEnabled).toBe(false);
+  });
+  it('reads + normalizes values', () => {
+    const fs = { existsSync: () => true, mkdirSync: () => {}, writeFileSync: () => {},
+      readFileSync: () => JSON.stringify({ polishEnabled: true, polishProvider: 'openai', polishStyle: 'custom', polishCustomPrompt: 'x', openaiApiKey: 'sk-1' }) };
+    const p = readPolishConfig(fs as any, path as any, '/d');
+    expect(p).toMatchObject({ polishEnabled: true, polishProvider: 'openai', polishStyle: 'custom', polishCustomPrompt: 'x', openaiApiKey: 'sk-1' });
   });
 });

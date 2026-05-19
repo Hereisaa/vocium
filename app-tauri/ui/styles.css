@@ -304,6 +304,7 @@ body {
 .s-pane.active { display:flex; }
 /* 語音轉文字分頁的金鑰/模型/BaseURL 欄位間距（修「模型 緊貼 Key」） */
 #provFields { display:flex; flex-direction:column; gap:14px; }
+#polishFields, #polishCloudFields { display:flex; flex-direction:column; gap:14px; }
 .selfield { width:100%; background:#0d0f14; border:1px solid #2a2f3a;
   color:#e8eaf0; border-radius:8px; padding:8px 10px; font:inherit;
   font-size:13px; cursor:pointer; }

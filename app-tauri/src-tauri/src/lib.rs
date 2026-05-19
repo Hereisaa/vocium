@@ -600,6 +600,18 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
     });
     let input_mode = read_input_mode(&s.config.config_dir);
     let vad_trim = cfgv.get("vadTrim").and_then(|x| x.as_bool()).unwrap_or(false);
+    let polish_provider_raw = read_str(&cfgv, "polishProvider");
+    let polish_provider = if ["groq","openai","gemini","claude"].contains(&polish_provider_raw.as_str()) {
+        polish_provider_raw
+    } else {
+        "groq".to_string()
+    };
+    let polish_style_raw = read_str(&cfgv, "polishStyle");
+    let polish_style = if ["light","full","custom"].contains(&polish_style_raw.as_str()) {
+        polish_style_raw
+    } else {
+        "light".to_string()
+    };
     Ok(json!({
         "sttProvider": stt_provider,
         "activeProvider": read_str(&cfgv,"sttProvider"),
@@ -609,6 +621,24 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
         "inputMode": input_mode,
         "vadTrim": vad_trim,
         "zhConvert": zh_convert,
+        "polish": {
+            "enabled": cfgv.get("polishEnabled").and_then(|x| x.as_bool()).unwrap_or(false),
+            "provider": polish_provider,
+            "model": read_str(&cfgv,"polishModel"),
+            "style": polish_style,
+            "customPrompt": read_str(&cfgv,"polishCustomPrompt"),
+            "hasClaudeKey": !read_str(&cfgv,"claudeApiKey").trim().is_empty(),
+            "hasPolishOverride": !read_str(&cfgv,"polishApiKey").trim().is_empty(),
+            "polishKeyMask": mask_key(&read_str(&cfgv,"polishApiKey")),
+            "claudeKeyMask": mask_key(&read_str(&cfgv,"claudeApiKey")),
+            // claude has its own dedicated key (hasClaudeKey/claudeKeyMask); it
+            // is not an STT provider so there is no shared STT key to reuse.
+            "sharedKeyAvailable": {
+                "groq": !read_str(&cfgv,"groqApiKey").trim().is_empty(),
+                "openai": !read_str(&cfgv,"openaiApiKey").trim().is_empty(),
+                "gemini": !read_str(&cfgv,"geminiApiKey").trim().is_empty()
+            }
+        },
         // Back-compat: kept until settings.js migrates to providers.groq.*; remove the next two lines then.
         "groqKeySet": !read_str(&cfgv,"groqApiKey").trim().is_empty(),
         "groqKeyMask": mask_key(&read_str(&cfgv,"groqApiKey"))
@@ -808,6 +838,48 @@ fn save_vad_trim(app: AppHandle, enabled: bool) -> Result<(), String> {
     patch_config(&dir, "vadTrim", json!(enabled))
 }
 
+/// Persist AI-polish settings. No sidecar restart (polish is live-read,
+/// mirrors save_vad_trim/save_zh_mode). Empty key fields = unchanged.
+#[tauri::command]
+fn save_polish(
+    app: AppHandle,
+    enabled: bool,
+    provider: String,
+    model: String,
+    style: String,
+    custom_prompt: String,
+    key: String,
+    claude_key: String,
+) -> Result<(), String> {
+    if !matches!(provider.as_str(), "groq" | "openai" | "gemini" | "claude") {
+        return Err("invalid polish provider".to_string());
+    }
+    if !matches!(style.as_str(), "light" | "full" | "custom") {
+        return Err("invalid polish style".to_string());
+    }
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "polishEnabled", json!(enabled))?;
+    patch_config(&dir, "polishProvider", json!(provider))?;
+    if !model.trim().is_empty() { patch_config(&dir, "polishModel", json!(model))?; }
+    patch_config(&dir, "polishStyle", json!(style))?;
+    patch_config(&dir, "polishCustomPrompt", json!(custom_prompt))?;
+    if !key.trim().is_empty() { patch_config(&dir, "polishApiKey", json!(key))?; }
+    if !claude_key.trim().is_empty() { patch_config(&dir, "claudeApiKey", json!(claude_key))?; }
+    Ok(())
+}
+
+/// Clear a polish key. which = "polish" (the override) or "claude".
+#[tauri::command]
+fn clear_polish_key(app: AppHandle, which: String) -> Result<(), String> {
+    let field = match which.as_str() {
+        "polish" => "polishApiKey",
+        "claude" => "claudeApiKey",
+        _ => return Err(format!("bad polish key field: {which}")),
+    };
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, field, json!(""))
+}
+
 /// Persist iconOffsetX into the shared config file (drag-to-reposition).
 #[tauri::command]
 fn save_offset_x(app: AppHandle, offset_x: i32) -> Result<(), String> {
@@ -876,7 +948,9 @@ pub fn run() {
             set_stt_provider,
             clear_provider_key,
             save_input_mode,
-            save_vad_trim
+            save_vad_trim,
+            save_polish,
+            clear_polish_key
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

@@ -7,7 +7,8 @@ import { createSttAdapter } from '../core/stt/stt-adapter.js';
 import { resolveActive } from '../core/stt/resolve-active.js';
 import { createInjector } from '../core/inject/injector.js';
 import type { Injector } from '../core/inject/types.js';
-import { loadConfig, readZhMode } from '../core/config.js';
+import { loadConfig, readZhMode, readPolishConfig } from '../core/config.js';
+import { polishText, resolvePolishKey } from '../core/polish/polish.js';
 import { createPipeline } from './pipeline.js';
 import { registerTools } from './mcp-tools.js';
 import * as fs from 'node:fs';
@@ -49,6 +50,23 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
     session, stt, injector, noKey,
     // live read per call — picks up the setting change without sidecar restart
     getZhMode: () => readZhMode(fs as any, path as any, cfgDir),
+    polish: async (text: string, styleOverride?: 'light' | 'full' | 'custom') => {
+      const pc = readPolishConfig(fs as any, path as any, cfgDir);
+      // GUI auto-path respects the toggle; the polish_text MCP tool passes a
+      // styleOverride and must work regardless of polishEnabled.
+      if (styleOverride === undefined && !pc.polishEnabled) return text;
+      return polishText(
+        text,
+        {
+          provider: pc.polishProvider,
+          model: pc.polishModel,
+          style: styleOverride ?? pc.polishStyle,
+          customPrompt: pc.polishCustomPrompt,
+          apiKey: resolvePolishKey(pc),
+        },
+        { fetch: globalThis.fetch },
+      );
+    },
   });
   registerTools(server, pipeline);
   if (!opts.injector) void injector.warmup?.();
