@@ -39,6 +39,7 @@ Press a hotkey, speak, and AI transcribes your voice and pastes it straight into
 
 - **Windows 11** or **macOS** (run via `npm run dev`).
 - **Node.js ≥ 20** · **Rust toolchain** · **WebView2** runtime (Windows) · **MSVC build tools** (Windows)
+- **Bun** — only for `npm run package` (build-time; not needed for `npm run dev`). [Install](https://bun.sh)
 
 **macOS (run via `npm run dev`):** On first run, grant Vocium two permissions:
 - **Microphone** — on first recording, macOS will ask for access; grant it to the app or terminal running `npm run dev`.

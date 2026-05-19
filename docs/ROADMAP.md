@@ -115,7 +115,7 @@
 ### 跨平台與整合
 
 - [x] `MacInjector` 實作：`pbcopy` + `osascript` Cmd+V，base64 文字（CJK 安全），與 Windows 相同 `InjectResult` 合約，輔助使用拒絕時降級引導 — **macOS dev parity（`npm run dev`）done（2026-05-19）**。`NSMicrophoneUsageDescription` 已隨 `src-tauri/Info.plist` 出貨（Tauri v2 合併）。
-- 未來（當前範疇外）：Apple 簽章與公證（P2）、macOS menubar 單色 template tray 圖示。`.app`/`.dmg`+`.icns` 打包及 Bun 編譯 sidecar（P1）已完成。
+- 未來（當前範疇外）：Apple 簽章與公證（P2）、macOS menubar 單色 template tray 圖示。
 - [ ] BrainMesh 端：將 Vocium sidecar 註冊為可 spawn 的 MCP 工具，驗證 `transcribe_clip` / `inject_text`
 - [ ] STT 串流/分段以降低延遲；音訊改串流傳遞（取代 base64 一次性）
 - [ ] Groq 用量/費用估算顯示

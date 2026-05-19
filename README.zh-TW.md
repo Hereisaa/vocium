@@ -39,6 +39,7 @@
 
 - **Windows 11** 或 **macOS**（以 `npm run dev` 執行）。
 - **Node.js ≥ 20** · **Rust 工具鏈** · **WebView2** runtime（Windows）· **MSVC build tools**（Windows）
+- **Bun** — 僅 `npm run package` 需要（建置期；`npm run dev` 不需要）。[安裝](https://bun.sh)
 
 **macOS（以 `npm run dev` 執行）：** 首次啟動請授予 Vocium 兩項權限：
 - **麥克風** — 首次錄音時 macOS 會要求授權；授予給執行 `npm run dev` 的 App 或終端機。
