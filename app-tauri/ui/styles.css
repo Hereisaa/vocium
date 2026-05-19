@@ -45,6 +45,12 @@ body {
   position: relative;
   display: inline-block;
   padding-top: 26px;
+  /* macOS WKWebView honors only the -webkit- prefixed property; without it
+     the floating widget's text (e.g. the "Vocium" label) is selectable on
+     click/drag. Scoped to .iconwin so the shared settings.html (which has
+     no .iconwin) keeps normal text selection in its inputs. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .controls {
