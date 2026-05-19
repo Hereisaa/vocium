@@ -267,10 +267,39 @@ fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Locate the built sidecar entry: app-tauri/src-tauri/../../dist/sidecar/index.js
-fn sidecar_entry() -> PathBuf {
-    // CARGO_MANIFEST_DIR = .../app-tauri/src-tauri at build; at runtime resolve
-    // relative to the current exe's project root, with a dev fallback.
+/// How to launch the sidecar.
+pub enum SidecarLaunch {
+    /// Self-contained compiled sidecar binary (bundled app, or dev binaries/).
+    Binary(PathBuf),
+    /// Dev fallback: `node <dist/sidecar/index.js>` when no binary is present.
+    NodeScript(PathBuf),
+}
+
+/// Pure + unit-testable. Search `dirs` in order for a file whose name starts
+/// with `vocium-sidecar-` (Tauri externalBin `<name>-<triple>` convention),
+/// honoring `exe_ext` (".exe" on Windows, "" elsewhere). If none, fall back
+/// to launching `node <dist_script>` (the existing dev behavior).
+pub fn resolve_sidecar_in(dirs: &[PathBuf], dist_script: PathBuf, exe_ext: &str) -> SidecarLaunch {
+    for d in dirs {
+        if let Ok(rd) = std::fs::read_dir(d) {
+            for entry in rd.flatten() {
+                let fname = entry.file_name();
+                let name = fname.to_string_lossy();
+                let ok = name.starts_with("vocium-sidecar-")
+                    && (exe_ext.is_empty() || name.ends_with(exe_ext))
+                    && entry.file_type().map(|t| t.is_file()).unwrap_or(false);
+                if ok {
+                    return SidecarLaunch::Binary(entry.path());
+                }
+            }
+        }
+    }
+    SidecarLaunch::NodeScript(dist_script)
+}
+
+/// Existing dev walk-up for `dist/sidecar/index.js` (preserved verbatim,
+/// just extracted so the binary path can take precedence).
+fn dev_dist_script() -> PathBuf {
     if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
         let p = PathBuf::from(&manifest)
             .join("..")
@@ -283,7 +312,6 @@ fn sidecar_entry() -> PathBuf {
         }
     }
     if let Ok(exe) = std::env::current_exe() {
-        // Walk up looking for dist/sidecar/index.js (handles bundled layouts).
         let mut cur = exe.parent().map(|p| p.to_path_buf());
         while let Some(dir) = cur {
             let cand = dir.join("dist").join("sidecar").join("index.js");
@@ -296,12 +324,29 @@ fn sidecar_entry() -> PathBuf {
     PathBuf::from("dist/sidecar/index.js")
 }
 
+/// Runtime resolver: bundled binary sits next to the main executable
+/// (Windows install dir; macOS `Vocium.app/Contents/MacOS/`); dev binary in
+/// `src-tauri/binaries/`; otherwise the Node dev script.
+fn resolve_sidecar() -> SidecarLaunch {
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(p) = exe.parent() {
+            dirs.push(p.to_path_buf());
+        }
+    }
+    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
+        dirs.push(PathBuf::from(&manifest).join("binaries"));
+    }
+    resolve_sidecar_in(&dirs, dev_dist_script(), exe_ext)
+}
+
 fn spawn_sidecar(
     app: &AppHandle,
     log: LogFn,
     logs_dir: &std::path::Path,
 ) -> Result<Arc<McpClient>, String> {
-    let entry = sidecar_entry();
+    let entry = dev_dist_script();
     log(&format!("[spawn] node entry = {}", entry.display()));
     if !entry.exists() {
         log("[spawn] WARNING: sidecar entry does not exist — run `npm run build`");
@@ -1087,4 +1132,47 @@ fn build_tray(
         .build(app)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod sidecar_resolver_tests {
+    use super::{resolve_sidecar_in, SidecarLaunch};
+    use std::path::PathBuf;
+
+    #[test]
+    fn picks_binary_when_present() {
+        let dir = std::env::temp_dir().join(format!("vocium_t1_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("vocium-sidecar-x86_64-pc-windows-msvc.exe");
+        std::fs::write(&bin, b"x").unwrap();
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        std::fs::remove_dir_all(&dir).ok();
+        match got {
+            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
+            _ => panic!("expected Binary, got NodeScript"),
+        }
+    }
+
+    #[test]
+    fn falls_back_to_node_script_when_no_binary() {
+        let dir = std::env::temp_dir().join(format!("vocium_t1b_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        std::fs::remove_dir_all(&dir).ok();
+        match got {
+            SidecarLaunch::NodeScript(s) => assert_eq!(s, PathBuf::from("dist/sidecar/index.js")),
+            _ => panic!("expected NodeScript fallback"),
+        }
+    }
+
+    #[test]
+    fn ignores_non_matching_files() {
+        let dir = std::env::temp_dir().join(format!("vocium_t1c_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("not-it.txt"), b"x").unwrap();
+        std::fs::write(dir.join("vocium-sidecar-aarch64-apple-darwin"), b"x").unwrap();
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("d.js"), "");
+        std::fs::remove_dir_all(&dir).ok();
+        assert!(matches!(got, SidecarLaunch::Binary(_)));
+    }
 }
