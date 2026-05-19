@@ -31,7 +31,7 @@ child.stdout.on('data', (d) => {
     } else if (msg.id === 2) {
       clearTimeout(timer);
       done = true;
-      if (msg.result) { console.log('[smoke] OK: get_state returned a JSON-RPC result'); child.kill(); process.exit(0); }
+      if (msg.result != null) { console.log('[smoke] OK: get_state returned a JSON-RPC result'); child.kill(); process.exit(0); }
       fail('get_state returned no result: ' + line);
     }
   }
