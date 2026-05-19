@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "sidecar": "node dist/sidecar/index.js",
     "probe:groq": "node scripts/probe-groq.mjs",
-    "icons": "node scripts/gen-icons.mjs",
+    "icons": "node scripts/gen-icons.mjs && tauri icon app-tauri/src-tauri/icons/1024x1024.png --output app-tauri/src-tauri/icons",
     "banner": "node scripts/gen-banner.mjs",
     "vad:assets": "node scripts/copy-vad-assets.mjs",
     "dev": "npm run build && npm run vad:assets && tauri dev --config app-tauri/src-tauri/tauri.conf.json",
