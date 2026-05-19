@@ -21,6 +21,13 @@ try {
   process.exit(1);
 }
 
+try {
+  execSync('rustc --version', { stdio: 'ignore' });
+} catch {
+  console.error('[build-sidecar-bin] rustc not found (Rust toolchain required)');
+  process.exit(1);
+}
+
 const triple = execSync('rustc --print host-tuple').toString().trim();
 if (!triple) { console.error('[build-sidecar-bin] could not get rustc host-tuple'); process.exit(1); }
 
