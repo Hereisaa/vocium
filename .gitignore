@@ -3,6 +3,7 @@ node_modules/
 dist/
 app-tauri/src-tauri/target/
 app-tauri/src-tauri/gen/
+app-tauri/src-tauri/binaries/
 
 # --- local config & secrets (Groq key lives only in %APPDATA%, never here) ---
 **/vocium-config.json

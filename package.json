@@ -14,7 +14,10 @@
     "icons": "node scripts/gen-icons.mjs",
     "banner": "node scripts/gen-banner.mjs",
     "vad:assets": "node scripts/copy-vad-assets.mjs",
-    "dev": "npm run build && npm run vad:assets && tauri dev --config app-tauri/src-tauri/tauri.conf.json"
+    "dev": "npm run build && npm run vad:assets && tauri dev --config app-tauri/src-tauri/tauri.conf.json",
+    "build:sidecar-bin": "node scripts/build-sidecar-bin.mjs",
+    "smoke:sidecar-bin": "node scripts/smoke-sidecar-bin.mjs",
+    "package": "npm run build:sidecar-bin && npm run vad:assets && tauri build --config app-tauri/src-tauri/tauri.conf.json"
   },
   "engines": {
     "node": ">=20.0.0"
