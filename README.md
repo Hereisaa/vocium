@@ -37,7 +37,7 @@ Press a hotkey, speak, and AI transcribes your voice and pastes it straight into
 
 ### Prerequisites
 
-- **Windows 11** or **macOS** (run via `npm run dev`). Linux: coming soon.
+- **Windows 11** or **macOS** (run via `npm run dev`).
 - **Node.js ≥ 20** · **Rust toolchain** · **WebView2** runtime (Windows) · **MSVC build tools** (Windows)
 
 **macOS (run via `npm run dev`):** On first run, grant Vocium two permissions:

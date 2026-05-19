@@ -19,7 +19,7 @@ Vocium 是 VoxKey 的 MCP 化重作版本。架構：Tauri 2 殼（Rust，薄，
 
 ## §3 MVP 完成（2026-05-16）
 
-以 `superpowers:subagent-driven-development` 一日完成 Tasks 1–9。核心：狀態機 / config / STT adapter（Groq + Mock）/ Injector（Windows 實作 + mac/Linux NotImplemented stub）/ MCP server 8 工具 + `state_changed` notification。`vitest 36/36`、`cargo check 0/0`、sidecar headless smoke 通過。
+以 `superpowers:subagent-driven-development` 一日完成 Tasks 1–9。核心：狀態機 / config / STT adapter（Groq + Mock）/ Injector（Windows 實作 + macOS NotImplemented stub，當時）/ MCP server 8 工具 + `state_changed` notification。`vitest 36/36`、`cargo check 0/0`、sidecar headless smoke 通過。
 
 ## §4 卡頓修復（2026-05-17）
 
