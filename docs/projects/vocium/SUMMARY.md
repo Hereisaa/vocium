@@ -265,3 +265,7 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 | `node --check settings.js` | ✅ 語法有效（exit 0） |
 | settings.html div 平衡 | ✅ 56 opening / 56 closing（OK） |
 | `tauri.conf.json` 合法 JSON | ✅ ok |
+
+## §14 macOS 平台 Parity（2026-05-19）
+
+`MacInjector` 實作完成：`pbcopy` 寫入剪貼簿 + `osascript` 合成 `Cmd+V`，以單一 `/bin/sh -c` 包裹 base64 編碼文字（CJK 安全，不走 argv）。`InjectResult` 合約與 Windows 完全相同；`osascript` 未取得輔助使用授權（`-1719` / `not allowed assistive access`）時回傳輔助使用引導訊息，降級至剪貼簿手動貼上。共用 `ProcDeps` 型別（`src/core/inject/types.ts`）取代舊 `WinDeps`，兩個 Injector 均可 DI 測試。`src-tauri/Info.plist` 新增 `NSMicrophoneUsageDescription`（Tauri v2 於 `tauri build` 打包時合併進 `.app` bundle；`npm run dev` 下無嵌入 plist，麥克風授權由 macOS TCC 對開發用二進位檔授予，Task 9 需實機確認 dev-mode 麥克風提示）。macOS 不保留常駐 host（osascript 冷啟動成本低）。範疇：`npm run dev` parity only — 無打包／簽章。閘門：vitest + tsc（開發機）+ cargo check（Mac mini）。Mac mini M4 實機驗收（輔助使用 + 麥克風授權）待確認。

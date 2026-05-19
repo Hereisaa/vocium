@@ -37,8 +37,14 @@ Press a hotkey, speak, and AI transcribes your voice and pastes it straight into
 
 ### Prerequisites
 
-- **Windows 11** (macOS / Linux: coming soon).
-- **Node.js ≥ 20** · **Rust toolchain** · **WebView2** runtime · **MSVC build tools**
+- **Windows 11** or **macOS** (run via `npm run dev`). Linux: coming soon.
+- **Node.js ≥ 20** · **Rust toolchain** · **WebView2** runtime (Windows) · **MSVC build tools** (Windows)
+
+**macOS (run via `npm run dev`):** On first run, grant Vocium two permissions:
+- **Microphone** — on first recording, macOS will ask for access; grant it to the app or terminal running `npm run dev`.
+- **Accessibility** — System Settings ▸ Privacy & Security ▸ Accessibility. Required for both the global shortcut and pasting transcribed text into the focused app. If not granted, text is still copied to the clipboard and an in-app message tells you to paste manually.
+
+`node` must be on your `PATH` (a terminal-launched `npm run dev` inherits it).
 
 ### Steps
 

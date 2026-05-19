@@ -37,8 +37,14 @@
 
 ### 前置需求
 
-- **Windows 11**（※ macOS／Linux : Coming Soon）。
-- **Node.js ≥ 20** · **Rust 工具鏈** · **WebView2** runtime · **MSVC build tools**
+- **Windows 11** 或 **macOS**（以 `npm run dev` 執行）。Linux：Coming Soon。
+- **Node.js ≥ 20** · **Rust 工具鏈** · **WebView2** runtime（Windows）· **MSVC build tools**（Windows）
+
+**macOS（以 `npm run dev` 執行）：** 首次啟動請授予 Vocium 兩項權限：
+- **麥克風** — 首次錄音時 macOS 會要求授權；授予給執行 `npm run dev` 的 App 或終端機。
+- **輔助使用** — 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用。全域快捷鍵與「把轉錄文字貼進焦點 App」皆需要。未授予時文字仍會複製到剪貼簿，App 會提示你手動貼上。
+
+`node` 須在 `PATH`（由終端機啟動的 `npm run dev` 會繼承）。
 
 ### 步驟
 

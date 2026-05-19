@@ -107,10 +107,50 @@ describe('WindowsInjector persistent PowerShell host', () => {
   });
 });
 
-describe('stub injectors', () => {
-  it('Mac inject throws NotImplementedError', async () => {
-    await expect(new MacInjector().inject('x')).rejects.toBeInstanceOf(NotImplementedError);
+describe('MacInjector', () => {
+  it('copies via pbcopy then sends Cmd+V via osascript, returns ok', async () => {
+    const calls: Array<{ cmd: string; args: string[] }> = [];
+    const execFile = (cmd: string, args: string[], cb: Function) => {
+      calls.push({ cmd, args }); cb(null, '', '');
+    };
+    const inj = new MacInjector({ execFile: execFile as any, delayMs: 0 });
+    const r = await inj.inject('哈囉 hello');
+
+    expect(r.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].cmd).toBe('/bin/sh');
+    const script = calls[0].args[1];
+    expect(calls[0].args[0]).toBe('-c');
+    // base64 of the UTF-8 text, decoded with BSD `base64 -D`, into pbcopy
+    expect(script).toContain(Buffer.from('哈囉 hello', 'utf8').toString('base64'));
+    expect(script).toContain('base64 -D | pbcopy');
+    expect(script).toContain('keystroke "v" using command down');
   });
+
+  it('returns ok:false with the clipboard-fallback message on generic failure', async () => {
+    const execFile = (_c: string, _a: string[], cb: Function) =>
+      cb(new Error('pbcopy: command not found'), '', '');
+    const inj = new MacInjector({ execFile: execFile as any, delayMs: 0 });
+    const r = await inj.inject('x');
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain('已複製，請手動貼上');
+    expect(r.message).toContain('pbcopy: command not found');
+  });
+
+  it('returns the Accessibility guidance message when osascript is not trusted', async () => {
+    // osascript reports the denial on STDERR with code -1719.
+    const execFile = (_c: string, _a: string[], cb: Function) =>
+      cb(new Error('Command failed'), '',
+         'execution error: System Events got an error: osascript is not allowed assistive access. (-1719)');
+    const inj = new MacInjector({ execFile: execFile as any, delayMs: 0 });
+    const r = await inj.inject('x');
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain('輔助使用');
+    expect(r.message).toContain('文字已複製');
+  });
+});
+
+describe('stub injectors', () => {
   it('Linux inject throws NotImplementedError', async () => {
     await expect(new LinuxInjector().inject('x')).rejects.toBeInstanceOf(NotImplementedError);
   });
@@ -120,8 +160,14 @@ describe('createInjector factory', () => {
   it('win32 -> WindowsInjector', () => {
     expect(createInjector('win32', { execFile: (() => {}) as any })).toBeInstanceOf(WindowsInjector);
   });
-  it('darwin -> MacInjector', () => {
-    expect(createInjector('darwin', { execFile: (() => {}) as any })).toBeInstanceOf(MacInjector);
+  it('darwin -> MacInjector wired with the passed deps', async () => {
+    let used = false;
+    const execFile = (_c: string, _a: string[], cb: Function) => { used = true; cb(null, '', ''); };
+    const inj = createInjector('darwin', { execFile: execFile as any, delayMs: 0 });
+    expect(inj).toBeInstanceOf(MacInjector);
+    const r = await inj.inject('x');     // must reach the injected execFile
+    expect(r.ok).toBe(true);
+    expect(used).toBe(true);
   });
   it('linux -> LinuxInjector', () => {
     expect(createInjector('linux', { execFile: (() => {}) as any })).toBeInstanceOf(LinuxInjector);

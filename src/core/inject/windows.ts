@@ -1,31 +1,5 @@
 // src/core/inject/windows.ts
-import type { Injector, InjectResult } from './types.js';
-
-type ExecFile = (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => void;
-
-/** Minimal structural view of a spawned child (node:child_process.ChildProcess
- *  satisfies this) so the persistent host stays unit-testable via injection. */
-export interface ChildLike {
-  stdin: { write(s: string): void } | null;
-  stdout: { on(ev: 'data', cb: (d: Buffer | string) => void): void } | null;
-  on(ev: 'exit' | 'error', cb: (...a: unknown[]) => void): void;
-  kill(): void;
-  killed?: boolean;
-}
-type SpawnFn = (cmd: string, args: string[]) => ChildLike;
-
-export interface WinDeps {
-  execFile: ExecFile;
-  /** Optional. When present, a single long-lived PowerShell host is reused for
-   *  every inject (≈ ms) instead of spawning powershell.exe per call
-   *  (≈ 100–300 ms cold start). When absent (e.g. unit tests) or when the host
-   *  is unusable, we transparently fall back to the per-call `execFile` path,
-   *  preserving the exact same InjectResult contract. */
-  spawn?: SpawnFn;
-  delayMs?: number;
-  /** Per-command sentinel wait before declaring the host dead (default 4000). */
-  hostTimeoutMs?: number;
-}
+import type { Injector, InjectResult, ExecFile, ChildLike, ProcDeps } from './types.js';
 
 const HOST_ARGS = ['-NoProfile', '-NoLogo', '-Command', '-'];
 
@@ -59,7 +33,7 @@ export class WindowsInjector implements Injector {
   private queue: Promise<unknown> = Promise.resolve();
   private seq = 0;
 
-  constructor(private deps: WinDeps) {}
+  constructor(private deps: ProcDeps) {}
 
   private ensureHost(): ChildLike | null {
     if (!this.deps.spawn || this.childBroken) return null;
