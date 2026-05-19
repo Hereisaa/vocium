@@ -5,7 +5,7 @@
   "identifier": "app.vocium.shell",
   "build": {
     "frontendDist": "../ui",
-    "beforeBuildCommand": "npm run build:sidecar-bin && npm run build && npm run vad:assets"
+    "beforeBuildCommand": "npm run build:sidecar-bin && npm run vad:assets"
   },
   "app": {
     "macOSPrivateApi": true,
