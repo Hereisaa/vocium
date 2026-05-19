@@ -1,5 +1,6 @@
 // src/core/stt/gemini-stt.ts
 import type { SttAdapter, SttInput, SttResult, SttDeps } from './types.js';
+import { fetchWithTimeout } from './with-timeout.js';
 
 export interface GeminiOpts { apiKey: string; model: string; }
 
@@ -30,7 +31,7 @@ export class GeminiSttAdapter implements SttAdapter {
         },
       ],
     };
-    const res = await this.deps.fetch(url, {
+    const res = await fetchWithTimeout(this.deps.fetch, url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

@@ -1,5 +1,6 @@
 // src/core/stt/groq-stt.ts
 import type { SttAdapter, SttInput, SttResult, SttDeps } from './types.js';
+import { fetchWithTimeout } from './with-timeout.js';
 
 const ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
@@ -17,7 +18,7 @@ export class GroqSttAdapter implements SttAdapter {
     form.append('response_format', 'json');
     if (input.language) form.append('language', input.language);
 
-    const res = await this.deps.fetch(ENDPOINT, {
+    const res = await fetchWithTimeout(this.deps.fetch, ENDPOINT, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.opts.apiKey}` },
       body: form,

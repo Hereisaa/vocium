@@ -1,5 +1,6 @@
 // src/core/stt/openai-stt.ts
 import type { SttAdapter, SttInput, SttResult, SttDeps } from './types.js';
+import { fetchWithTimeout } from './with-timeout.js';
 
 export interface OpenAiOpts { apiKey: string; model: string; baseUrl: string; }
 
@@ -15,7 +16,7 @@ export class OpenAiSttAdapter implements SttAdapter {
     form.append('response_format', 'json');
     if (input.language) form.append('language', input.language);
 
-    const res = await this.deps.fetch(`${base}/audio/transcriptions`, {
+    const res = await fetchWithTimeout(this.deps.fetch, `${base}/audio/transcriptions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.opts.apiKey}` },
       body: form,

@@ -49,4 +49,15 @@ describe('GeminiSttAdapter', () => {
     const a = new GeminiSttAdapter({ apiKey: 'k', model: 'm' }, { fetch: fakeFetch as any });
     expect((await a.transcribe(audio)).text).toBe('');
   });
+
+  it('routes through the timeout wrapper (fetch receives an AbortSignal)', async () => {
+    let sig: unknown;
+    const fakeFetch = async (_u: string, init: any) => {
+      sig = init.signal;
+      return { ok: true, status: 200, json: async () => ({ candidates: [] }) } as any;
+    };
+    const a = new GeminiSttAdapter({ apiKey: 'k', model: 'm' }, { fetch: fakeFetch as any });
+    await a.transcribe(audio);
+    expect(sig).toBeInstanceOf(AbortSignal);
+  });
 });

@@ -40,4 +40,15 @@ describe('OpenAiSttAdapter', () => {
     const a = new OpenAiSttAdapter({ apiKey: 'k', model: 'm', baseUrl: 'b' }, { fetch: fakeFetch as any });
     await expect(a.transcribe(audio)).rejects.toThrow('OpenAI STT failed: 401');
   });
+
+  it('routes through the timeout wrapper (fetch receives an AbortSignal)', async () => {
+    let sig: unknown;
+    const fakeFetch = async (_u: string, init: any) => {
+      sig = init.signal;
+      return { ok: true, status: 200, json: async () => ({ text: '' }) } as any;
+    };
+    const a = new OpenAiSttAdapter({ apiKey: 'k', model: 'm', baseUrl: 'b' }, { fetch: fakeFetch as any });
+    await a.transcribe(audio);
+    expect(sig).toBeInstanceOf(AbortSignal);
+  });
 });

@@ -402,8 +402,19 @@ async function triggerToggle() {
     currentState = 'transcribing';
     applyView('transcribing');
     stopRecording(true); // leaving listening via toggle => submit
+  } else if (from === 'transcribing') {
+    // Escape hatch: a hung STT request (no provider response) would otherwise
+    // pin 'transcribing' forever with no recovery. Clicking the orb aborts
+    // back to idle via the state machine's transcribing--CANCEL-->idle edge
+    // (Rust `cancel` command -> `cancel` tool -> pipeline.cancel()). The STT
+    // request timeout (core/stt/with-timeout.ts) is the automatic backstop;
+    // this is the instant manual one.
+    currentState = 'idle';
+    applyView('idle');
+    invoke('cancel').catch((err) => console.error('[vocium] cancel failed', err));
+    return;
   } else {
-    return; // transcribing/injecting: re-entry ignored (matches state machine)
+    return; // injecting: re-entry ignored (bounded; matches state machine)
   }
 
   try {
