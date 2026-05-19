@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest';
 import { WindowsInjector } from '../src/core/inject/windows.js';
 import { MacInjector } from '../src/core/inject/macos.js';
-import { LinuxInjector } from '../src/core/inject/linux.js';
 import { createInjector } from '../src/core/inject/injector.js';
 import { NotImplementedError } from '../src/core/inject/types.js';
 
@@ -150,12 +149,6 @@ describe('MacInjector', () => {
   });
 });
 
-describe('stub injectors', () => {
-  it('Linux inject throws NotImplementedError', async () => {
-    await expect(new LinuxInjector().inject('x')).rejects.toBeInstanceOf(NotImplementedError);
-  });
-});
-
 describe('createInjector factory', () => {
   it('win32 -> WindowsInjector', () => {
     expect(createInjector('win32', { execFile: (() => {}) as any })).toBeInstanceOf(WindowsInjector);
@@ -169,7 +162,8 @@ describe('createInjector factory', () => {
     expect(r.ok).toBe(true);
     expect(used).toBe(true);
   });
-  it('linux -> LinuxInjector', () => {
-    expect(createInjector('linux', { execFile: (() => {}) as any })).toBeInstanceOf(LinuxInjector);
+  it('unsupported platform throws NotImplementedError', () => {
+    expect(() => createInjector('freebsd' as NodeJS.Platform, { execFile: (() => {}) as any }))
+      .toThrow(NotImplementedError);
   });
 });

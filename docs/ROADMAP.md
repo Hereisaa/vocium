@@ -21,7 +21,7 @@
 - [ ] `core/config.ts` + 測試（預設/壞檔回退/合併、groqApiKey 不入版控）
 - [ ] `core/stt/groq-stt.ts` + 測試（注入 fetch：multipart 組裝、200 解析、金鑰缺失/4xx/網路錯誤 reject）
 - [ ] `core/stt/mock-stt.ts` + `stt-adapter.ts` 工廠 + 測試（預設 groq、金鑰缺不回退 mock（sidecar 層處理 noKey）、failMode）
-- [ ] `core/inject/injector.ts` 介面 + `windows.ts` + `macos.ts`/`linux.ts` stub + 測試（工廠選平台、stub 拋 NotImplemented）
+- [ ] `core/inject/injector.ts` 介面 + `windows.ts` + `macos.ts` + 測試（工廠選平台；非支援平台拋 NotImplemented）
 
 ### M3 Sidecar / MCP server
 - [ ] `sidecar/mcp-tools.ts`：工具表（toggle/start/stop/cancel/submit_audio/transcribe_clip/inject_text/get_state）接 core
@@ -115,8 +115,7 @@
 ### 跨平台與整合
 
 - [x] `MacInjector` 實作：`pbcopy` + `osascript` Cmd+V，base64 文字（CJK 安全），與 Windows 相同 `InjectResult` 合約，輔助使用拒絕時降級引導 — **macOS dev parity（`npm run dev`）done（2026-05-19）**。`NSMicrophoneUsageDescription` 已隨 `src-tauri/Info.plist` 出貨（Tauri v2 合併）。
-- 未來（當前範疇外）：`.app`/`.dmg` 打包、Apple 簽章與公證、`.icns`、macOS menubar 單色 template tray 圖示、將 Node 打包進 `.app` 使雙擊免 shell PATH、Linux Injector。
-- [ ] `LinuxInjector` 實作（X11 xdotool；Wayland 標已知限制）
+- 未來（當前範疇外）：`.app`/`.dmg` 打包、Apple 簽章與公證、`.icns`、macOS menubar 單色 template tray 圖示、將 Node 打包進 `.app` 使雙擊免 shell PATH。
 - [ ] BrainMesh 端：將 Vocium sidecar 註冊為可 spawn 的 MCP 工具，驗證 `transcribe_clip` / `inject_text`
 - [ ] STT 串流/分段以降低延遲；音訊改串流傳遞（取代 base64 一次性）
 - [ ] Groq 用量/費用估算顯示
@@ -132,8 +131,9 @@
 
 ## Phase 4 — 發佈
 
-- [ ] Node sidecar 二進位封裝（`pkg`/`nexe`），免使用者裝 Node
-- [ ] Tauri 打包（Windows MSI/NSIS；mac/Linux 待 Phase 2 注入完成）
+- [ ] Node sidecar 封裝，免使用者裝 Node（受眾 3：下載即用）— **方向已定**：方案 **B（推薦）**＝把 sidecar 編成單一自帶執行檔（Node SEA / `bun build --compile`）並以 Tauri 原生 `externalBin` sidecar 隨附；那顆 binary 仍是同一個 MCP server，**保住 MCP 可重用紅線（受眾 2 不受影響）**；體積小於整包 Node、Tauri 一級支援。方案 **A（退路）**＝內嵌整包 Node runtime + 將 `dist/` 打包成 Tauri resource、改 `sidecar_entry()`/spawn 從 resource dir 解析（當 B 因 ESM/動態 import/特定套件單檔編譯卡關時切換）。最終 A/B 與簽署範圍待「打包可用化」專案 brainstorming 定案。
+- [ ] Tauri 打包（Windows `.msi`/`.nsis`；macOS `.app`/`.dmg` + `.icns` — 注入已 done 2026-05-19 不再受阻）；`tauri.conf` 補 macOS bundle target + `beforeBuildCommand: npm run build`
+- [ ] CI/CD：GitHub Actions matrix（windows/macos）`tauri build`，打 tag 自動掛 GitHub Release（讓「預編譯安裝檔」對受眾 3 真正成立）
 - [ ] 自動更新（可選）、簽章與 SmartScreen 處理
 - [ ] 個人自用優先，公開發佈為最後階段
 

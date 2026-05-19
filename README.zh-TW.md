@@ -37,7 +37,7 @@
 
 ### 前置需求
 
-- **Windows 11** 或 **macOS**（以 `npm run dev` 執行）。Linux：Coming Soon。
+- **Windows 11** 或 **macOS**（以 `npm run dev` 執行）。
 - **Node.js ≥ 20** · **Rust 工具鏈** · **WebView2** runtime（Windows）· **MSVC build tools**（Windows）
 
 **macOS（以 `npm run dev` 執行）：** 首次啟動請授予 Vocium 兩項權限：

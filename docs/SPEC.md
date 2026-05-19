@@ -26,11 +26,11 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - 系統匣（Tray）選單：顯示/隱藏 ICON、變更快捷鍵說明、結束程式。
 - 設定持久化（快捷鍵、STT provider 選擇、Groq 金鑰、ICON 位置微調）。
 - 純邏輯模組（狀態機、STT adapter、config、injector 介面）具單元測試。
-- 跨平台 `Injector` 抽象層**就位**：`WindowsInjector` v1 實作完成；`MacInjector` v2 已實作（2026-05-19）；`LinuxInjector` 為介面就位 stub。
+- 跨平台 `Injector` 抽象層**就位**：`WindowsInjector` v1 實作完成；`MacInjector` v2 已實作（2026-05-19）。支援平台＝Windows + macOS。
 
 ### 1.2 不在範圍（Out of Scope, v1+v2）
 
-- macOS `npm run dev` 注入 v2 已實作（2026-05-19）；`LinuxInjector` 注入仍為 Phase 2 stub。
+- 非 Windows / macOS 平台不支援：`createInjector` 對其直接拋 `NotImplementedError`。
 - STT 串流/分段、多語言後處理、標點與口語贅詞清理、語音指令。
 - BrainMesh 端的整合（v1 只負責讓 Vocium 成為合規 MCP server；BrainMesh 連接屬其專案範疇）。
 - 帳號系統、雲端同步、使用統計上報。
@@ -122,7 +122,7 @@ v1 STT **預設使用 Groq**（`whisper-large-v3-turbo`，REST），講話即時
 - FR-INJ-2：模擬 `Ctrl+V` 貼上至目前焦點視窗。Windows 以 `child_process` 呼叫 PowerShell `SendKeys`（`^v`）。
 - FR-INJ-3：注入前延遲 ~120ms 確保焦點仍在使用者原應用程式（Vocium 視窗為 non-activating）。
 - FR-INJ-4：注入失敗（PowerShell 不可用）→ 仍保留剪貼簿內容並提示「已複製，請手動貼上」。
-- FR-INJ-5：`Injector` 為介面：`WindowsInjector` v1 完整實作；`MacInjector`（v2 已實作，見 FR-INJ-6）；`LinuxInjector` 建構可成功但 `inject()` `throw new NotImplementedError(platform)`，由狀態機轉 error 並於 Tray 明確顯示，不靜默失敗。
+- FR-INJ-5：`Injector` 為介面：`WindowsInjector` v1 完整實作；`MacInjector`（v2 已實作，見 FR-INJ-6）。非支援平台時 `createInjector` 直接 `throw new NotImplementedError(platform)`（明確硬失敗，不靜默、不偽裝成可用）。
 - FR-INJ-6：On macOS，`MacInjector` 將（繁簡轉換、AI 潤稿後的）文字以 `pbcopy` 寫入剪貼簿，再透過 `osascript` 合成 `Cmd+V` 貼入焦點 App。文字先 base64 編碼後嵌入單一 `/bin/sh -c` 呼叫（CJK 安全，不走 argv）。`InjectResult` 合約與 Windows 相同：成功時 `{ok:true}`；失敗時剪貼簿已設好、回傳 `{ok:false, message}`——通常為 `已複製，請手動貼上（…）`，若 osascript 未取得輔助使用授權（`-1719` / `not allowed assistive access`）則回傳含**輔助使用**引導的提示訊息。
 - FR-PERM-1：`src-tauri/Info.plist` 含 `NSMicrophoneUsageDescription`，供 **打包建置（`tauri build`，現行範疇外）** 時由 Tauri v2 合併進 `.app` bundle，滿足 WKWebView 麥克風存取；`npm run dev` 下無嵌入 plist，麥克風授權由 macOS TCC 對開發用二進位檔／啟動終端機授予。合成按鍵注入與全域快捷鍵皆需在「系統設定 ▸ 隱私權與安全性 ▸ 輔助使用」授予 App 授權；一次授予即涵蓋兩者。拒絕輔助使用時可降級：文字仍留在剪貼簿，App 顯示提示訊息請使用者手動貼上。
 
@@ -214,8 +214,7 @@ projects/vocium/
 │   │   └── inject/
 │   │       ├── injector.ts      # Injector 介面 + createInjector(platform)
 │   │       ├── windows.ts       # WindowsInjector（PowerShell，v1）
-│   │       ├── macos.ts         # MacInjector（v2 已實作，2026-05-19）
-│   │       └── linux.ts         # LinuxInjector（stub，Phase 2）
+│   │       └── macos.ts         # MacInjector（v2 已實作，2026-05-19）
 │   └── sidecar/
 │       ├── index.ts             # MCP server bootstrap、組裝 core
 │       └── mcp-tools.ts         # 工具表 → core 操作；state→notification
@@ -244,7 +243,7 @@ projects/vocium/
 7. `Esc` 於聆聽中取消，不注入；失敗路徑顯示 error 動畫並回 idle。
 8. Tray 選單可隱藏/顯示 ICON 並結束程式。
 9. 任一 MCP client 呼叫 `transcribe_clip` 可不經 GUI 取得文字；`inject_text` 可注入任意文字。
-10. `groqApiKey` 不在版本控制中；`LinuxInjector` `inject()` 明確報 NotImplemented；`MacInjector` v2 已實作（`npm run dev` 可跑，見 FR-INJ-6 / FR-PERM-1）。
+10. `groqApiKey` 不在版本控制中；非支援平台 `createInjector` 明確拋 NotImplemented；`MacInjector` v2 已實作（`npm run dev` 可跑，見 FR-INJ-6 / FR-PERM-1）。
 11. `docs/` 內含 SPEC.md、ROADMAP.md、DESIGN_MOCKUP.html、設計定案與實作計畫。
 
-> 平台範疇：**Windows 11 實際可跑（v1）**；**macOS `npm run dev` 可跑（v2，2026-05-19）**，注入需輔助使用授權；Linux Injector 為 stub（Phase 2 補）。需 GUI 互動者（錄音、注入、ICON、Tray、多螢幕）標註「待實機驗證」。
+> 平台範疇：**Windows 11 實際可跑（v1）**；**macOS `npm run dev` 可跑（v2，2026-05-19）**，注入需輔助使用授權。支援平台僅 Windows + macOS（其他平台不支援）。需 GUI 互動者（錄音、注入、ICON、Tray、多螢幕）標註「待實機驗證」。
