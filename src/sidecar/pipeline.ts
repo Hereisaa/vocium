@@ -66,9 +66,9 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
         const raw = await stt.transcribe({
           audio: Buffer.from(p.audioBase64, 'base64'), mimeType: p.mimeType, language: p.language,
         });
-        const zh = convertZh(raw.text, getZhMode());
-        let text = zh;
-        try { text = await polish(zh); } catch { /* polish best-effort (design E6): fall back to zh */ }
+        let polished = raw.text;
+        try { polished = await polish(raw.text); } catch { /* polish best-effort (design E6): fall back to raw */ }
+        const text = convertZh(polished, getZhMode()); // zh conversion is the FINAL transform (deterministic; normalizes whatever script polish produced)
         session.send('TRANSCRIBED'); // -> injecting
         const r = await injector.inject(text);
         if (!r.ok) { fail(); return { text }; }

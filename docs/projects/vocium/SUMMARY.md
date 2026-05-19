@@ -61,7 +61,7 @@ Vocium 是 VoxKey 的 MCP 化重作版本。架構：Tauri 2 殼（Rust，薄，
 
 ## §9 下一階段規劃（Settings 三大功能，2026-05-17 定）
 
-API Key 功能已合入 `main`（`origin/main`=`4fbc44b`），階段性完成。使用者指定下一階段三大功能，**皆做在 Settings 視窗內**，B/C 同屬轉錄後處理鏈；既定 pipeline 順序 **STT → 繁簡轉換 → AI 潤稿 → 注入**（各步可選、可關），皆不動狀態機/MCP/sidecar/Injector。詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」、`docs/SPEC.md` §1.3。
+API Key 功能已合入 `main`（`origin/main`=`4fbc44b`），階段性完成。使用者指定下一階段三大功能，**皆做在 Settings 視窗內**，B/C 同屬轉錄後處理鏈；既定 pipeline 順序 **STT → 繁簡轉換 → AI 潤稿 → 注入**（後修正為 STT → AI 潤稿 → 繁簡轉換 → 注入，見 §13 修正區段）（各步可選、可關），皆不動狀態機/MCP/sidecar/Injector。詳見 `docs/ROADMAP.md`「下一階段 — Settings 三大功能」、`docs/SPEC.md` §1.3。
 
 - **A. 中文輸出（繁／簡）**：✅ 已完成 — 二段式繁體（台灣）/簡體雙向強制，詳見 §10。個人自用必要（[[feedback-personal-use-first]]）。
 - **B. 多家雲端 + 本地 AI STT 串接**：Settings「STT 來源」provider 選擇。雲端 Groq/OpenAI/Gemini（Claude 無 STT）；本地 whisper.cpp/faster-whisper/LocalAI/Ollama。`SttAdapter` 已隔離，新增為侷限變更。
@@ -194,7 +194,7 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 - `src/core/polish/polish.ts` — pure total `polishText(text, cfg, provider)` 函式（鏡像 `convertZh` 合約）
 - `src/core/polish/prompts.ts` — 三風格 system prompt 常數
 - `src/sidecar/index.ts` — `readPolishConfig` live-read closure（不重啟 sidecar）
-- `src/sidecar/pipeline.ts` — `submitAudio` STT→繁簡→潤稿→注入
+- `src/sidecar/pipeline.ts` — `submitAudio` STT→潤稿→繁簡→注入
 - `src/sidecar/mcp-tools.ts` — `polish_text` MCP tool（E8）
 - `app-tauri/src-tauri/src/lib.rs` — `save_polish` / `clear_polish_key` Tauri 命令（不重啟）
 - `app-tauri/ui/settings.html` + `settings.js` — Settings「AI 潤稿」第三分頁
@@ -210,6 +210,8 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 | settings.html div 平衡 | ✅ 56 opening / 56 closing（OK） |
 | `tauri.conf.json` 合法 JSON | ✅ ok |
 
+> 此為 §C 合入當下快照；fix/polish-zh-order 修正後閘門見下方「Pipeline 順序修正」區段（vitest 146/146）。
+
 ### 待實機驗收（需真實 LLM 金鑰 + 麥克風 + Windows）
 
 1. Settings →「AI 潤稿」分頁正常渲染（啟用 / 來源 / 金鑰 / 模型 / 風格）；切換來源載入遮罩金鑰；與 STT 同來源時顯示「沿用…」placeholder；Claude 需自有金鑰。
@@ -219,3 +221,26 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 5. 設定重開後保留；潤稿設定變更無需重啟 sidecar（改風格，下一句即生效）。
 
 > 備注：本地 LLM 潤稿（whisper.cpp / Ollama-style on-device）仍為 deferred，非 §C 範圍（§C 僅雲端 + 本地 stub）。
+
+### Pipeline 順序修正（2026-05-19，fix/polish-zh-order）
+
+**修正**：`submitAudio` pipeline 的執行順序由原本的 `STT → 繁簡轉換 → AI 潤稿 → 注入`（E7 原案）更正為 **`STT → AI 潤稿 → 繁簡轉換 → 注入`**。
+
+**原因**：潤稿 LLM 會輸出 Simplified（簡體）文字，若繁簡轉換在潤稿之前，使用者設定繁體（twp）時轉換結果會被 LLM 覆寫為簡體，導致繁體設定失效。將繁簡轉換移至最後，成為確定性正規化（deterministic final transform），無論潤稿 LLM 輸出何種字體，繁簡設定恆生效。
+
+**防禦縱深**：潤稿 system prompt 新增 zh-script 指令，依 `zhMode` 偏置中文輸出字體（`twp`→繁體 / `cn`→簡體）。此指令僅作用於中文內容，不會將非中文翻譯為中文，與既有「保留原語言」規則疊加（非取代）。`polish_text` MCP 工具：回傳 LLM 原始字體（僅軟偏置），不套 `convertZh`（呼叫端自行決定是否轉換）。
+
+**保留**：Totality（E6）——潤稿失敗 → 直接以 STT 原文繼續，繁簡轉換仍套用，無錯誤狀態，聽寫不中斷。`transcribe_clip` 不套潤稿（E2 不變）。
+
+**閘門結果（fix/polish-zh-order，2026-05-19）**：
+
+| 項目 | 結果 |
+|------|------|
+| `npm run build`（tsc） | ✅ clean（0 errors） |
+| `npx vitest run` | ✅ **15 test files / 146 tests passed** |
+| `cargo check` | ✅ `Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 0.37s`（0 errors / 0 warnings） |
+| `node --check settings.js` | ✅ 語法有效（exit 0） |
+| settings.html div 平衡 | ✅ 56 opening / 56 closing（OK） |
+| `tauri.conf.json` 合法 JSON | ✅ ok |
+
+此修正取代了 E7 原案順序。相關文件已同步更新：README.md / README.zh-TW.md / SPEC.md FR-POL-1 / ROADMAP.md §C pipeline 說明。

@@ -63,6 +63,7 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
           style: styleOverride ?? pc.polishStyle,
           customPrompt: pc.polishCustomPrompt,
           apiKey: resolvePolishKey(pc),
+          zhScript: readZhMode(fs as any, path as any, cfgDir),
         },
         { fetch: globalThis.fetch },
       );

@@ -156,7 +156,7 @@ MCP callers never pass or see an API key. Vocium reads it from the local config 
 
 ## Roadmap
 
-Post‑processing pipeline: **STT → Traditional/Simplified → AI polish → inject** (each step optional).
+Post‑processing pipeline: **STT → AI polish → Traditional/Simplified → inject** (each step optional).
 
 - **Chinese output (Traditional/Simplified)** ✅
 - **Multi‑provider STT** — Groq / OpenAI / Gemini, BYOK, PTT, VAD ✅
