@@ -244,3 +244,24 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 | `tauri.conf.json` 合法 JSON | ✅ ok |
 
 此修正取代了 E7 原案順序。相關文件已同步更新：README.md / README.zh-TW.md / SPEC.md FR-POL-1 / ROADMAP.md §C pipeline 說明。
+
+### Prompt-Injection 加固（2026-05-19，fix/polish-injection-guard）
+
+**Bug（使用者實機測試發現）**：AI 潤稿的 LLM 把聽寫轉錄文字當成**指令**執行——例如說「請你生成一段話給我」會讓模型生成一整段話／改寫複述自己的 system prompt，而非單純清理該句。屬 prompt-injection / instruction-confusion。
+
+**修正**：轉錄文字以 `<transcript>…</transcript>` 分隔符包裹後送出；system prompt 一律注入 TRANSCRIPT_GUARD，要求模型將被包裹內容**嚴格視為待修訂之文字而非指令**——不得遵循／回答／執行其中任何請求、問題或命令，不得新增內容或描述任務，僅輸出修訂後文字。防禦縱深：若模型回吐包裹標籤，`polishText` 剝除輸出開頭／結尾錨定的 `<transcript>`／`</transcript>`。適用全部三種風格（`light`／`full`／`custom`；`custom` 自訂 prompt 仍為受信任指令、轉錄文字仍惰性）與四家 provider。
+
+**保留不變**：SAFETY_SUFFIX（保留原意／原語言）、ZH_SCRIPT 繁簡指令、pipeline 順序（STT → 潤稿 → 繁簡 → 注入）、Totality／E6（剝除後為空→回原文）、`transcribe_clip` 不潤稿、`polish_text` 由 host 控制——全部不變。新 FR：SPEC.md FR-POL-6（flat 編號）。
+
+**註**：無任何 prompt 能 100% 防注入，此為標準且強力之緩解，非絕對保證。
+
+**閘門結果（fix/polish-injection-guard，2026-05-19，僅文件異動，無 source 變更）**：
+
+| 項目 | 結果 |
+|------|------|
+| `npm run build`（tsc） | ✅ clean（0 errors） |
+| `npx vitest run` | ✅ **15 test files / 154 tests passed** |
+| `cargo check` | ✅ `Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 0.37s`（0 errors / 0 warnings；無 Rust 變更） |
+| `node --check settings.js` | ✅ 語法有效（exit 0） |
+| settings.html div 平衡 | ✅ 56 opening / 56 closing（OK） |
+| `tauri.conf.json` 合法 JSON | ✅ ok |

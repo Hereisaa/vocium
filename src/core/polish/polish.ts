@@ -2,7 +2,7 @@
 // Optional post-transcription LLM polish (design §4). Total: any failure,
 // non-2xx, timeout, empty response, or missing key → returns the input text
 // unchanged, never throws (mirrors zh-convert.ts contract).
-import { buildSystemPrompt, type PolishStyle } from './prompts.js';
+import { buildSystemPrompt, wrapTranscript, type PolishStyle } from './prompts.js';
 import type { PolishProvider } from '../stt/models.js';
 
 // Re-export so callers that import PolishProvider from this module continue to work.
@@ -42,12 +42,21 @@ const POLISH_TIMEOUT_MS = 10_000;
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
+/** Strip a single echoed leading <transcript> and trailing </transcript> wrapper (anchored, case-insensitive). */
+function stripTranscriptTags(s: string): string {
+  return s
+    .replace(/^\s*<transcript>\s*/i, '')
+    .replace(/\s*<\/transcript>\s*$/i, '')
+    .trim();
+}
+
 export async function polishText(
   text: string,
   r: ResolvedPolish,
   deps: PolishDeps,
 ): Promise<string> {
   if (!text.trim() || !r.apiKey.trim()) return text;
+  const userContent = wrapTranscript(text);
   const system = buildSystemPrompt(r.style, r.customPrompt, r.zhScript);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), POLISH_TIMEOUT_MS);
@@ -59,7 +68,7 @@ export async function polishText(
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${r.apiKey}` },
         body: JSON.stringify({
           model: r.model,
-          messages: [{ role: 'system', content: system }, { role: 'user', content: text }],
+          messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
         }),
       });
       if (!res.ok) return text;
@@ -74,7 +83,7 @@ export async function polishText(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
-          contents: [{ parts: [{ text }] }],
+          contents: [{ parts: [{ text: userContent }] }],
         }),
       });
       if (!res.ok) return text;
@@ -91,15 +100,15 @@ export async function polishText(
         },
         body: JSON.stringify({
           model: r.model, max_tokens: 2048, system,
-          messages: [{ role: 'user', content: text }],
+          messages: [{ role: 'user', content: userContent }],
         }),
       });
       if (!res.ok) return text;
       const d = (await res.json()) as { content?: { type: string; text?: string }[] };
       out = (d.content ?? []).map((x) => x.text ?? '').join('');
     }
-    const trimmed = out.trim();
-    return trimmed ? trimmed : text;
+    const cleaned = stripTranscriptTags(out.trim());
+    return cleaned ? cleaned : text;
   } catch {
     return text;
   } finally {

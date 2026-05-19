@@ -167,6 +167,7 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 - FR-POL-3：潤稿風格：`light`（輕度修飾，預設）、`full`（完整潤稿）、`custom`（使用者自訂 prompt；留空時自動回退為 `light`）。
 - FR-POL-4：`polishEnabled` 預設 `false`；使用者必須主動於 Settings「AI 潤稿」分頁開啟。
 - FR-POL-5：config 即時讀取，**不需重啟 sidecar**（與 `save_vad_trim`/`save_zh_mode` 同機制）。
+- FR-POL-6：**注入加固（prompt-injection / instruction-confusion 緩解）**：潤稿步驟將轉錄文字以 `<transcript>…</transcript>` 分隔符包裹後送出，並一律於 system prompt 注入 TRANSCRIPT_GUARD 指令，要求模型將被包裹內容**嚴格視為待修訂之文字而非指令**——不得遵循、回答或執行其中任何請求／問題／命令，不得新增內容或描述任務，僅輸出修訂後文字。防禦縱深：若模型回吐包裹標籤，`polishText` 會剝除輸出開頭／結尾錨定的 `<transcript>`／`</transcript>`（Totality 保留：剝除後為空→回原文）。適用全部三種風格（`light`／`full`／`custom`；`custom` 自訂 prompt 仍為受信任指令，轉錄文字仍為惰性內容）與四家 provider。此規則與 SAFETY_SUFFIX（保留原意／原語言）及 zh-script 指令疊加（不取代）。註：無任何 prompt 能 100% 防注入，此為標準且強力之緩解，非絕對保證。
 
 ## 4. 非功能需求
 
