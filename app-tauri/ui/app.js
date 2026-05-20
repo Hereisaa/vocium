@@ -88,6 +88,16 @@ function showInjectError(message) {
   }, 8000);
 }
 
+// Last-known webview-side mic state cache. Populated by probeWebviewHealthOnce
+// (the same source that emits to Rust). triggerToggle's pre-flight gate reads
+// THIS instead of invoking `get_health` so the FSM idle→listening transition
+// pays zero IPC cost on every hotkey press. The pure-block conditions in
+// derive_health (Rust) are exclusively `mic_device_count == 0` and
+// `mic_perm === 'denied'` — both are owned by the webview — so the local
+// gate is functionally identical to a get_health round-trip.
+let lastMicDeviceCount = -1; // -1 = not yet probed; treated as "no info, do not block"
+let lastMicPerm = 'unknown';
+
 // Health: enumerate mic devices and check permission state; emit results to
 // the Rust shell whenever they change. The shell merges into HealthState and
 // rebuilds the tray. `permissions.query` returns a live PermissionStatus whose
@@ -104,6 +114,8 @@ async function probeWebviewHealthOnce() {
     const status = await navigator.permissions.query({ name: 'microphone' });
     mic_perm = status.state; // 'granted' | 'prompt' | 'denied'
   } catch (_) { /* leave 'unknown' — derive_health treats as warn */ }
+  lastMicDeviceCount = mic_device_count;
+  lastMicPerm = mic_perm;
   try {
     await invoke('emit_health_webview', { micDeviceCount: mic_device_count, micPerm: mic_perm });
   } catch (err) { console.error('[vocium] emit_health_webview failed', err); }
@@ -458,24 +470,18 @@ listen('state', (event) => {
 async function triggerToggle() {
   const from = currentState;
   if (from === 'idle') {
-    // Pre-flight: consult the unified health state. If any item is in
-    // 'block' status (no mic device / mic permission denied), do NOT
-    // enter listening — surface the cause on the pill instead. The Tray
-    // menu always reflects the same state via the same Rust HealthState.
-    try {
-      const report = await invoke('get_health');
-      if (report && Array.isArray(report.blockers) && report.blockers.length > 0) {
-        const blockerId = report.blockers[0];
-        const blockerItem = (report.items || []).find((i) => i.id === blockerId);
-        const msg = (blockerItem && blockerItem.message) || '無法開始錄音 — 請檢查 Tray 健康狀態';
-        showInjectError(msg);
-        return;
-      }
-    } catch (err) {
-      // get_health unavailable: best-effort fall through (do NOT block) —
-      // the user can still attempt; the legacy webview audio_error path
-      // catches a real getUserMedia failure as before.
-      console.warn('[vocium] get_health failed; skipping pre-flight gate', err);
+    // Pre-flight: gate idle→listening using the webview's own last-known mic
+    // state (populated by probeWebviewHealthOnce). Zero IPC cost — the prior
+    // get_health round-trip added 5–50 ms to every hotkey press for no
+    // additional information (derive_health's Block conditions are exclusively
+    // mic_device_count == 0 and mic_perm === 'denied', both owned here).
+    if (lastMicDeviceCount === 0) {
+      showInjectError('找不到麥克風 — 請連接音訊輸入裝置');
+      return;
+    }
+    if (lastMicPerm === 'denied') {
+      showInjectError('已拒絕 — 請至系統設定授予');
+      return;
     }
     currentState = 'listening';
     applyView('listening');
