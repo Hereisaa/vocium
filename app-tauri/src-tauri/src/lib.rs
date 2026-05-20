@@ -1286,6 +1286,43 @@ fn build_tray(
                 shutdown_sidecar(app);
                 app.exit(0);
             }
+            "mic_perm" => {
+                use tauri_plugin_opener::OpenerExt;
+                #[cfg(target_os = "macos")]
+                let url = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+                #[cfg(windows)]
+                let url = "ms-settings:privacy-microphone";
+                #[cfg(not(any(target_os = "macos", windows)))]
+                let url: &str = "";
+                if !url.is_empty() {
+                    let _ = app.opener().open_url(url, None::<&str>);
+                }
+            }
+            "mac_a11y" => {
+                #[cfg(target_os = "macos")]
+                {
+                    use tauri_plugin_opener::OpenerExt;
+                    let _ = app.opener().open_url(
+                        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                        None::<&str>,
+                    );
+                }
+            }
+            "stt_key" => {
+                // Open the in-app Settings window so the user can paste a key.
+                if let Some(w) = app.get_webview_window("settings") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+            "hotkey" => {
+                // Same Settings window — the General tab contains the hotkey
+                // recorder; settings.js already routes there by default.
+                if let Some(w) = app.get_webview_window("settings") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
             _ => {}
         }
         })
