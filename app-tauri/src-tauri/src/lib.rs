@@ -44,6 +44,15 @@ struct ShellState {
     /// True while the global toggle hotkey is temporarily unregistered
     /// (the user is recording a new combo in Settings).
     hotkey_suspended: Mutex<bool>,
+    // Health-panel inputs. Updated from three sources (webview emits for
+    // mic_device / mic_perm; sidecar probe_inject for mac_a11y; existing
+    // config / shortcut write points for stt_key / hotkey). Each mutation
+    // also rebuilds the tray menu so the panel stays current at open-time.
+    health_mic_device_count: Mutex<u32>,
+    health_mic_perm: Mutex<String>, // 'granted' | 'prompt' | 'denied' | 'unknown'
+    health_mac_a11y_ok: Mutex<Option<bool>>, // None until first probe
+    health_stt_key_set: Mutex<bool>,
+    health_hotkey_registered: Mutex<bool>,
     config: VociumConfig,
     /// Diagnostic sink (-> %APPDATA%/vocium/logs/shell.log). The GUI process
     /// has no console (CREATE_NO_WINDOW) so eprintln! is invisible; everything
@@ -550,6 +559,26 @@ async fn probe_inject(app: AppHandle) -> Result<Value, String> {
     invoke_tool(app, "probe_inject", json!({})).await
 }
 
+/// Return the latest snapshot of the unified health state. Consumers:
+/// the webview's toggle pre-flight (gates entering `listening` when
+/// `blockers` is non-empty) and any future panel; tray menu reads from
+/// the same shared `ShellState` mutexes at build time, so they are
+/// always in sync.
+#[tauri::command]
+fn get_health(state: tauri::State<'_, ShellState>) -> Result<Value, String> {
+    let mic_perm = state.health_mic_perm.lock().unwrap().clone();
+    let inputs = HealthInputs {
+        mic_device_count: *state.health_mic_device_count.lock().unwrap(),
+        mic_perm: &mic_perm,
+        mac_a11y_ok: *state.health_mac_a11y_ok.lock().unwrap(),
+        stt_key_set: *state.health_stt_key_set.lock().unwrap(),
+        hotkey_registered: *state.health_hotkey_registered.lock().unwrap(),
+        hotkey_suspended: *state.hotkey_suspended.lock().unwrap(),
+    };
+    let report = derive_health(inputs);
+    serde_json::to_value(&report).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn submit_audio(
     app: AppHandle,
@@ -1002,6 +1031,11 @@ pub fn run() {
             hk_item: Mutex::new(None),
             stt_item: Mutex::new(None),
             hotkey_suspended: Mutex::new(false),
+            health_mic_device_count: Mutex::new(0),
+            health_mic_perm: Mutex::new("prompt".into()), // safe default: lets first getUserMedia trigger the OS prompt
+            health_mac_a11y_ok: Mutex::new(None),
+            health_stt_key_set: Mutex::new(false),
+            health_hotkey_registered: Mutex::new(false),
             config: cfg_for_state,
             log: log_state,
         })
@@ -1041,7 +1075,8 @@ pub fn run() {
             save_input_mode,
             save_vad_trim,
             save_polish,
-            clear_polish_key
+            clear_polish_key,
+            get_health
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1088,6 +1123,7 @@ pub fn run() {
 
             // 5. System tray.
             build_tray(&handle, &cfg, hotkey_ok)?;
+            rebuild_tray_menu(&handle);
 
             Ok(())
         })
@@ -1178,6 +1214,102 @@ fn build_tray(
         .build(app)?;
 
     Ok(())
+}
+
+/// Rebuild the tray menu with the current health-panel items prepended.
+/// Idempotent and cheap (Tauri rebuilds the menu native object); called
+/// after every mutation of any HealthState field.
+fn rebuild_tray_menu(app: &AppHandle) {
+    let state = app.state::<ShellState>();
+    let mic_perm = state.health_mic_perm.lock().unwrap().clone();
+    let inputs = HealthInputs {
+        mic_device_count: *state.health_mic_device_count.lock().unwrap(),
+        mic_perm: &mic_perm,
+        mac_a11y_ok: *state.health_mac_a11y_ok.lock().unwrap(),
+        stt_key_set: *state.health_stt_key_set.lock().unwrap(),
+        hotkey_registered: *state.health_hotkey_registered.lock().unwrap(),
+        hotkey_suspended: *state.hotkey_suspended.lock().unwrap(),
+    };
+    let report = derive_health(inputs);
+
+    // Build one MenuItem per health item. Labels match buildTrayLabel in
+    // src/core/health.ts exactly so the Tray and any future webview surface
+    // stay visually consistent.
+    let mut health_items: Vec<MenuItem<Wry>> = Vec::new();
+    for it in &report.items {
+        let glyph = if matches!(it.status, HealthStatus::Ok) { "✓" } else { "⚠" };
+        let name = match it.id {
+            "mic_device" => "麥克風",
+            "mic_perm" => "麥克風權限",
+            "mac_a11y" => "輔助使用",
+            "stt_key" => "STT 金鑰",
+            "hotkey" => "全域快捷鍵",
+            _ => "?",
+        };
+        let main = match &it.message {
+            Some(m) => format!("{}：{}", name, m),
+            None => name.to_string(),
+        };
+        let head = format!("{} {}", glyph, main);
+        let is_failing = !matches!(it.status, HealthStatus::Ok);
+        let is_os_action = matches!(
+            it.action,
+            Some("open_mic_settings") | Some("open_a11y_settings")
+        );
+        let label = if is_failing && is_os_action {
+            format!("{} → 點此開啟系統設定", head)
+        } else {
+            head
+        };
+        // Item id = the health id. Failing items with an action are enabled
+        // (clickable); ok items and failing items without an action are
+        // disabled informational rows.
+        let enabled = is_failing && it.action.is_some();
+        if let Ok(mi) = MenuItem::with_id(app, it.id, label, enabled, None::<&str>) {
+            health_items.push(mi);
+        }
+    }
+
+    // Rebuild the full menu: health items, separator, then the existing
+    // controls. The existing controls' MenuItem instances must be rebuilt
+    // here too (muda does not let you reuse handles across menus).
+    let cfg = read_config();
+    let hotkey_ok = *state.health_hotkey_registered.lock().unwrap()
+        && !*state.hotkey_suspended.lock().unwrap();
+    let hotkey_label = if hotkey_ok {
+        format!("快捷鍵：{}", cfg.hotkey)
+    } else {
+        format!("快捷鍵：{}（註冊失敗）", cfg.hotkey)
+    };
+
+    let Ok(show) = MenuItem::with_id(app, "show", "顯示 ICON", true, None::<&str>) else { return; };
+    let Ok(hide) = MenuItem::with_id(app, "hide", "隱藏 ICON", true, None::<&str>) else { return; };
+    let Ok(hk) = MenuItem::with_id(app, "hk", &hotkey_label, false, None::<&str>) else { return; };
+    let Ok(settings_item) = MenuItem::with_id(app, "settings", "設定…", true, None::<&str>) else { return; };
+    let Ok(stt) = MenuItem::with_id(app, "stt", &format!("STT：{}", cfg.stt_provider), false, None::<&str>) else { return; };
+    let Ok(open_cfg) = MenuItem::with_id(app, "open_cfg", "開啟設定檔位置", true, None::<&str>) else { return; };
+    let Ok(sep1) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep2) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep3) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep_health) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(quit) = MenuItem::with_id(app, "quit", "結束", true, None::<&str>) else { return; };
+
+    let mut all_refs: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = Vec::new();
+    for hi in &health_items { all_refs.push(hi); }
+    all_refs.push(&sep_health);
+    let trailing: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = vec![
+        &show, &hide, &sep1, &hk, &stt, &sep2, &settings_item, &open_cfg, &sep3, &quit,
+    ];
+    for r in trailing { all_refs.push(r); }
+
+    let Ok(menu) = Menu::with_items(app, &all_refs) else { return; };
+
+    if let Some(tray) = app.tray_by_id("vocium-tray") {
+        let _ = tray.set_menu(Some(menu));
+        // The on_menu_event handler is preserved across set_menu calls in
+        // Tauri 2; we do NOT rebuild it here. New ids (health items) are
+        // handled in the same closure (extended in Task 7).
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
