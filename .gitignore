@@ -5,6 +5,14 @@ app-tauri/src-tauri/target/
 app-tauri/src-tauri/gen/
 app-tauri/src-tauri/binaries/
 
+# Bun build cache: `bun build --compile` drops `.<hash>-<seq>.bun-build`
+# files next to wherever it was invoked (root + app-tauri/src-tauri/).
+.*.bun-build
+*.bun-build
+
+# Local Claude Code workspace state (per-machine settings; never upstream).
+.claude/
+
 # --- local config & secrets (Groq key lives only in %APPDATA%, never here) ---
 **/vocium-config.json
 .env

@@ -99,12 +99,6 @@ npm install
 npm run dev   # builds the sidecar + launches the desktop app via `tauri dev`
 ```
 
-#### 🍎 macOS first-launch permissions
-
-On first run, grant Vocium two permissions:
-- **Microphone** — macOS will ask on first recording; grant it to the app (or to the terminal running `npm run dev`).
-- **Accessibility** — System Settings ▸ Privacy & Security ▸ Accessibility. Required for both the global shortcut and pasting transcribed text into the focused app. If not granted, text is still copied to the clipboard and an in-app message tells you to paste manually.
-
 ### Packaging
 
 `npm run package` builds a standalone installer that runs with **no Node.js on the end user's machine** (the sidecar is bundled as a compiled binary). It builds for the **host OS only** — run on Windows to produce Windows installers; run on macOS to produce macOS installers. Cross-platform CI is future (P3).
@@ -138,6 +132,39 @@ Produces:
 | `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | Disk image for distribution |
 
 **First launch (unsigned):** Gatekeeper blocks double-click → **right-click → Open → Open anyway** (once). Apple Developer ID signing + notarization is planned (P2).
+
+### Permissions
+
+Vocium needs OS-level permissions on first run. The exact list and the recovery flow differ between platforms.
+
+#### 🪟 Windows
+
+| Permission | Why | How |
+|---|---|---|
+| **Microphone** | Recording your voice | A standard Windows permission prompt appears the first time Vocium records — click *Allow* |
+
+No paste permission is required — Vocium uses `Set-Clipboard` + `SendKeys`, neither of which needs elevated rights.
+
+#### 🍎 macOS
+
+| Permission | Why | How |
+|---|---|---|
+| **Microphone** | Recording your voice | A standard macOS prompt appears the first time Vocium records; grant it to the app (or to the terminal running `npm run dev`) |
+| **Accessibility** | Sending the paste keystroke (Cmd+V) into the focused app | **System Settings ▸ Privacy & Security ▸ Accessibility** — add Vocium and enable the toggle |
+
+If Accessibility is not granted, the transcribed text is still copied to the clipboard and the floating icon displays the guidance text — you can paste manually with Cmd+V.
+
+##### Important: unsigned builds force a re-grant per rebuild
+
+Until Vocium is code-signed with an Apple Developer ID (P2 roadmap), every `npm run package` produces a **new ad-hoc signature**. macOS keys Accessibility entries by `(bundle ID, code-signing requirement)`, so it treats each rebuild as a different application. The previous Vocium row in System Settings still shows a green checkbox but points at the now-stale binary — **the checkbox lies**.
+
+If voice transcription succeeds but paste does not fire after a rebuild:
+
+1. Open **System Settings ▸ Privacy & Security ▸ Accessibility**
+2. **Remove** the existing Vocium row (`–` button)
+3. Add the new `Vocium.app` back (drag from Finder or use `+`) and enable the toggle
+
+The floating icon runs a permission probe at startup, so if Accessibility is missing it surfaces the guidance text on the pill within a couple of seconds — you do not need to make a first voice attempt to discover this. The dev loop (`npm run dev`) launches from Terminal and reuses the granted entry across runs, so this re-grant tax only hits packaged builds.
 
 ### Configure
 
@@ -233,7 +260,7 @@ Example — *"Use vocium to transcribe `./meeting.m4a`, then summarize it in Tra
 
 MCP callers never pass or see an API key. Vocium reads it from the local config on the machine running the sidecar — `%APPDATA%\vocium\vocium-config.json` (set it once via **Tray → Settings… → Speech-to-Text**, or edit the file). That machine must have Vocium configured with a provider key; the calling agent stays key‑free.
 
-> The caller supplies the audio (Vocium does not open the microphone headlessly); `inject_text` is Windows‑only for now.
+> The caller supplies the audio (Vocium does not open the microphone headlessly). `inject_text` works on **both Windows and macOS**; on macOS the host running the sidecar needs the standard Accessibility permission (see the **Permissions** section).
 
 ## Roadmap
 

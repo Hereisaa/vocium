@@ -109,6 +109,10 @@
 
 ### 已完成
 - [x] **macOS 平台 parity**（2026-05-19）：`MacInjector` = `pbcopy` + `osascript` Cmd+V，base64 文字（CJK 安全），與 Windows 相同 `InjectResult` 合約；輔助使用拒絕時降級引導；`NSMicrophoneUsageDescription`（Tauri 合併）
+- [x] **macOS 注入管線根因修復**（2026-05-20，commits `8eeee29` + `a541cf2`）：
+  - **重複貼上**：根因為 Bun `--compile` 下 `import.meta.url` 在 bundle 內所有 module 都等於 root entry URL → `index.ts` 的 `if (isMain)` 區塊與 `main.ts` 同時各自 spawn 一個 server，兩個 server attach 同一個 `process.stdin` 上的 `data` listener → 每個 MCP call 被處理兩次。**修法**：移除 `index.ts` 的 isMain 自啟動，`main.ts` 為唯一 entry；dev 路徑改用 `dist/sidecar/main.js`；`smoke-sidecar-bin.mjs` 加 regression guard（同一 id 重複回應就 fail）
+  - **Mojibake `皜祈岫` / empty paste**：根因為 macOS `pbcopy` 按 `LC_CTYPE` / `LANG` 決定 pasteboard plain-text type；Finder/launchd 啟動繼承 C/POSIX locale → pbcopy 把 UTF-8 bytes 標成 legacy type → UTF-8 paste 目標解出 Big5 → 出現 `皜祈岫`。**修法**：`spawn_sidecar` 在 macOS 加 `LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8`
+  - **失敗無感**：未授輔助使用時，剪貼簿成功但 Cmd+V 不會發生，UI 只有錯誤動畫無指引。**修法**：`MacInjector.probe()` + 新 `probe_inject` MCP tool；app.js 開機 invoke 一次，失敗就在 pill 上顯示指引 8 秒；`applyView` 在 inject-error 視窗 active 時不寫 label，避免 `state_changed` race 蓋掉訊息
 - [x] **Linux 移除**（2026-05-20）：使用者裁定 Win/mac 已足；`linux.ts` 移除，`createInjector` 非 win/darwin 拋 NotImplementedError；docs 全清
 - [x] 技術債清理（2026-05-18）：`derive_active(dir)→(provider,keySet)` + `mask_key(key)` Rust helper，消除三處重複，統一 `trim().is_empty()`
 
@@ -139,7 +143,7 @@
 
 ### 進度
 - [x] **P1：獨立可運行 App** — DONE 2026-05-20。Bun 編譯 sidecar via Tauri `externalBin`，`lib.rs` std::process 解析（binary 優先 > node-dev 回退；`mcp.rs` JSON-RPC transport 零變動），macOS `.app`/`.dmg` + `.icns`，`beforeBuildCommand`（`build:sidecar-bin && vad:assets`）。**終端使用者免裝 Node**。SPEC §3.11 FR-PKG-1。
-- [ ] **P2**（獨立）：程式簽署 / Apple 公證（$99/年 或 ad-hoc）/ Windows SmartScreen 處理 + 首次啟動 UX 文件
+- [ ] **P2**（獨立）：程式簽署 / Apple 公證（$99/年 或 ad-hoc）/ Windows SmartScreen 處理 + 首次啟動 UX 文件。**附帶解決**：未簽署版本目前每次重 build 都會被 macOS 視為不同 App，使用者必須移除舊的「輔助使用」授權再加新版（README 權限章節有寫）；以同一 Developer ID 簽署後跨版本繼承權限即不再需要手動重設
 - [ ] **P3**（獨立）：CI matrix 交叉建置（windows-latest + macos-latest）、打 tag 自動 GitHub Release、Homebrew Cask / Scoop / winget manifest
 
 ---
