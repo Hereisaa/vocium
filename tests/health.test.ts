@@ -58,4 +58,14 @@ describe('buildTrayLabel', () => {
   it('ok item with no message uses default Chinese name', () => {
     expect(buildTrayLabel({ id: 'hotkey', status: 'ok' })).toBe('✓ 全域快捷鍵');
   });
+  it('block mic_perm with open_mic_settings action → appends hint', () => {
+    expect(
+      buildTrayLabel({
+        id: 'mic_perm',
+        status: 'block',
+        action: 'open_mic_settings',
+        message: '已拒絕',
+      }),
+    ).toBe('⚠ 麥克風權限：已拒絕 → 點此開啟系統設定');
+  });
 });

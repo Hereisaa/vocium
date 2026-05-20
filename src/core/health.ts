@@ -22,8 +22,15 @@ export interface HealthItem {
 
 export interface HealthReport {
   items: HealthItem[];
+  /** Derived from `items` — equals `deriveBlockers(items)`. Cached on the
+   *  report so the webview's toggle pre-flight gate can check
+   *  `report.blockers.length > 0` without re-filtering. Producers must
+   *  keep the two fields in sync. */
   blockers: HealthId[];
 }
+
+/** The three states defined by the Web Permissions API for `microphone`. */
+export type MicPermState = 'granted' | 'prompt' | 'denied';
 
 /** Map the WebView `PermissionStatus.state` value to a HealthStatus.
  *  - 'granted' → 'ok' (already authorised; getUserMedia will succeed)
@@ -33,9 +40,7 @@ export interface HealthReport {
  *  - anything else → 'warn' (defensive: degrade gracefully if the
  *                            permissions API returns an unexpected value
  *                            instead of treating it as a hard failure) */
-export function micPermToStatus(
-  state: 'granted' | 'prompt' | 'denied' | string,
-): HealthStatus {
+export function micPermToStatus(state: MicPermState | string): HealthStatus {
   if (state === 'granted' || state === 'prompt') return 'ok';
   if (state === 'denied') return 'block';
   return 'warn';
@@ -59,6 +64,12 @@ const DEFAULT_NAME: Record<HealthId, string> = {
   hotkey: '全域快捷鍵',
 };
 
+/** Hint appended to failing tray items whose action opens an OS settings
+ *  pane — tells the user the item is clickable. Centralised here so it
+ *  matches the existing module convention (e.g. describe-error.ts) of
+ *  pulling user-facing strings out of function bodies. */
+const HINT_OPEN_OS = '→ 點此開啟系統設定';
+
 /** Build the exact tray-menu label string for one health item. Format:
  *  `{glyph} {name}[:{message}][ → 點此開啟系統設定]`. The glyph is `✓`
  *  for ok and `⚠` for warn/block (macOS tray menus cannot color items;
@@ -69,10 +80,10 @@ const DEFAULT_NAME: Record<HealthId, string> = {
 export function buildTrayLabel(item: HealthItem): string {
   const glyph = item.status === 'ok' ? '✓' : '⚠';
   const name = DEFAULT_NAME[item.id];
-  const main = item.message ? `${name}:${item.message}` : name;
-  const head = `${glyph} ${main.replace(':', '：')}`;
+  const main = item.message ? `${name}：${item.message}` : name;
+  const head = `${glyph} ${main}`;
   const isFailing = item.status !== 'ok';
   const isOsAction =
     item.action === 'open_mic_settings' || item.action === 'open_a11y_settings';
-  return isFailing && isOsAction ? `${head} → 點此開啟系統設定` : head;
+  return isFailing && isOsAction ? `${head} ${HINT_OPEN_OS}` : head;
 }
