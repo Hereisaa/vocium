@@ -15,10 +15,18 @@
 export type PolishStyle = 'light' | 'full' | 'custom';
 
 export const STYLE_PROMPTS: Record<'light' | 'full', string> = {
+  // "只補標點符號": ONLY add or fix punctuation marks. Preserve every word
+  // verbatim — do not remove filler words, do not fix mis-recognitions, do
+  // not rephrase. The user explicitly chose the narrowest possible touch.
   light:
-    'You lightly clean a speech transcript: fix punctuation and obvious ' +
-    'mis-recognitions, remove filler words (um, uh, 嗯, 那個, 就是), but do ' +
-    'NOT rephrase, reorder, or change wording.',
+    'You add or correct punctuation marks in a speech transcript. ' +
+    'Preserve every word verbatim — do NOT remove filler words (um, uh, ' +
+    '嗯, 那個, 就是), do NOT fix mis-recognitions, do NOT rephrase, do NOT ' +
+    'reorder. Only insert or fix punctuation (commas, periods, question ' +
+    'marks, full-width 「，。？！」 etc.) and adjust spacing where ' +
+    'punctuation requires it.',
+  // "話語潤飾": smooth-out polishing. Fix punctuation, make sentences read
+  // fluently, keep tone consistent — but never change the meaning.
   full:
     'You polish a speech transcript so it reads smoothly: correct ' +
     'punctuation, make sentences fluent and tone consistent, but do NOT ' +
