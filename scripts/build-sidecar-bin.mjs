@@ -8,7 +8,10 @@ import { join } from 'node:path';
 const root = process.cwd();
 const outDir = join(root, 'app-tauri', 'src-tauri', 'binaries');
 const ext = process.platform === 'win32' ? '.exe' : '';
-const entry = join(root, 'src', 'sidecar', 'index.ts');
+// main.ts (not index.ts): under Bun --compile the `isMain` guard in
+// index.ts is false (argv[1]=exe path, import.meta.url=internal) and the
+// binary exits before starting the server. main.ts is an explicit starter.
+const entry = join(root, 'src', 'sidecar', 'main.ts');
 
 try {
   execSync('bun --version', { stdio: 'ignore' });
