@@ -152,8 +152,8 @@ describe('MacInjector', () => {
     const expected = new TextEncoder().encode('哈囉 hello');
     expect(Array.from(spawns[0].stdinWrites[0] as Uint8Array)).toEqual(Array.from(expected));
 
-    // Step 2: osascript Cmd+V via key code 9 (V), NOT keystroke "v" — the
-    // keystroke path is the one with the double-paste quirk.
+    // Step 2: osascript Cmd+V via `key code 9 using {command down}` (NOT
+    // `keystroke "v"`, the form with the modifier double-fire quirk).
     expect(spawns[1].program).toBe('osascript');
     expect(spawns[1].args[0]).toBe('-e');
     expect(spawns[1].args[1]).toContain('key code 9');

@@ -1,7 +1,7 @@
 //! Vocium Tauri 2 shell — thin MCP client over the Node sidecar.
 //!
 //! Responsibilities (FR-WIN / FR-TRG / FR-TRY):
-//!  - Spawn `node dist/sidecar/index.js` and speak MCP over its stdio (see mcp.rs).
+//!  - Spawn `node dist/sidecar/main.js` and speak MCP over its stdio (see mcp.rs).
 //!  - Position the frameless, transparent, always-on-top icon window at the
 //!    top-center of the primary monitor work area + iconOffsetX, then show it.
 //!  - Windows: apply WS_EX_NOACTIVATE so clicking/pasting never steals focus
@@ -271,7 +271,7 @@ fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
 pub enum SidecarLaunch {
     /// Self-contained compiled sidecar binary (bundled app, or dev binaries/).
     Binary(PathBuf),
-    /// Dev fallback: `node <dist/sidecar/index.js>` when no binary is present.
+    /// Dev fallback: `node <dist/sidecar/main.js>` when no binary is present.
     NodeScript(PathBuf),
 }
 
@@ -309,7 +309,7 @@ pub fn resolve_sidecar_in(dirs: &[PathBuf], dist_script: PathBuf, exe_ext: &str)
     SidecarLaunch::NodeScript(dist_script)
 }
 
-/// Existing dev walk-up for `dist/sidecar/index.js` (preserved verbatim,
+/// Existing dev walk-up for `dist/sidecar/main.js` (preserved verbatim,
 /// just extracted so the binary path can take precedence).
 fn dev_dist_script() -> PathBuf {
     if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
@@ -318,7 +318,7 @@ fn dev_dist_script() -> PathBuf {
             .join("..")
             .join("dist")
             .join("sidecar")
-            .join("index.js");
+            .join("main.js");
         if p.exists() {
             return p;
         }
@@ -326,14 +326,14 @@ fn dev_dist_script() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         let mut cur = exe.parent().map(|p| p.to_path_buf());
         while let Some(dir) = cur {
-            let cand = dir.join("dist").join("sidecar").join("index.js");
+            let cand = dir.join("dist").join("sidecar").join("main.js");
             if cand.exists() {
                 return cand;
             }
             cur = dir.parent().map(|p| p.to_path_buf());
         }
     }
-    PathBuf::from("dist/sidecar/index.js")
+    PathBuf::from("dist/sidecar/main.js")
 }
 
 /// Runtime resolver: bundled binary sits next to the main executable
@@ -391,6 +391,19 @@ fn spawn_sidecar(
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(stderr);
+    #[cfg(target_os = "macos")]
+    {
+        // macOS `pbcopy` decides how to tag stdin bytes on the pasteboard based
+        // on LC_CTYPE / LANG. With the C/POSIX locale (the default for any
+        // process launched by launchd/Finder, including a bundled .app), it
+        // treats incoming UTF-8 bytes as legacy Mac text — so UTF-8 of "測試"
+        // (E6 B8 AC E8 A9 A6) lands on the pasteboard with a non-UTF-8 type;
+        // a UTF-8 paste target then decodes those same bytes via Big5/CP950
+        // and shows "皜祈岫". A terminal-launched `npm run dev` never repros
+        // this because it inherits LANG=*.UTF-8. Force UTF-8 here so every
+        // sidecar child (pbcopy, osascript, …) sees a UTF-8 locale.
+        cmd.env("LANG", "en_US.UTF-8").env("LC_CTYPE", "en_US.UTF-8");
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -1166,7 +1179,7 @@ mod sidecar_resolver_tests {
         std::fs::create_dir_all(&dir).unwrap();
         let bin = dir.join("vocium-sidecar-x86_64-pc-windows-msvc.exe");
         std::fs::write(&bin, b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
         std::fs::remove_dir_all(&dir).ok();
         match got {
             SidecarLaunch::Binary(p) => assert_eq!(p, bin),
@@ -1178,10 +1191,10 @@ mod sidecar_resolver_tests {
     fn falls_back_to_node_script_when_no_binary() {
         let dir = std::env::temp_dir().join(format!("vocium_t1b_{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
         std::fs::remove_dir_all(&dir).ok();
         match got {
-            SidecarLaunch::NodeScript(s) => assert_eq!(s, PathBuf::from("dist/sidecar/index.js")),
+            SidecarLaunch::NodeScript(s) => assert_eq!(s, PathBuf::from("dist/sidecar/main.js")),
             _ => panic!("expected NodeScript fallback"),
         }
     }
@@ -1209,7 +1222,7 @@ mod sidecar_resolver_tests {
         std::fs::create_dir_all(&dir).unwrap();
         let bin = dir.join("vocium-sidecar.exe");
         std::fs::write(&bin, b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
         std::fs::remove_dir_all(&dir).ok();
         match got {
             SidecarLaunch::Binary(p) => assert_eq!(p, bin),

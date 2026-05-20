@@ -1,6 +1,5 @@
 // src/sidecar/index.ts
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createVoiceSession } from '../core/state-machine.js';
 import { MockSttAdapter } from '../core/stt/mock-stt.js';
 import { createSttAdapter } from '../core/stt/stt-adapter.js';
@@ -14,7 +13,6 @@ import { registerTools } from './mcp-tools.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 export interface BuildOpts { sttText?: string; configDir?: string; injector?: Injector; }
 
@@ -80,9 +78,13 @@ function configDir(): string {
   return path.join(base, 'vocium');
 }
 
-// Entry point: only run stdio transport when executed directly
-const isMain = process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) {
-  const server = buildServer();
-  server.connect(new StdioServerTransport());
-}
+// This module exports `buildServer` only. The MCP server is started exclusively
+// from `main.ts` — both for the Bun-compiled binary and the `node dist/sidecar/
+// main.js` dev fallback. The previous `if (isMain)` auto-start lived here, but
+// `import.meta.url` under Bun --compile equals the root entry path for ALL
+// modules in the bundle, so `process.argv[1] === fileURLToPath(import.meta.url)`
+// returned `true` inside this file *as well as* main.ts — buildServer() ran
+// twice, two StdioServerTransports both attached `data` listeners to the same
+// process.stdin, every MCP call was processed twice, and each call's text was
+// pasted twice (the "duplicate paste" bug, mis-attributed to osascript in
+// 4ae7507). Centralizing the start in main.ts makes the entry unambiguous.

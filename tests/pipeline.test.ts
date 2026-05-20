@@ -75,7 +75,9 @@ describe('pipeline', () => {
     const p = createPipeline({ session, stt, injector });
     p.toggle();                       // idle->listening
     const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
-    expect(r).toEqual({ text: 'transcribed-on-fail' });
+    // injectError surfaces the injector's user-facing message so the webview
+    // can display it (so the user sees the actual fix, not a silent red flash).
+    expect(r).toEqual({ text: 'transcribed-on-fail', injectError: 'injection blocked' });
     expect(p.getState()).toBe('error');
     vi.advanceTimersByTime(1500);
     expect(p.getState()).toBe('idle');
@@ -122,7 +124,7 @@ describe('pipeline', () => {
     const p = createPipeline({ session, stt, injector, noKey: true });
     p.toggle();
     const r = await p.submitAudio({ audioBase64: 'AA==', mimeType: 'audio/webm' });
-    expect(r).toEqual({ text: GUIDANCE_MSG });
+    expect(r).toEqual({ text: GUIDANCE_MSG, injectError: 'blocked' });
     expect(p.getState()).toBe('error');
     vi.advanceTimersByTime(1500);
     expect(p.getState()).toBe('idle');

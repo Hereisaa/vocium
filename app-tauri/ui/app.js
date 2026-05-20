@@ -68,6 +68,23 @@ function applyView(state) {
   labelEl.textContent = v.label;
 }
 
+// Inject failure: clipboard succeeded but the paste keystroke didn't (most
+// often: macOS Accessibility permission was reset after rebuilding the .app
+// at a new path/signature). The pipeline already short-circuits to the error
+// animation via state_changed; this overlays the guidance text onto the pill
+// for ~8 s so the user knows exactly what to fix without checking any log.
+let injectErrorClearTimer = null;
+function showInjectError(message) {
+  if (!message) return;
+  labelEl.textContent = message;
+  pill.className = 'pill s-error';
+  if (injectErrorClearTimer) clearTimeout(injectErrorClearTimer);
+  injectErrorClearTimer = setTimeout(() => {
+    injectErrorClearTimer = null;
+    applyView(currentState);
+  }, 8000);
+}
+
 function clearMaxListenTimer() {
   if (maxListenTimer !== null) {
     clearTimeout(maxListenTimer);
@@ -301,7 +318,15 @@ async function startRecording() {
       const effectiveMime = blob.type || mimeType;
       const audioBase64 = await blobToBase64(blob);
       // Sidecar pipeline: submit_audio -> transcribing -> injecting -> idle.
-      await invoke('submit_audio', { audioBase64, mimeType: effectiveMime });
+      // Result shape: { content: [{ type: 'text', text: JSON({ text, injectError? }) }] }.
+      // `injectError` is populated when pbcopy succeeded but the paste keystroke
+      // failed (typically: macOS Accessibility permission reset after rebuild).
+      // We surface it on the pill so the user sees the actionable guidance
+      // instead of just the generic "發生問題" red flash.
+      const res = await invoke('submit_audio', { audioBase64, mimeType: effectiveMime });
+      let inner = null;
+      try { inner = JSON.parse(res?.content?.[0]?.text ?? 'null'); } catch (_) { /* ignore */ }
+      if (inner && inner.injectError) showInjectError(inner.injectError);
     } catch (e) {
       reportAudioError(`送出音訊失敗：${e && e.message ? e.message : e}`);
     }
