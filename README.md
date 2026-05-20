@@ -166,6 +166,8 @@ If voice transcription succeeds but paste does not fire after a rebuild:
 
 The floating icon runs a permission probe at startup, so if Accessibility is missing it surfaces the guidance text on the pill within a couple of seconds — you do not need to make a first voice attempt to discover this. The dev loop (`npm run dev`) launches from Terminal and reuses the granted entry across runs, so this re-grant tax only hits packaged builds.
 
+> **At-a-glance health:** Tray menu shows live status for microphone device, microphone permission, STT key, global shortcut, and (on macOS) Accessibility. Failing items are marked ⚠ and clickable — they jump straight to the relevant OS settings page or the in-app Settings window.
+
 ### Configure
 
 Config file: `%APPDATA%\vocium\vocium-config.json` (created on first run).
@@ -240,7 +242,7 @@ The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop
 
 **`inject_text`** — `{ text }` → `{ ok }`. Types the given text into the OS‑focused window (clipboard + simulated paste). Independent of STT — inject any string. It lands in whichever window has focus at call time, so the caller is responsible for focus.
 
-**`polish_text`** — `{ text, style? }` → `{ text }`. Cleans up text with your locally‑configured LLM provider and key (removes fillers, fixes punctuation, improves fluency; meaning preserved). Headless and host‑controlled: the MCP host decides when to call it; it works regardless of the desktop app's polish toggle. Like the other tools, the API key is read from the local Vocium config on the machine running the sidecar — the caller never passes a key.
+**`polish_text`** — `{ text, style? }` → `{ text }`. Cleans up text with your locally‑configured LLM provider and key. Three styles: `light` ("Punctuation only" — restores punctuation, breaks into paragraphs, fixes obvious mis‑recognitions; filler words preserved), `full` ("Speech polishing" — also removes filler words and smooths sentence flow), `custom` (your own prompt). Meaning is always preserved. Headless and host‑controlled: the MCP host decides when to call it; it works regardless of the desktop app's polish toggle. Like the other tools, the API key is read from the local Vocium config on the machine running the sidecar — the caller never passes a key.
 
 Register it in an MCP host (after `npm run build`):
 

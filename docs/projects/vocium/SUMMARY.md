@@ -273,3 +273,19 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 ## §15 打包 P1 — 獨立可運行 App（2026-05-20）
 
 Sidecar 以 Bun `--compile` 單檔 binary 經 Tauri `externalBin` 隨附。`lib.rs` 新增純解析器（`SidecarLaunch::Binary` 優先 > `NodeScript` dev 回退）+ 單元測試；`mcp.rs` std::process transport 不動。tauri.conf：externalBin、macOS `app`/`dmg` targets、`.icns`、`beforeBuildCommand`（build:sidecar-bin + vad:assets）。`macos-private-api` Cargo feature 補入版控。Bun 為**建置期**前置（非 runtime）。Gates：tsc/vitest/cargo（dev box，T4 起 externalBin 預檢需先建 binary）；`npm run package` + binary smoke + 無-Node 機器安裝驗收於 Windows + Mac mini M4（使用者驗）。P2 簽署 / P3 CI+Releases 為獨立後續。
+
+## §16 健康狀態面板 + 錄音前置檢查（2026-05-21）
+
+新增 Rust 端 `HealthState` 統一儲存五項 probe 結果（mic_device / mic_perm / mac_a11y / stt_key / hotkey），webview / sidecar / Rust 內部三來源各自推送。Tray 選單在每次 mutation 重建顯示 ✓/⚠ + 失敗項點此開啟 OS 設定（mic/Accessibility）或 Settings 視窗（key/hotkey）。webview 訂閱 `mediaDevices.devicechange` 與 `permissions.onchange` 即時 emit，無 polling。`triggerToggle` 進 listening 前 pre-flight gate；blockers 非空則不轉態並 `showInjectError` 顯示原因。`mcp.rs` / `pipeline.ts` / `sidecar/*` / injectors 全部不動。新增 `src/core/health.ts` 純 helper + `tests/health.test.ts`、`derive_health` Rust 純函式 + 7 個 Rust 單元測試（5 核心 + hotkey suspended + mac_a11y None/Some(false)）。
+
+### Pre-flight gate 效能修正（2026-05-21，commit `464969a`）
+
+實機驗收時使用者反映 idle→listening 轉態手感變慢。原因：T8 在 `triggerToggle` 加了 `await invoke('get_health')`，每次按熱鍵都付 5–50ms IPC round-trip（Rust 取六個 mutex + derive_health + JSON 序列化）。
+
+修正：webview 在 `probeWebviewHealthOnce` 同步寫入本機 module-level cache（`lastMicDeviceCount` / `lastMicPerm`），pre-flight gate 改讀本機緩存。**行為與 get_health 完全等價**（因 derive_health 的 Block 條件僅有 `mic_device_count == 0` 與 `mic_perm === 'denied'`，皆 webview 私有），且零 IPC、零延遲。`get_health` Tauri 命令仍保留（Tray 與外部消費者使用）。
+
+### AI 潤稿類別重命名 + 行為調校（2026-05-21，commits `2eeb0a3` + `f0686de`）
+
+使用者要求重新命名三類為：「只補標點符號」/「話語潤飾」/「自訂 Prompt」。內部 keys（`light`／`full`／`custom`）保留，config schema、persisted 設定、既有測試零破壞，僅 `app-tauri/ui/settings.html` 標籤文字與 `src/core/polish/prompts.ts` 的 `STYLE_PROMPTS.light` 異動。
+
+初版（`2eeb0a3`）為配合「只補標點符號」嚴格收窄 `light` prompt — 四個 "do NOT" 在前、positive action 在後 — 結果 LLM 過度觸發 "preserve verbatim" 直接原話回傳無標點。第二版（`f0686de`）改 positive-leading 結構：先述要做什麼（補標點 + 自然分段 + 修正明顯錯字/同音字），後述不要做什麼（保留 filler、不改寫、不重排、不縮短）。`full` 不變（含 filler 清理 + 流暢化）。SPEC §FR-POL-3。

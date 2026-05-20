@@ -88,6 +88,53 @@ function showInjectError(message) {
   }, 8000);
 }
 
+// Last-known webview-side mic state cache. Populated by probeWebviewHealthOnce
+// (the same source that emits to Rust). triggerToggle's pre-flight gate reads
+// THIS instead of invoking `get_health` so the FSM idle→listening transition
+// pays zero IPC cost on every hotkey press. The pure-block conditions in
+// derive_health (Rust) are exclusively `mic_device_count == 0` and
+// `mic_perm === 'denied'` — both are owned by the webview — so the local
+// gate is functionally identical to a get_health round-trip.
+let lastMicDeviceCount = -1; // -1 = not yet probed; treated as "no info, do not block"
+let lastMicPerm = 'unknown';
+
+// Health: enumerate mic devices and check permission state; emit results to
+// the Rust shell whenever they change. The shell merges into HealthState and
+// rebuilds the tray. `permissions.query` returns a live PermissionStatus whose
+// `.onchange` fires on grant/revoke; `mediaDevices.devicechange` fires on
+// plug/unplug. We never poll.
+async function probeWebviewHealthOnce() {
+  let mic_device_count = 0;
+  let mic_perm = 'unknown';
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    mic_device_count = devices.filter((d) => d.kind === 'audioinput').length;
+  } catch (_) { /* leave 0 — surfaces as block in derive_health */ }
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' });
+    mic_perm = status.state; // 'granted' | 'prompt' | 'denied'
+  } catch (_) { /* leave 'unknown' — derive_health treats as warn */ }
+  lastMicDeviceCount = mic_device_count;
+  lastMicPerm = mic_perm;
+  try {
+    await invoke('emit_health_webview', { micDeviceCount: mic_device_count, micPerm: mic_perm });
+  } catch (err) { console.error('[vocium] emit_health_webview failed', err); }
+}
+
+(async function initHealthProbe() {
+  await probeWebviewHealthOnce();
+  // Re-probe on device plug/unplug.
+  try {
+    navigator.mediaDevices.addEventListener('devicechange', () => { probeWebviewHealthOnce(); });
+  } catch (_) { /* older WKWebView: ignore — startup probe still ran */ }
+  // Re-probe on permission grant/revoke. Note: re-querying gives a fresh
+  // status; we also wire .onchange on the first status object below.
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' });
+    status.onchange = () => { probeWebviewHealthOnce(); };
+  } catch (_) { /* not supported: ignore — devicechange is the main trigger */ }
+})();
+
 function clearMaxListenTimer() {
   if (maxListenTimer !== null) {
     clearTimeout(maxListenTimer);
@@ -423,6 +470,19 @@ listen('state', (event) => {
 async function triggerToggle() {
   const from = currentState;
   if (from === 'idle') {
+    // Pre-flight: gate idle→listening using the webview's own last-known mic
+    // state (populated by probeWebviewHealthOnce). Zero IPC cost — the prior
+    // get_health round-trip added 5–50 ms to every hotkey press for no
+    // additional information (derive_health's Block conditions are exclusively
+    // mic_device_count == 0 and mic_perm === 'denied', both owned here).
+    if (lastMicDeviceCount === 0) {
+      showInjectError('找不到麥克風 — 請連接音訊輸入裝置');
+      return;
+    }
+    if (lastMicPerm === 'denied') {
+      showInjectError('已拒絕 — 請至系統設定授予');
+      return;
+    }
     currentState = 'listening';
     applyView('listening');
     startRecording();

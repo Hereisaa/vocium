@@ -127,6 +127,8 @@
 
 ### 已完成
 - [x] 自訂快捷鍵 UI（Settings 視窗 hotkey 錄製器，2026-05-17）
+- [x] 健康狀態面板 + 錄音前置檢查 UX（2026-05-21）：Tray 顯示五項 probe（麥克風裝置/權限／macOS 輔助使用／STT 金鑰／全域快捷鍵），失敗項可點開 OS 設定；toggle 進 listening 前 pre-flight 失敗則不轉態並在 pill 顯示原因（不再 silent listening→idle 抖動）；webview live 訂閱 devicechange + permissions.onchange，零 polling；pre-flight 由 webview 本機緩存判斷（不走 get_health IPC），idle→listening 零延遲。SPEC §FR-HEALTH-1。
+- [x] AI 潤稿類別重命名 + 行為調校（2026-05-21）：Settings 顯示「只補標點符號」「話語潤飾」「自訂 Prompt」；`light` prompt 重寫為 positive-leading 結構（補標點 + 自然分段 + 修正明顯錯字／同音字，保留 filler），避免先版過窄而原話回傳；`full` 仍含 filler 清理 + 流暢化。SPEC §FR-POL-3。
 
 ### 未完成
 - [ ] idle 滑鼠穿透（hover 區域動態切換）

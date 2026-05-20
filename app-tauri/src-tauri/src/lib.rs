@@ -16,6 +16,7 @@
 
 mod mcp;
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -43,6 +44,15 @@ struct ShellState {
     /// True while the global toggle hotkey is temporarily unregistered
     /// (the user is recording a new combo in Settings).
     hotkey_suspended: Mutex<bool>,
+    // Health-panel inputs. Updated from three sources (webview emits for
+    // mic_device / mic_perm; sidecar probe_inject for mac_a11y; existing
+    // config / shortcut write points for stt_key / hotkey). Each mutation
+    // also rebuilds the tray menu so the panel stays current at open-time.
+    health_mic_device_count: Mutex<u32>,
+    health_mic_perm: Mutex<String>, // 'granted' | 'prompt' | 'denied' | 'unknown'
+    health_mac_a11y_ok: Mutex<Option<bool>>, // None until first probe
+    health_stt_key_set: Mutex<bool>,
+    health_hotkey_registered: Mutex<bool>,
     config: VociumConfig,
     /// Diagnostic sink (-> %APPDATA%/vocium/logs/shell.log). The GUI process
     /// has no console (CREATE_NO_WINDOW) so eprintln! is invisible; everything
@@ -186,7 +196,7 @@ fn parse_shortcut(spec: &str) -> Option<Shortcut> {
 /// apply_hotkey (new binding) and resume_hotkey (re-arm after recording).
 fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String> {
     let h = app.clone();
-    app.global_shortcut()
+    let result = app.global_shortcut()
         .on_shortcut(sc, move |_a, _s, ev| {
             let dir = h.state::<ShellState>().config.config_dir.clone();
             let ptt = read_input_mode(&dir) == "ptt";
@@ -205,8 +215,19 @@ fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String>
                     let _ = invoke_tool(hh, t, json!({})).await;
                 });
             }
-        })
-        .map_err(|_| "taken".to_string())
+        });
+    match result {
+        Ok(()) => {
+            *app.state::<ShellState>().health_hotkey_registered.lock().unwrap() = true;
+            rebuild_tray_menu(app);
+            Ok(())
+        }
+        Err(_) => {
+            *app.state::<ShellState>().health_hotkey_registered.lock().unwrap() = false;
+            rebuild_tray_menu(app);
+            Err("taken".to_string())
+        }
+    }
 }
 
 fn apply_hotkey(app: &AppHandle, spec: &str) -> Result<(), String> {
@@ -264,6 +285,7 @@ fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
     } else {
         suspend_hotkey(&app);
     }
+    rebuild_tray_menu(&app);
     Ok(())
 }
 
@@ -549,6 +571,34 @@ async fn probe_inject(app: AppHandle) -> Result<Value, String> {
     invoke_tool(app, "probe_inject", json!({})).await
 }
 
+/// Return the latest snapshot of the unified health state. Consumers:
+/// the webview's toggle pre-flight (gates entering `listening` when
+/// `blockers` is non-empty) and any future panel; tray menu reads from
+/// the same shared `ShellState` mutexes at build time, so they are
+/// always in sync.
+#[tauri::command]
+fn get_health(state: tauri::State<'_, ShellState>) -> Result<Value, String> {
+    let report = snapshot_health_report(&state);
+    serde_json::to_value(&report).map_err(|e| e.to_string())
+}
+
+/// Receive a webview-side probe of mic device count + permission state.
+/// Called at boot and on every devicechange / permission.onchange in
+/// `app-tauri/ui/app.js`. We merge into HealthState (only the two fields
+/// the webview owns) and rebuild the tray. Never throws to the caller.
+#[tauri::command]
+fn emit_health_webview(
+    app: AppHandle,
+    state: tauri::State<'_, ShellState>,
+    mic_device_count: u32,
+    mic_perm: String,
+) -> Result<(), String> {
+    *state.health_mic_device_count.lock().unwrap() = mic_device_count;
+    *state.health_mic_perm.lock().unwrap() = mic_perm;
+    rebuild_tray_menu(&app);
+    Ok(())
+}
+
 #[tauri::command]
 async fn submit_audio(
     app: AppHandle,
@@ -806,10 +856,12 @@ async fn set_groq_key(app: AppHandle, key: String) -> Result<Value, String> {
     *app.state::<ShellState>().client.lock().unwrap() = Some(new_client);
 
     // Re-derive effective provider from the file we just wrote.
-    let (stt_provider, _) = derive_active(&dir);
+    let (stt_provider, stt_key_set) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
+    *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
+    rebuild_tray_menu(&app);
     log(&format!("[set_groq_key] applied; provider now {stt_provider}"));
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
@@ -842,10 +894,12 @@ async fn restart_sidecar_apply(app: &AppHandle) -> Result<(), String> {
             return Err(e);
         }
     }
-    let (stt_provider, _) = derive_active(&dir);
+    let (stt_provider, stt_key_set) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
+    *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
+    rebuild_tray_menu(app);
     Ok(())
 }
 
@@ -1001,6 +1055,11 @@ pub fn run() {
             hk_item: Mutex::new(None),
             stt_item: Mutex::new(None),
             hotkey_suspended: Mutex::new(false),
+            health_mic_device_count: Mutex::new(0),
+            health_mic_perm: Mutex::new("prompt".into()), // safe default: lets first getUserMedia trigger the OS prompt
+            health_mac_a11y_ok: Mutex::new(None),
+            health_stt_key_set: Mutex::new(false),
+            health_hotkey_registered: Mutex::new(false),
             config: cfg_for_state,
             log: log_state,
         })
@@ -1040,7 +1099,9 @@ pub fn run() {
             save_input_mode,
             save_vad_trim,
             save_polish,
-            clear_polish_key
+            clear_polish_key,
+            get_health,
+            emit_health_webview
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -1050,6 +1111,31 @@ pub fn run() {
                 Ok(client) => {
                     log_setup("[boot] sidecar connected");
                     *handle.state::<ShellState>().client.lock().unwrap() = Some(client);
+                    #[cfg(target_os = "macos")]
+                    {
+                        let app_for_probe = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            match invoke_tool(app_for_probe.clone(), "probe_inject", json!({})).await {
+                                Ok(v) => {
+                                    // Sidecar's `ok(...)` returns { content: [{ type:'text', text: JSON({ok, message?}) }] }
+                                    let ok = v
+                                        .get("content")
+                                        .and_then(|c| c.get(0))
+                                        .and_then(|c| c.get("text"))
+                                        .and_then(|t| t.as_str())
+                                        .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                                        .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
+                                        .unwrap_or(false);
+                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
+                                    rebuild_tray_menu(&app_for_probe);
+                                }
+                                Err(_) => {
+                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(false);
+                                    rebuild_tray_menu(&app_for_probe);
+                                }
+                            }
+                        });
+                    }
                 }
                 Err(e) => {
                     log_setup(&format!("[boot] sidecar NOT connected: {e}"));
@@ -1086,7 +1172,13 @@ pub fn run() {
             *handle.state::<ShellState>().hotkey_ok.lock().unwrap() = hotkey_ok;
 
             // 5. System tray.
+            // Seed health-panel inputs that have a known boot-time truth so
+            // the very first rebuild_tray_menu render is correct.
+            *handle.state::<ShellState>().health_hotkey_registered.lock().unwrap() = hotkey_ok;
+            let (_active_provider, stt_key_set_initial) = derive_active(&cfg.config_dir);
+            *handle.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set_initial;
             build_tray(&handle, &cfg, hotkey_ok)?;
+            rebuild_tray_menu(&handle);
 
             Ok(())
         })
@@ -1145,7 +1237,29 @@ fn build_tray(
                 .unwrap_or_else(|_| app.default_window_icon().cloned().unwrap()),
         )
         .menu(&menu)
-        .on_menu_event(move |app, event| match event.id.as_ref() {
+        .on_menu_event(move |app, event| {
+            #[cfg(target_os = "macos")]
+            {
+                let app_for_reprobe = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(v) = invoke_tool(app_for_reprobe.clone(), "probe_inject", json!({})).await {
+                        let ok = v
+                            .get("content")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c| c.get("text"))
+                            .and_then(|t| t.as_str())
+                            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                            .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
+                            .unwrap_or(false);
+                        let cur = *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap();
+                        if cur != Some(ok) {
+                            *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
+                            rebuild_tray_menu(&app_for_reprobe);
+                        }
+                    }
+                });
+            }
+            match event.id.as_ref() {
             "show" => {
                 if let Some(w) = app.get_webview_window("icon") {
                     let _ = w.show();
@@ -1172,11 +1286,431 @@ fn build_tray(
                 shutdown_sidecar(app);
                 app.exit(0);
             }
+            "mic_perm" => {
+                use tauri_plugin_opener::OpenerExt;
+                #[cfg(target_os = "macos")]
+                let url = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+                #[cfg(windows)]
+                let url = "ms-settings:privacy-microphone";
+                #[cfg(not(any(target_os = "macos", windows)))]
+                let url: &str = "";
+                if !url.is_empty() {
+                    let _ = app.opener().open_url(url, None::<&str>);
+                }
+            }
+            "mac_a11y" => {
+                #[cfg(target_os = "macos")]
+                {
+                    use tauri_plugin_opener::OpenerExt;
+                    let _ = app.opener().open_url(
+                        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                        None::<&str>,
+                    );
+                }
+            }
+            "stt_key" => {
+                // Open the in-app Settings window so the user can paste a key.
+                if let Some(w) = app.get_webview_window("settings") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+            "hotkey" => {
+                // Same Settings window — the General tab contains the hotkey
+                // recorder; settings.js already routes there by default.
+                if let Some(w) = app.get_webview_window("settings") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
             _ => {}
+        }
         })
         .build(app)?;
 
     Ok(())
+}
+
+/// Snapshot the six health-panel input mutexes and compute the live
+/// HealthReport. Called by both `get_health` (returns JSON to webview)
+/// and `rebuild_tray_menu` (drives the tray menu). Lock order is fixed
+/// to match the field declaration order in `ShellState`.
+fn snapshot_health_report(state: &ShellState) -> HealthReport {
+    let mic_perm = state.health_mic_perm.lock().unwrap().clone();
+    let inputs = HealthInputs {
+        mic_device_count: *state.health_mic_device_count.lock().unwrap(),
+        mic_perm: &mic_perm,
+        mac_a11y_ok: *state.health_mac_a11y_ok.lock().unwrap(),
+        stt_key_set: *state.health_stt_key_set.lock().unwrap(),
+        hotkey_registered: *state.health_hotkey_registered.lock().unwrap(),
+        hotkey_suspended: *state.hotkey_suspended.lock().unwrap(),
+    };
+    derive_health(inputs)
+}
+
+/// Rebuild the tray menu with the current health-panel items prepended.
+/// Idempotent and cheap (Tauri rebuilds the menu native object); called
+/// after every mutation of any HealthState field.
+fn rebuild_tray_menu(app: &AppHandle) {
+    let state = app.state::<ShellState>();
+    let report = snapshot_health_report(&state);
+
+    // Build one MenuItem per health item. Labels match buildTrayLabel in
+    // src/core/health.ts exactly so the Tray and any future webview surface
+    // stay visually consistent.
+    let mut health_items: Vec<MenuItem<Wry>> = Vec::new();
+    for it in &report.items {
+        let glyph = if matches!(it.status, HealthStatus::Ok) { "✓" } else { "⚠" };
+        let name = match it.id {
+            "mic_device" => "麥克風",
+            "mic_perm" => "麥克風權限",
+            "mac_a11y" => "輔助使用",
+            "stt_key" => "STT 金鑰",
+            "hotkey" => "全域快捷鍵",
+            _ => "?",
+        };
+        let main = match &it.message {
+            Some(m) => format!("{}：{}", name, m),
+            None => name.to_string(),
+        };
+        let head = format!("{} {}", glyph, main);
+        let is_failing = !matches!(it.status, HealthStatus::Ok);
+        let is_os_action = matches!(
+            it.action,
+            Some("open_mic_settings") | Some("open_a11y_settings")
+        );
+        let label = if is_failing && is_os_action {
+            format!("{} → 點此開啟系統設定", head)
+        } else {
+            head
+        };
+        // Item id = the health id. Failing items with an action are enabled
+        // (clickable); ok items and failing items without an action are
+        // disabled informational rows.
+        let enabled = is_failing && it.action.is_some();
+        if let Ok(mi) = MenuItem::with_id(app, it.id, label, enabled, None::<&str>) {
+            health_items.push(mi);
+        }
+    }
+
+    // Rebuild the full menu: health items, separator, then the existing
+    // controls. The existing controls' MenuItem instances must be rebuilt
+    // here too (muda does not let you reuse handles across menus).
+    let cfg = read_config();
+    // Derive hotkey_ok from the report so the tray "快捷鍵" row label always
+    // agrees with the health item we just produced. Re-locking would risk
+    // divergence if any writer ran between the two reads (currently impossible
+    // since both run on the main thread, but the report-as-source-of-truth
+    // discipline is cheaper than proving the invariant by hand).
+    let hotkey_item = report.items.iter().find(|i| i.id == "hotkey");
+    let hotkey_ok = hotkey_item
+        .map(|i| matches!(i.status, HealthStatus::Ok))
+        .unwrap_or(false);
+    let hotkey_label = if hotkey_ok {
+        format!("快捷鍵：{}", cfg.hotkey)
+    } else {
+        format!("快捷鍵：{}（註冊失敗）", cfg.hotkey)
+    };
+
+    let Ok(show) = MenuItem::with_id(app, "show", "顯示 ICON", true, None::<&str>) else { return; };
+    let Ok(hide) = MenuItem::with_id(app, "hide", "隱藏 ICON", true, None::<&str>) else { return; };
+    let Ok(hk) = MenuItem::with_id(app, "hk", &hotkey_label, false, None::<&str>) else { return; };
+    let Ok(settings_item) = MenuItem::with_id(app, "settings", "設定…", true, None::<&str>) else { return; };
+    let Ok(stt) = MenuItem::with_id(app, "stt", &format!("STT：{}", cfg.stt_provider), false, None::<&str>) else { return; };
+    let Ok(open_cfg) = MenuItem::with_id(app, "open_cfg", "開啟設定檔位置", true, None::<&str>) else { return; };
+    let Ok(sep1) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep2) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep3) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(sep_health) = PredefinedMenuItem::separator(app) else { return; };
+    let Ok(quit) = MenuItem::with_id(app, "quit", "結束", true, None::<&str>) else { return; };
+
+    let mut all_refs: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = Vec::new();
+    for hi in &health_items { all_refs.push(hi); }
+    all_refs.push(&sep_health);
+    let trailing: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = vec![
+        &show, &hide, &sep1, &hk, &stt, &sep2, &settings_item, &open_cfg, &sep3, &quit,
+    ];
+    for r in trailing { all_refs.push(r); }
+
+    let Ok(menu) = Menu::with_items(app, &all_refs) else {
+        (state.log)("[rebuild_tray_menu] Menu::with_items failed; keeping previous menu");
+        return;
+    };
+
+    if let Some(tray) = app.tray_by_id("vocium-tray") {
+        if let Err(e) = tray.set_menu(Some(menu)) {
+            (state.log)(&format!("[rebuild_tray_menu] tray.set_menu failed: {}", e));
+        }
+        // The on_menu_event handler is preserved across set_menu calls in
+        // Tauri 2; we do NOT rebuild it here. New ids (health items) are
+        // handled in the same closure (extended in Task 7).
+    } else {
+        (state.log)("[rebuild_tray_menu] tray_by_id(\"vocium-tray\") returned None");
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Health panel — pure types + derive function (testable; no I/O).
+// `HealthState` (added in Task 3) is the I/O-bound holder; `derive_health`
+// is the pure mapping from raw inputs to a serialisable HealthReport that
+// both the Tauri command and the tray menu builder consume.
+// ──────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HealthStatus {
+    Ok,
+    Warn,
+    Block,
+}
+
+// TODO(T3): if any Rust consumer needs to pattern-match on `id` or
+// `action`, replace the `&'static str` discriminants with enums (with
+// serde rename_all = "snake_case") and add an `as_str()` view for the
+// tray menu's display layer. For T2 the &'static str shape matches the
+// JSON the webview consumes and keeps allocations zero.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct HealthItem {
+    pub id: &'static str,
+    pub status: HealthStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<Cow<'static, str>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct HealthReport {
+    pub items: Vec<HealthItem>,
+    pub blockers: Vec<&'static str>,
+}
+
+/// Snapshot of runtime probe values fed into [`derive_health`].
+/// Lifetime `'a` is bound to the `mic_perm` source — construct inline and
+/// do not store across async yield points. `mac_a11y_ok: None` means the
+/// probe does not apply on the current platform (non-macOS path);
+/// `Some(false)` is the macOS "not yet trusted" case.
+pub struct HealthInputs<'a> {
+    pub mic_device_count: u32,
+    pub mic_perm: &'a str,        // 'granted' | 'prompt' | 'denied' | other
+    // TODO(T3): consider replacing Option<bool> with a 3-variant enum
+    // (NotApplicable / Applicable(true) / Applicable(false)) to avoid the
+    // visual ambiguity between `None` and `Some(false)` at call sites.
+    pub mac_a11y_ok: Option<bool>, // None = not applicable (non-macOS or unprobed yet)
+    pub stt_key_set: bool,
+    pub hotkey_registered: bool,
+    pub hotkey_suspended: bool,
+}
+
+fn mic_perm_status(state: &str) -> HealthStatus {
+    match state {
+        "granted" | "prompt" => HealthStatus::Ok,
+        "denied" => HealthStatus::Block,
+        _ => HealthStatus::Warn,
+    }
+}
+
+pub fn derive_health(inputs: HealthInputs) -> HealthReport {
+    let mut items = Vec::new();
+
+    // mic_device — BLOCK when count == 0.
+    items.push(if inputs.mic_device_count > 0 {
+        HealthItem {
+            id: "mic_device",
+            status: HealthStatus::Ok,
+            message: Some(Cow::Owned(format!("{} 個裝置可用", inputs.mic_device_count))),
+            action: None,
+        }
+    } else {
+        HealthItem {
+            id: "mic_device",
+            status: HealthStatus::Block,
+            message: Some(Cow::Borrowed("找不到麥克風 — 請連接音訊輸入裝置")),
+            action: None,
+        }
+    });
+
+    // mic_perm — BLOCK only on 'denied'; 'prompt' is OK (let OS prompt fire).
+    let perm_status = mic_perm_status(inputs.mic_perm);
+    items.push(HealthItem {
+        id: "mic_perm",
+        status: perm_status,
+        message: Some(match perm_status {
+            HealthStatus::Ok => Cow::Borrowed("已授予"),
+            HealthStatus::Block => Cow::Borrowed("已拒絕 — 請至系統設定授予"),
+            HealthStatus::Warn => Cow::Owned(format!("未知狀態 ({})", inputs.mic_perm)),
+        }),
+        action: if perm_status == HealthStatus::Ok {
+            None
+        } else {
+            Some("open_mic_settings")
+        },
+    });
+
+    // mac_a11y — present only when probe is applicable (macOS); macOS-only feature flag.
+    if let Some(ok) = inputs.mac_a11y_ok {
+        items.push(HealthItem {
+            id: "mac_a11y",
+            status: if ok { HealthStatus::Ok } else { HealthStatus::Warn },
+            message: Some(if ok { Cow::Borrowed("已授予") } else { Cow::Borrowed("未授予") }),
+            action: if ok { None } else { Some("open_a11y_settings") },
+        });
+    }
+
+    // stt_key — WARN when empty (existing GUIDANCE_MSG flow takes over).
+    items.push(HealthItem {
+        id: "stt_key",
+        status: if inputs.stt_key_set { HealthStatus::Ok } else { HealthStatus::Warn },
+        message: Some(if inputs.stt_key_set { Cow::Borrowed("已設定") } else { Cow::Borrowed("未設定") }),
+        action: if inputs.stt_key_set { None } else { Some("open_settings_window") },
+    });
+
+    // hotkey — WARN when not registered or currently suspended.
+    let hotkey_ok = inputs.hotkey_registered && !inputs.hotkey_suspended;
+    items.push(HealthItem {
+        id: "hotkey",
+        status: if hotkey_ok { HealthStatus::Ok } else { HealthStatus::Warn },
+        message: Some(if hotkey_ok {
+            Cow::Borrowed("已註冊")
+        } else if !inputs.hotkey_registered {
+            Cow::Borrowed("註冊失敗")
+        } else {
+            Cow::Borrowed("暫停中")
+        }),
+        action: if hotkey_ok { None } else { Some("open_settings_hotkey") },
+    });
+
+    let blockers: Vec<&'static str> = items
+        .iter()
+        .filter(|i| matches!(i.status, HealthStatus::Block))
+        .map(|i| i.id)
+        .collect();
+
+    HealthReport { items, blockers }
+}
+
+#[cfg(test)]
+mod health_tests {
+    use super::{derive_health, HealthInputs, HealthStatus};
+
+    #[test]
+    fn ok_when_all_good() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty());
+        // Five items on macOS (mac_a11y included), four on non-macOS — both
+        // branches should never produce blockers when inputs say all good.
+        assert!(r.items.iter().all(|i| i.status == HealthStatus::Ok));
+    }
+
+    #[test]
+    fn block_when_no_mic_device() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 0,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.iter().any(|id| id == &"mic_device"));
+    }
+
+    #[test]
+    fn block_when_mic_perm_denied() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "denied",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.iter().any(|id| id == &"mic_perm"));
+    }
+
+    #[test]
+    fn warn_only_for_missing_stt_key_and_hotkey() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: false,
+            hotkey_registered: false,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty()); // soft warns do not block
+        let stt_key = r.items.iter().find(|i| i.id == "stt_key").unwrap();
+        assert_eq!(stt_key.status, HealthStatus::Warn);
+        let hotkey = r.items.iter().find(|i| i.id == "hotkey").unwrap();
+        assert_eq!(hotkey.status, HealthStatus::Warn);
+    }
+
+    #[test]
+    fn prompt_is_ok_not_block() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "prompt",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty());
+    }
+
+    #[test]
+    fn warn_when_hotkey_suspended_with_registration() {
+        // (registered=true, suspended=true) → Warn with "暫停中" message.
+        // Also exercises the non-macOS path via mac_a11y_ok: None.
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: None,
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: true,
+        });
+        assert!(r.blockers.is_empty());
+        let hotkey = r.items.iter().find(|i| i.id == "hotkey").unwrap();
+        assert_eq!(hotkey.status, HealthStatus::Warn);
+        assert_eq!(hotkey.message.as_deref(), Some("暫停中"));
+    }
+
+    #[test]
+    fn mac_a11y_omitted_when_not_applicable() {
+        // mac_a11y_ok: None → the report has 4 items (no mac_a11y entry).
+        // mac_a11y_ok: Some(false) → 5 items, mac_a11y is Warn + action.
+        let non_mac = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: None,
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert_eq!(non_mac.items.len(), 4);
+        assert!(non_mac.items.iter().all(|i| i.id != "mac_a11y"));
+
+        let mac_denied = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(false),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert_eq!(mac_denied.items.len(), 5);
+        let a11y = mac_denied.items.iter().find(|i| i.id == "mac_a11y").unwrap();
+        assert_eq!(a11y.status, HealthStatus::Warn);
+        assert_eq!(a11y.action, Some("open_a11y_settings"));
+    }
 }
 
 #[cfg(test)]

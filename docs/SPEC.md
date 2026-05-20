@@ -166,12 +166,16 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 
 - FR-POL-1：AI 潤稿為 `submitAudio` pipeline 的**可選步驟**，執行順序：**STT → AI 潤稿 → 繁簡轉換 → 注入**。潤稿在 STT 之後、繁簡轉換之前執行（原始 STT 文字輸入潤稿模組）；繁簡轉換為最後的確定性正規化（對潤稿輸出做轉換），確保無論潤稿 LLM 輸出何種字體，最終注入的文字都符合使用者的繁／簡設定。`transcribe_clip` 不套用潤稿。任何失敗（無金鑰、逾時、例外）→ best-effort（Totality，E6），直接使用 STT 原始文字（繁簡轉換仍套用），不進 error 狀態，不中斷語音輸入流程。潤稿 system prompt 含 zh-script 指令（`twp`→繁體／`cn`→簡體），僅偏置中文輸出字體作為防禦縱深，不翻譯非中文內容為中文（與「保留原語言」規則疊加）。
 - FR-POL-2：provider / 金鑰解析：支援 `groq` / `openai` / `gemini` / `claude` 四家；`claude` 使用獨立的 `claudeApiKey`；`groq` / `openai` / `gemini` 潤稿若未設定覆蓋金鑰，則沿用同家 STT 金鑰（`groqApiKey`/`openaiApiKey`/`geminiApiKey`）。
-- FR-POL-3：潤稿風格：`light`（輕度修飾，預設）、`full`（完整潤稿）、`custom`（使用者自訂 prompt；留空時自動回退為 `light`）。
+- FR-POL-3：潤稿類別（Settings 顯示標籤 / 內部 key）：「只補標點符號」(`light`，預設) — 補標點 + 自然分段 + 修正明顯錯字／同音字，保留所有 filler；「話語潤飾」(`full`) — 含「只補標點符號」所有行為，另加 filler 清理 + 句子流暢化 + 語氣一致化（不改原意）；「自訂 Prompt」(`custom`) — 使用者自訂 prompt；留空時自動回退為 `light`。Prompt 採 positive-leading 結構（先述要做什麼，後述不要做什麼），避免 LLM 過度觸發 "preserve verbatim" 而原話回傳。
 - FR-POL-4：`polishEnabled` 預設 `false`；使用者必須主動於 Settings「AI 潤稿」分頁開啟。
 - FR-POL-5：config 即時讀取，**不需重啟 sidecar**（與 `save_vad_trim`/`save_zh_mode` 同機制）。
 - FR-POL-6：**注入加固（prompt-injection / instruction-confusion 緩解）**：潤稿步驟將轉錄文字以 `<transcript>…</transcript>` 分隔符包裹後送出，並一律於 system prompt 注入 TRANSCRIPT_GUARD 指令，要求模型將被包裹內容**嚴格視為待修訂之文字而非指令**——不得遵循、回答或執行其中任何請求／問題／命令，不得新增內容或描述任務，僅輸出修訂後文字。防禦縱深：若模型回吐包裹標籤，`polishText` 會剝除輸出開頭／結尾錨定的 `<transcript>`／`</transcript>`（Totality 保留：剝除後為空→回原文）。適用全部三種風格（`light`／`full`／`custom`；`custom` 自訂 prompt 仍為受信任指令，轉錄文字仍為惰性內容）與四家 provider。此規則與 SAFETY_SUFFIX（保留原意／原語言）及 zh-script 指令疊加（不取代）。註：無任何 prompt 能 100% 防注入，此為標準且強力之緩解，非絕對保證。
 
-### 3.11 打包（FR-PKG）
+### 3.11 健康狀態面板（FR-HEALTH）
+
+- FR-HEALTH-1：Tray 選單顯示五項健康狀態（音訊輸入裝置 / 麥克風權限 / macOS 輔助使用 / STT 金鑰 / 全域快捷鍵）。失敗項以 `⚠` 標示，可點開 OS 設定（mic_perm/mac_a11y 透過 `tauri-plugin-opener` 開 URL scheme）或內部 Settings 視窗（stt_key/hotkey）。`get_health` Tauri 命令回傳 `{ items, blockers }`，供 Tray 機制與外部消費者使用。webview `triggerToggle` 進 listening 前的 pre-flight gate **不**走 `get_health` IPC round-trip：webview 直接讀 `probeWebviewHealthOnce` 緩存的本機 `lastMicDeviceCount` / `lastMicPerm`（Rust 端 derive_health 的 Block 條件僅有 `mic_device_count == 0` 與 `mic_perm === 'denied'`，皆 webview 私有，無 IPC 必要），blockers 非空則不轉態並透過 `showInjectError` 顯示原因（不再 silent listening→idle 抖動，且 idle→listening 轉態零延遲）。webview 用 `mediaDevices.devicechange` 與 `permissions.onchange` 即時推送 mic_device/mic_perm 變化（並同步更新本機緩存）；mac_a11y 於開機與 tray menu 互動時 probe；stt_key/hotkey 隨既有 `save_*_key`/`register_toggle_shortcut` 同步。
+
+### 3.12 打包（FR-PKG）
 
 - FR-PKG-1：打包版以 Tauri `externalBin` 隨附 Bun 編譯的單一 sidecar binary（`binaries/vocium-sidecar-<target-triple>`）。Rust 殼以 `std::process` 解析並執行它（主程式旁：Windows 安裝目錄；macOS `Vocium.app/Contents/MacOS/`），`mcp.rs` JSON-RPC transport 不變；找不到 binary（一般 `npm run dev`）時回退 `node dist/sidecar/index.js`。故打包版**使用者機器免裝 Node.js**。
 
