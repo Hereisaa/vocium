@@ -1179,6 +1179,210 @@ fn build_tray(
     Ok(())
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Health panel — pure types + derive function (testable; no I/O).
+// `HealthState` (added in Task 3) is the I/O-bound holder; `derive_health`
+// is the pure mapping from raw inputs to a serialisable HealthReport that
+// both the Tauri command and the tray menu builder consume.
+// ──────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HealthStatus {
+    Ok,
+    Warn,
+    Block,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct HealthItem {
+    pub id: &'static str,
+    pub status: HealthStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct HealthReport {
+    pub items: Vec<HealthItem>,
+    pub blockers: Vec<&'static str>,
+}
+
+pub struct HealthInputs<'a> {
+    pub mic_device_count: u32,
+    pub mic_perm: &'a str,        // 'granted' | 'prompt' | 'denied' | other
+    pub mac_a11y_ok: Option<bool>, // None = not applicable (non-macOS or unprobed yet)
+    pub stt_key_set: bool,
+    pub hotkey_registered: bool,
+    pub hotkey_suspended: bool,
+}
+
+fn mic_perm_status(state: &str) -> HealthStatus {
+    match state {
+        "granted" | "prompt" => HealthStatus::Ok,
+        "denied" => HealthStatus::Block,
+        _ => HealthStatus::Warn,
+    }
+}
+
+pub fn derive_health(inputs: HealthInputs) -> HealthReport {
+    let mut items: Vec<HealthItem> = Vec::new();
+
+    // mic_device — BLOCK when count == 0.
+    items.push(if inputs.mic_device_count > 0 {
+        HealthItem {
+            id: "mic_device",
+            status: HealthStatus::Ok,
+            message: Some(format!("{} 個裝置可用", inputs.mic_device_count)),
+            action: None,
+        }
+    } else {
+        HealthItem {
+            id: "mic_device",
+            status: HealthStatus::Block,
+            message: Some("找不到麥克風 — 請連接音訊輸入裝置".into()),
+            action: None,
+        }
+    });
+
+    // mic_perm — BLOCK only on 'denied'; 'prompt' is OK (let OS prompt fire).
+    let perm_status = mic_perm_status(inputs.mic_perm);
+    items.push(HealthItem {
+        id: "mic_perm",
+        status: perm_status,
+        message: Some(match perm_status {
+            HealthStatus::Ok => "已授予".into(),
+            HealthStatus::Block => "已拒絕 — 請至系統設定授予".into(),
+            HealthStatus::Warn => format!("未知狀態 ({})", inputs.mic_perm),
+        }),
+        action: if perm_status == HealthStatus::Ok {
+            None
+        } else {
+            Some("open_mic_settings")
+        },
+    });
+
+    // mac_a11y — present only when probe is applicable (macOS); macOS-only feature flag.
+    if let Some(ok) = inputs.mac_a11y_ok {
+        items.push(HealthItem {
+            id: "mac_a11y",
+            status: if ok { HealthStatus::Ok } else { HealthStatus::Warn },
+            message: Some(if ok { "已授予".into() } else { "未授予".into() }),
+            action: if ok { None } else { Some("open_a11y_settings") },
+        });
+    }
+
+    // stt_key — WARN when empty (existing GUIDANCE_MSG flow takes over).
+    items.push(HealthItem {
+        id: "stt_key",
+        status: if inputs.stt_key_set { HealthStatus::Ok } else { HealthStatus::Warn },
+        message: Some(if inputs.stt_key_set { "已設定".into() } else { "未設定".into() }),
+        action: if inputs.stt_key_set { None } else { Some("open_settings_window") },
+    });
+
+    // hotkey — WARN when not registered or currently suspended.
+    let hotkey_ok = inputs.hotkey_registered && !inputs.hotkey_suspended;
+    items.push(HealthItem {
+        id: "hotkey",
+        status: if hotkey_ok { HealthStatus::Ok } else { HealthStatus::Warn },
+        message: Some(if hotkey_ok {
+            "已註冊".into()
+        } else if !inputs.hotkey_registered {
+            "註冊失敗".into()
+        } else {
+            "暫停中".into()
+        }),
+        action: if hotkey_ok { None } else { Some("open_settings_hotkey") },
+    });
+
+    let blockers: Vec<&'static str> = items
+        .iter()
+        .filter(|i| matches!(i.status, HealthStatus::Block))
+        .map(|i| i.id)
+        .collect();
+
+    HealthReport { items, blockers }
+}
+
+#[cfg(test)]
+mod health_tests {
+    use super::{derive_health, HealthInputs, HealthStatus};
+
+    #[test]
+    fn ok_when_all_good() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty());
+        // Five items on macOS (mac_a11y included), four on non-macOS — both
+        // branches should never produce blockers when inputs say all good.
+        assert!(r.items.iter().all(|i| i.status == HealthStatus::Ok));
+    }
+
+    #[test]
+    fn block_when_no_mic_device() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 0,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.iter().any(|id| id == &"mic_device"));
+    }
+
+    #[test]
+    fn block_when_mic_perm_denied() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "denied",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.iter().any(|id| id == &"mic_perm"));
+    }
+
+    #[test]
+    fn warn_only_for_missing_stt_key_and_hotkey() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(true),
+            stt_key_set: false,
+            hotkey_registered: false,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty()); // soft warns do not block
+        let stt_key = r.items.iter().find(|i| i.id == "stt_key").unwrap();
+        assert_eq!(stt_key.status, HealthStatus::Warn);
+        let hotkey = r.items.iter().find(|i| i.id == "hotkey").unwrap();
+        assert_eq!(hotkey.status, HealthStatus::Warn);
+    }
+
+    #[test]
+    fn prompt_is_ok_not_block() {
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "prompt",
+            mac_a11y_ok: Some(true),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert!(r.blockers.is_empty());
+    }
+}
+
 #[cfg(test)]
 mod sidecar_resolver_tests {
     use super::{resolve_sidecar_in, SidecarLaunch};
