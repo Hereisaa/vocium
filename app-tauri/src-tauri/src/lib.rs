@@ -16,6 +16,7 @@
 
 mod mcp;
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -1194,12 +1195,17 @@ pub enum HealthStatus {
     Block,
 }
 
+// TODO(T3): if any Rust consumer needs to pattern-match on `id` or
+// `action`, replace the `&'static str` discriminants with enums (with
+// serde rename_all = "snake_case") and add an `as_str()` view for the
+// tray menu's display layer. For T2 the &'static str shape matches the
+// JSON the webview consumes and keeps allocations zero.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct HealthItem {
     pub id: &'static str,
     pub status: HealthStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub message: Option<Cow<'static, str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action: Option<&'static str>,
 }
@@ -1210,9 +1216,17 @@ pub struct HealthReport {
     pub blockers: Vec<&'static str>,
 }
 
+/// Snapshot of runtime probe values fed into [`derive_health`].
+/// Lifetime `'a` is bound to the `mic_perm` source — construct inline and
+/// do not store across async yield points. `mac_a11y_ok: None` means the
+/// probe does not apply on the current platform (non-macOS path);
+/// `Some(false)` is the macOS "not yet trusted" case.
 pub struct HealthInputs<'a> {
     pub mic_device_count: u32,
     pub mic_perm: &'a str,        // 'granted' | 'prompt' | 'denied' | other
+    // TODO(T3): consider replacing Option<bool> with a 3-variant enum
+    // (NotApplicable / Applicable(true) / Applicable(false)) to avoid the
+    // visual ambiguity between `None` and `Some(false)` at call sites.
     pub mac_a11y_ok: Option<bool>, // None = not applicable (non-macOS or unprobed yet)
     pub stt_key_set: bool,
     pub hotkey_registered: bool,
@@ -1228,21 +1242,21 @@ fn mic_perm_status(state: &str) -> HealthStatus {
 }
 
 pub fn derive_health(inputs: HealthInputs) -> HealthReport {
-    let mut items: Vec<HealthItem> = Vec::new();
+    let mut items = Vec::new();
 
     // mic_device — BLOCK when count == 0.
     items.push(if inputs.mic_device_count > 0 {
         HealthItem {
             id: "mic_device",
             status: HealthStatus::Ok,
-            message: Some(format!("{} 個裝置可用", inputs.mic_device_count)),
+            message: Some(Cow::Owned(format!("{} 個裝置可用", inputs.mic_device_count))),
             action: None,
         }
     } else {
         HealthItem {
             id: "mic_device",
             status: HealthStatus::Block,
-            message: Some("找不到麥克風 — 請連接音訊輸入裝置".into()),
+            message: Some(Cow::Borrowed("找不到麥克風 — 請連接音訊輸入裝置")),
             action: None,
         }
     });
@@ -1253,9 +1267,9 @@ pub fn derive_health(inputs: HealthInputs) -> HealthReport {
         id: "mic_perm",
         status: perm_status,
         message: Some(match perm_status {
-            HealthStatus::Ok => "已授予".into(),
-            HealthStatus::Block => "已拒絕 — 請至系統設定授予".into(),
-            HealthStatus::Warn => format!("未知狀態 ({})", inputs.mic_perm),
+            HealthStatus::Ok => Cow::Borrowed("已授予"),
+            HealthStatus::Block => Cow::Borrowed("已拒絕 — 請至系統設定授予"),
+            HealthStatus::Warn => Cow::Owned(format!("未知狀態 ({})", inputs.mic_perm)),
         }),
         action: if perm_status == HealthStatus::Ok {
             None
@@ -1269,7 +1283,7 @@ pub fn derive_health(inputs: HealthInputs) -> HealthReport {
         items.push(HealthItem {
             id: "mac_a11y",
             status: if ok { HealthStatus::Ok } else { HealthStatus::Warn },
-            message: Some(if ok { "已授予".into() } else { "未授予".into() }),
+            message: Some(if ok { Cow::Borrowed("已授予") } else { Cow::Borrowed("未授予") }),
             action: if ok { None } else { Some("open_a11y_settings") },
         });
     }
@@ -1278,7 +1292,7 @@ pub fn derive_health(inputs: HealthInputs) -> HealthReport {
     items.push(HealthItem {
         id: "stt_key",
         status: if inputs.stt_key_set { HealthStatus::Ok } else { HealthStatus::Warn },
-        message: Some(if inputs.stt_key_set { "已設定".into() } else { "未設定".into() }),
+        message: Some(if inputs.stt_key_set { Cow::Borrowed("已設定") } else { Cow::Borrowed("未設定") }),
         action: if inputs.stt_key_set { None } else { Some("open_settings_window") },
     });
 
@@ -1288,11 +1302,11 @@ pub fn derive_health(inputs: HealthInputs) -> HealthReport {
         id: "hotkey",
         status: if hotkey_ok { HealthStatus::Ok } else { HealthStatus::Warn },
         message: Some(if hotkey_ok {
-            "已註冊".into()
+            Cow::Borrowed("已註冊")
         } else if !inputs.hotkey_registered {
-            "註冊失敗".into()
+            Cow::Borrowed("註冊失敗")
         } else {
-            "暫停中".into()
+            Cow::Borrowed("暫停中")
         }),
         action: if hotkey_ok { None } else { Some("open_settings_hotkey") },
     });
@@ -1380,6 +1394,53 @@ mod health_tests {
             hotkey_suspended: false,
         });
         assert!(r.blockers.is_empty());
+    }
+
+    #[test]
+    fn warn_when_hotkey_suspended_with_registration() {
+        // (registered=true, suspended=true) → Warn with "暫停中" message.
+        // Also exercises the non-macOS path via mac_a11y_ok: None.
+        let r = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: None,
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: true,
+        });
+        assert!(r.blockers.is_empty());
+        let hotkey = r.items.iter().find(|i| i.id == "hotkey").unwrap();
+        assert_eq!(hotkey.status, HealthStatus::Warn);
+        assert_eq!(hotkey.message.as_deref(), Some("暫停中"));
+    }
+
+    #[test]
+    fn mac_a11y_omitted_when_not_applicable() {
+        // mac_a11y_ok: None → the report has 4 items (no mac_a11y entry).
+        // mac_a11y_ok: Some(false) → 5 items, mac_a11y is Warn + action.
+        let non_mac = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: None,
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert_eq!(non_mac.items.len(), 4);
+        assert!(non_mac.items.iter().all(|i| i.id != "mac_a11y"));
+
+        let mac_denied = derive_health(HealthInputs {
+            mic_device_count: 1,
+            mic_perm: "granted",
+            mac_a11y_ok: Some(false),
+            stt_key_set: true,
+            hotkey_registered: true,
+            hotkey_suspended: false,
+        });
+        assert_eq!(mac_denied.items.len(), 5);
+        let a11y = mac_denied.items.iter().find(|i| i.id == "mac_a11y").unwrap();
+        assert_eq!(a11y.status, HealthStatus::Warn);
+        assert_eq!(a11y.action, Some("open_a11y_settings"));
     }
 }
 
