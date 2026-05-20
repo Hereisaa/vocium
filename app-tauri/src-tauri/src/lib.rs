@@ -285,10 +285,22 @@ pub fn resolve_sidecar_in(dirs: &[PathBuf], dist_script: PathBuf, exe_ext: &str)
             for entry in rd.flatten() {
                 let fname = entry.file_name();
                 let name = fname.to_string_lossy();
-                let ok = name.starts_with("vocium-sidecar-")
-                    && (exe_ext.is_empty() || name.ends_with(exe_ext))
-                    && entry.file_type().map(|t| t.is_file()).unwrap_or(false);
-                if ok {
+                // Tauri externalBin convention: pre-bundle / dev the file is
+                // `vocium-sidecar-<rustc host-tuple>(.exe)` (lives in
+                // src-tauri/binaries/), but Tauri STRIPS the triple at bundle
+                // time, so the runtime file next to the main exe is the bare
+                // `vocium-sidecar(.exe)`. Both must match — verified empirically
+                // on Windows packaging (2026-05-21).
+                let stem: &str = if exe_ext.is_empty() {
+                    name.as_ref()
+                } else {
+                    name.strip_suffix(exe_ext).unwrap_or_else(|| name.as_ref())
+                };
+                let name_matches =
+                    stem == "vocium-sidecar" || stem.starts_with("vocium-sidecar-");
+                let ext_matches = exe_ext.is_empty() || name.ends_with(exe_ext);
+                let is_file = entry.file_type().map(|t| t.is_file()).unwrap_or(false);
+                if name_matches && ext_matches && is_file {
                     return SidecarLaunch::Binary(entry.path());
                 }
             }
@@ -1183,5 +1195,39 @@ mod sidecar_resolver_tests {
         let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("d.js"), "");
         std::fs::remove_dir_all(&dir).ok();
         assert!(matches!(got, SidecarLaunch::Binary(_)));
+    }
+
+    // Tauri externalBin strips the rustc host-tuple at bundle time: the
+    // file next to the main exe in an installed app is the BARE name
+    // `vocium-sidecar(.exe)`, NOT the triple-suffixed pre-bundle name.
+    // Empirically observed on Windows packaging 2026-05-21 — the resolver
+    // missing this case caused the dev fallback to fire in production.
+
+    #[test]
+    fn picks_bare_binary_post_bundle_windows() {
+        let dir = std::env::temp_dir().join(format!("vocium_t1d_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("vocium-sidecar.exe");
+        std::fs::write(&bin, b"x").unwrap();
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/index.js"), ".exe");
+        std::fs::remove_dir_all(&dir).ok();
+        match got {
+            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
+            _ => panic!("expected Binary(vocium-sidecar.exe), got NodeScript"),
+        }
+    }
+
+    #[test]
+    fn picks_bare_binary_post_bundle_unix() {
+        let dir = std::env::temp_dir().join(format!("vocium_t1e_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("vocium-sidecar");
+        std::fs::write(&bin, b"x").unwrap();
+        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("d.js"), "");
+        std::fs::remove_dir_all(&dir).ok();
+        match got {
+            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
+            _ => panic!("expected Binary(vocium-sidecar), got NodeScript"),
+        }
     }
 }
