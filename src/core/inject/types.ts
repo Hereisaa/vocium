@@ -15,10 +15,13 @@ export type ExecFile = (
 ) => void;
 
 /** Minimal structural view of a spawned child (node:child_process.ChildProcess
- *  satisfies this) so a persistent host stays unit-testable via injection. */
+ *  satisfies this) so a persistent host stays unit-testable via injection.
+ *  `stdin.write` accepts `Uint8Array` so binary payloads (e.g. UTF-8 bytes
+ *  to `pbcopy`) can be passed without round-tripping through a shell. */
 export interface ChildLike {
-  stdin: { write(s: string): void } | null;
+  stdin: { write(data: string | Uint8Array): void; end(): void } | null;
   stdout: { on(ev: 'data', cb: (d: Buffer | string) => void): void } | null;
+  stderr?: { on(ev: 'data', cb: (d: Buffer | string) => void): void } | null;
   on(ev: 'exit' | 'error', cb: (...a: unknown[]) => void): void;
   kill(): void;
   killed?: boolean;
