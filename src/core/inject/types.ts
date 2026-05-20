@@ -6,6 +6,13 @@ export interface Injector {
    *  runtime). Best-effort: never throws, never blocks the caller's critical
    *  path. */
   warmup?(): Promise<void>;
+  /** Optional: run the permission-sensitive paste step (e.g. osascript
+   *  System Events) WITHOUT writing to the clipboard or sending Cmd+V, then
+   *  classify the result with the same {ok,message} shape as inject(). The
+   *  webview calls this at boot so a stale macOS Accessibility entry (after
+   *  rebuilding the .app) is surfaced immediately, instead of after the
+   *  first voice attempt. Platforms without permission gating may omit. */
+  probe?(): Promise<InjectResult>;
 }
 
 export type ExecFile = (
@@ -15,10 +22,13 @@ export type ExecFile = (
 ) => void;
 
 /** Minimal structural view of a spawned child (node:child_process.ChildProcess
- *  satisfies this) so a persistent host stays unit-testable via injection. */
+ *  satisfies this) so a persistent host stays unit-testable via injection.
+ *  `stdin.write` accepts `Uint8Array` so binary payloads (e.g. UTF-8 bytes
+ *  to `pbcopy`) can be passed without round-tripping through a shell. */
 export interface ChildLike {
-  stdin: { write(s: string): void } | null;
+  stdin: { write(data: string | Uint8Array): void; end(): void } | null;
   stdout: { on(ev: 'data', cb: (d: Buffer | string) => void): void } | null;
+  stderr?: { on(ev: 'data', cb: (d: Buffer | string) => void): void } | null;
   on(ev: 'exit' | 'error', cb: (...a: unknown[]) => void): void;
   kill(): void;
   killed?: boolean;

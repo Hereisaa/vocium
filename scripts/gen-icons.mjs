@@ -24,7 +24,7 @@ const renderPng = (size) =>
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-const sizes = [16, 24, 32, 48, 64, 128, 256, 512];
+const sizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
 const buf = {};
 for (const s of sizes) buf[s] = await renderPng(s);
 
@@ -34,7 +34,7 @@ await writeFile(path.join(iconsDir, '128x128.png'), buf[128]);
 await writeFile(path.join(iconsDir, '128x128@2x.png'), buf[256]);
 
 // Extra stored sizes (lossless PNG — the non-distorting raster format).
-for (const s of [16, 24, 48, 64, 512]) {
+for (const s of [16, 24, 48, 64, 512, 1024]) {
   await writeFile(path.join(iconsDir, `${s}x${s}.png`), buf[s]);
 }
 

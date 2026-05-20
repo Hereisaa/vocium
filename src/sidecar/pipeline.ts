@@ -1,7 +1,7 @@
 // src/sidecar/pipeline.ts
 import type { createVoiceSession } from '../core/state-machine.js';
 import type { SttAdapter } from '../core/stt/types.js';
-import type { Injector } from '../core/inject/types.js';
+import type { Injector, InjectResult } from '../core/inject/types.js';
 import { describeSttError, GUIDANCE_MSG } from '../core/stt/describe-error.js';
 import { convertZh } from '../core/zh-convert.js';
 
@@ -23,6 +23,7 @@ export interface PipelineDeps {
   polish?: (text: string, styleOverride?: 'light' | 'full' | 'custom') => Promise<string>;
 }
 export interface AudioPayload { audioBase64: string; mimeType: string; language?: string; }
+export interface SubmitAudioResult { text: string; injectError?: string; }
 
 export function createPipeline({ session, stt, injector, noKey = false, getZhMode = () => 'twp', polish = async (t: string) => t }: PipelineDeps) {
   let resetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -48,17 +49,21 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
     toggle() { session.send('TOGGLE'); return session.getState(); },
     cancel() { session.send('CANCEL'); return session.getState(); },
     /**
-     * Always resolves with { text }. STT failures and the no-key case become
-     * injected user-facing text (not Promise rejections); only a wrong call
-     * state (idle/injecting) rejects, as that is a programmer error.
+     * Always resolves with { text, injectError? }. STT failures and the no-key
+     * case become injected user-facing text (not Promise rejections); only a
+     * wrong call state (idle/injecting) rejects, as that is a programmer error.
+     * `injectError` is populated when the clipboard write succeeded but the
+     * paste keystroke failed (typically: macOS Accessibility permission was
+     * reset after a rebuild) — the webview surfaces it so the user immediately
+     * sees the actionable guidance instead of a silent red flash.
      */
-    async submitAudio(p: AudioPayload): Promise<{ text: string }> {
+    async submitAudio(p: AudioPayload): Promise<SubmitAudioResult> {
       advanceFromListening();
       if (noKey) {
         // Not an error: user simply hasn't configured a key. Calm normal flow.
         session.send('TRANSCRIBED'); // -> injecting
         const r = await injector.inject(GUIDANCE_MSG);
-        if (!r.ok) { fail(); return { text: GUIDANCE_MSG }; }
+        if (!r.ok) { fail(); return { text: GUIDANCE_MSG, ...(r.message ? { injectError: r.message } : {}) }; }
         session.send('INJECTED');    // -> idle
         return { text: GUIDANCE_MSG };
       }
@@ -71,7 +76,7 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
         const text = convertZh(polished, getZhMode()); // zh conversion is the FINAL transform (deterministic; normalizes whatever script polish produced)
         session.send('TRANSCRIBED'); // -> injecting
         const r = await injector.inject(text);
-        if (!r.ok) { fail(); return { text }; }
+        if (!r.ok) { fail(); return { text, ...(r.message ? { injectError: r.message } : {}) }; }
         session.send('INJECTED');    // -> idle
         return { text };
       } catch (e) {
@@ -93,6 +98,13 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
       return { ...raw, text: convertZh(raw.text, getZhMode()) };
     },
     async injectText(text: string) { return injector.inject(text); },
+    async probeInject(): Promise<InjectResult> {
+      // probe is optional: platforms without permission gating (Windows) may
+      // omit it; that case maps to ok:true so the webview never sees a false
+      // warning on those platforms.
+      if (typeof injector.probe === 'function') return injector.probe();
+      return { ok: true };
+    },
     async polishOnly(text: string, style?: 'light' | 'full' | 'custom') {
       return polish(text, style);
     },

@@ -22,6 +22,7 @@ export function registerTools(server: McpServer, p: Pipeline) {
   server.tool('submit_audio', audioShape, async (a) => ok(await p.submitAudio(a)));
   server.tool('transcribe_clip', audioShape, async (a) => ok(await p.transcribeClip(a)));
   server.tool('inject_text', { text: z.string() }, async (a) => ok(await p.injectText(a.text)));
+  server.tool('probe_inject', {}, async () => ok(await p.probeInject()));
   server.tool(
     'polish_text',
     { text: z.string(), style: z.enum(['light', 'full', 'custom']).optional() },
