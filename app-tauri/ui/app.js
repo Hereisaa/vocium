@@ -458,6 +458,25 @@ listen('state', (event) => {
 async function triggerToggle() {
   const from = currentState;
   if (from === 'idle') {
+    // Pre-flight: consult the unified health state. If any item is in
+    // 'block' status (no mic device / mic permission denied), do NOT
+    // enter listening — surface the cause on the pill instead. The Tray
+    // menu always reflects the same state via the same Rust HealthState.
+    try {
+      const report = await invoke('get_health');
+      if (report && Array.isArray(report.blockers) && report.blockers.length > 0) {
+        const blockerId = report.blockers[0];
+        const blockerItem = (report.items || []).find((i) => i.id === blockerId);
+        const msg = (blockerItem && blockerItem.message) || '無法開始錄音 — 請檢查 Tray 健康狀態';
+        showInjectError(msg);
+        return;
+      }
+    } catch (err) {
+      // get_health unavailable: best-effort fall through (do NOT block) —
+      // the user can still attempt; the legacy webview audio_error path
+      // catches a real getUserMedia failure as before.
+      console.warn('[vocium] get_health failed; skipping pre-flight gate', err);
+    }
     currentState = 'listening';
     applyView('listening');
     startRecording();
