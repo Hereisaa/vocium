@@ -35,38 +35,109 @@ Press a hotkey, speak, and AI transcribes your voice and pastes it straight into
 
 ## Install & Use
 
+Supported platforms: **Windows 11** and **macOS**.
+
 ### Prerequisites
 
-- **Windows 11** or **macOS** (run via `npm run dev`).
-- **Node.js ≥ 20** · **Rust toolchain** · **WebView2** runtime (Windows) · **MSVC build tools** (Windows)
-- **Bun** — only for `npm run package` (build-time; not needed for `npm run dev`). [Install](https://bun.sh)
+#### Common (Windows + macOS)
 
-**macOS (run via `npm run dev`):** On first run, grant Vocium two permissions:
-- **Microphone** — on first recording, macOS will ask for access; grant it to the app or terminal running `npm run dev`.
-- **Accessibility** — System Settings ▸ Privacy & Security ▸ Accessibility. Required for both the global shortcut and pasting transcribed text into the focused app. If not granted, text is still copied to the clipboard and an in-app message tells you to paste manually.
+| Tool | Why | How |
+|---|---|---|
+| **Node.js ≥ 20** | runs the sidecar in dev (`npm run dev`); includes `npm` | ✅ command (see Quick install) or download from [nodejs.org](https://nodejs.org) |
+| **Rust toolchain** | builds the Tauri shell | ✅ command (see Quick install) |
+| **Bun** | only for `npm run package` (build-time; not needed for `npm run dev`) | ✅ command (see Quick install) — [docs](https://bun.sh) |
 
-`node` must be on your `PATH` (a terminal-launched `npm run dev` inherits it).
+#### 🪟 Windows only
 
-### Steps
+| Tool | Why | How |
+|---|---|---|
+| **WebView2 Runtime** | Tauri webview on Windows | Pre-installed on **Windows 10 (2020+)** and **Windows 11** — usually nothing to do. If missing: [Evergreen bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) |
+| **MSVC Build Tools** | `cargo build` on Windows | ⚙️ **Manual**: install **Visual Studio 2022 Build Tools** with the *"Desktop development with C++"* workload — the workload selection is done in the Visual Studio Installer GUI |
+
+#### 🍎 macOS only
+
+| Tool | Why | How |
+|---|---|---|
+| **Xcode Command Line Tools** | provides `clang`, `codesign`, etc. for `cargo build` | ✅ semi-command: `xcode-select --install` (triggers a system dialog → click **Install**) |
+
+### Quick install
+
+Copy-paste these into a fresh shell. Skip any line whose tool you already have.
+
+**🪟 Windows (PowerShell):**
+```powershell
+# Node.js (LTS, ≥ 20)
+winget install --id OpenJS.NodeJS.LTS
+# Rust
+winget install --id Rustlang.Rustup
+# Bun — build-time only; skip if you only run `npm run dev`
+powershell -c "irm bun.sh/install.ps1 | iex"
+# MSVC Build Tools — installer GUI required (select "Desktop development with C++")
+winget install --id Microsoft.VisualStudio.2022.BuildTools
+```
+
+**🍎 macOS (Terminal):**
+```bash
+# Xcode Command Line Tools (triggers a system dialog)
+xcode-select --install
+# Node.js (≥ 20) via Homebrew (or use nvm)
+brew install node
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Bun — build-time only; skip if you only run `npm run dev`
+curl -fsSL https://bun.sh/install | bash
+```
+
+> After installing Rust / Bun, open a new shell so the updated `PATH` is picked up.
+
+### Run from source (dev)
 
 ```bash
 git clone <repo-url> vocium
 cd vocium
 npm install
-npm run build          # compile the TypeScript sidecar
-npm run dev            # build + launch the desktop app (tauri dev)
+npm run dev   # builds the sidecar + launches the desktop app via `tauri dev`
 ```
+
+#### 🍎 macOS first-launch permissions
+
+On first run, grant Vocium two permissions:
+- **Microphone** — macOS will ask on first recording; grant it to the app (or to the terminal running `npm run dev`).
+- **Accessibility** — System Settings ▸ Privacy & Security ▸ Accessibility. Required for both the global shortcut and pasting transcribed text into the focused app. If not granted, text is still copied to the clipboard and an in-app message tells you to paste manually.
 
 ### Packaging
 
-`npm run package` builds a standalone installer — `.msi`/`.nsis` (Windows) or `.app`/`.dmg` (macOS) — that runs with **no Node.js on the end user's machine** (the sidecar is bundled as a compiled binary). Requires [Bun](https://bun.sh) installed (build-time only):
+`npm run package` builds a standalone installer that runs with **no Node.js on the end user's machine** (the sidecar is bundled as a compiled binary). It builds for the **host OS only** — run on Windows to produce Windows installers; run on macOS to produce macOS installers. Cross-platform CI is future (P3).
 
+**Common (both platforms):**
 ```bash
 npm install
 npm run package
 ```
 
-Installers are written to `app-tauri/src-tauri/target/release/bundle/`. Unsigned (right-click → Open on macOS first launch); code signing is planned.
+Installers are written to **`app-tauri/src-tauri/target/release/bundle/`**.
+
+#### 🪟 Windows packaging
+
+Produces two installer formats:
+
+| Format | Path | Notes |
+|---|---|---|
+| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | Windows Installer — Group-Policy / silent-install friendly |
+| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | NSIS installer — smaller; common for OSS |
+
+**First launch (unsigned):** Windows SmartScreen shows *"Windows protected your PC"* → click **More info** → **Run anyway**. Code signing is planned (P2).
+
+#### 🍎 macOS packaging
+
+Produces:
+
+| Format | Path | Notes |
+|---|---|---|
+| `.app` | `bundle/macos/Vocium.app` | The runnable application bundle |
+| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | Disk image for distribution |
+
+**First launch (unsigned):** Gatekeeper blocks double-click → **right-click → Open → Open anyway** (once). Apple Developer ID signing + notarization is planned (P2).
 
 ### Configure
 

@@ -35,38 +35,109 @@
 
 ## 安裝與使用
 
+支援平台：**Windows 11** 與 **macOS**。
+
 ### 前置需求
 
-- **Windows 11** 或 **macOS**（以 `npm run dev` 執行）。
-- **Node.js ≥ 20** · **Rust 工具鏈** · **WebView2** runtime（Windows）· **MSVC build tools**（Windows）
-- **Bun** — 僅 `npm run package` 需要（建置期；`npm run dev` 不需要）。[安裝](https://bun.sh)
+#### 共通（Windows + macOS）
 
-**macOS（以 `npm run dev` 執行）：** 首次啟動請授予 Vocium 兩項權限：
-- **麥克風** — 首次錄音時 macOS 會要求授權；授予給執行 `npm run dev` 的 App 或終端機。
-- **輔助使用** — 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用。全域快捷鍵與「把轉錄文字貼進焦點 App」皆需要。未授予時文字仍會複製到剪貼簿，App 會提示你手動貼上。
+| 工具 | 用途 | 安裝方式 |
+|---|---|---|
+| **Node.js ≥ 20** | dev 時跑 sidecar（`npm run dev`）；內含 `npm` | ✅ 指令（見下方快速安裝）或 [nodejs.org](https://nodejs.org) 下載 |
+| **Rust 工具鏈** | 建置 Tauri 殼 | ✅ 指令（見下方快速安裝） |
+| **Bun** | 僅 `npm run package` 需要（建置期；`npm run dev` 不需要） | ✅ 指令（見下方快速安裝）— [文件](https://bun.sh) |
 
-`node` 須在 `PATH`（由終端機啟動的 `npm run dev` 會繼承）。
+#### 🪟 僅 Windows
 
-### 步驟
+| 工具 | 用途 | 安裝方式 |
+|---|---|---|
+| **WebView2 Runtime** | Tauri 在 Windows 的 webview | **Windows 10（2020+）/ Windows 11** 已內建——通常無需處理。若缺：[Evergreen bootstrapper](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) |
+| **MSVC Build Tools** | Windows 下 `cargo build` 需要 | ⚙️ **手動安裝**：安裝 **Visual Studio 2022 Build Tools** 並勾選 *「使用 C++ 的桌面開發」*工作負載——工作負載需在 Visual Studio 安裝程式 GUI 內勾選 |
+
+#### 🍎 僅 macOS
+
+| 工具 | 用途 | 安裝方式 |
+|---|---|---|
+| **Xcode Command Line Tools** | 提供 `clang`、`codesign` 等讓 `cargo build` 跑 | ✅ 半指令：`xcode-select --install`（會跳系統對話框→點**安裝**） |
+
+### 快速安裝
+
+複製貼上到全新 shell。已安裝的工具請略過該行。
+
+**🪟 Windows（PowerShell）：**
+```powershell
+# Node.js（LTS，≥ 20）
+winget install --id OpenJS.NodeJS.LTS
+# Rust
+winget install --id Rustlang.Rustup
+# Bun —— 僅建置期需要；只跑 `npm run dev` 可跳過
+powershell -c "irm bun.sh/install.ps1 | iex"
+# MSVC Build Tools —— 需 GUI 勾「使用 C++ 的桌面開發」
+winget install --id Microsoft.VisualStudio.2022.BuildTools
+```
+
+**🍎 macOS（Terminal）：**
+```bash
+# Xcode Command Line Tools（會跳系統對話框）
+xcode-select --install
+# Node.js（≥ 20），用 Homebrew 或 nvm 皆可
+brew install node
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Bun —— 僅建置期需要；只跑 `npm run dev` 可跳過
+curl -fsSL https://bun.sh/install | bash
+```
+
+> 安裝 Rust / Bun 後請開新的 shell，讓更新後的 `PATH` 生效。
+
+### 從原始碼執行（dev）
 
 ```bash
 git clone <repo-url> vocium
 cd vocium
 npm install
-npm run build          # 編譯 TypeScript sidecar
-npm run dev            # 編譯並啟動桌面程式（tauri dev）
+npm run dev   # 編譯 sidecar 並透過 `tauri dev` 啟動桌面程式
 ```
+
+#### 🍎 macOS 首次啟動權限
+
+首次啟動請授予 Vocium 兩項權限：
+- **麥克風** — 首次錄音時 macOS 會要求授權；授予給 App（或執行 `npm run dev` 的終端機）。
+- **輔助使用** — 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用。全域快捷鍵與「把轉錄文字貼進焦點 App」皆需要。未授予時文字仍會複製到剪貼簿，App 會提示你手動貼上。
 
 ### 打包
 
-`npm run package` 產生獨立安裝檔 — Windows `.msi`/`.nsis` 或 macOS `.app`/`.dmg` — 終端使用者機器**免裝 Node.js**（sidecar 以編譯後 binary 隨附）。需先安裝 [Bun](https://bun.sh)（僅建置期需要）：
+`npm run package` 產生獨立安裝檔，終端使用者機器**免裝 Node.js**（sidecar 以編譯後 binary 隨附）。**只建主機平台**——在 Windows 跑出 Windows 安裝檔；在 macOS 跑出 macOS 安裝檔。跨平台 CI 為後續（P3）。
 
+**共通（兩平台）：**
 ```bash
 npm install
 npm run package
 ```
 
-安裝檔產生於 `app-tauri/src-tauri/target/release/bundle/`。未簽署（macOS 首次啟動右鍵 → 打開）；程式簽署為後續規劃。
+安裝檔產生於 **`app-tauri/src-tauri/target/release/bundle/`**。
+
+#### 🪟 Windows 打包
+
+產出兩種安裝檔格式：
+
+| 格式 | 路徑 | 說明 |
+|---|---|---|
+| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | Windows Installer——適合群組原則／靜默安裝 |
+| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | NSIS 安裝檔——體積小；OSS 常用 |
+
+**首次執行（未簽署）：** Windows SmartScreen 跳「Windows 已保護你的電腦」→ 點**其他資訊** → **仍要執行**。程式簽署為後續規劃（P2）。
+
+#### 🍎 macOS 打包
+
+產出：
+
+| 格式 | 路徑 | 說明 |
+|---|---|---|
+| `.app` | `bundle/macos/Vocium.app` | 可執行的應用程式 bundle |
+| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | 給人下載的磁碟映像 |
+
+**首次啟動（未簽署）：** Gatekeeper 擋雙擊 → **右鍵 → 打開 → 仍要打開**（一次即可）。Apple Developer ID 簽署 + 公證為後續規劃（P2）。
 
 ### 設定
 

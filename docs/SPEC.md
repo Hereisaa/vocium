@@ -1,6 +1,6 @@
 # Vocium — 桌面語音輸入工具 SPEC
 
-> 版本：v0.3　日期：2026-05-19　狀態：§A 繁簡轉換 + §B 多雲端 STT + PTT + VAD + §C AI 潤稿 已實作
+> 版本：v0.4　日期：2026-05-20　狀態：§A 繁簡轉換 + §B 多雲端 STT + PTT + VAD + §C AI 潤稿 + macOS 平台 parity + STT 30s 逾時 + 打包 P1（FR-PKG-1）已實作；簽署 / CI / 本地推論為後續
 
 ## 1. 產品概述
 
