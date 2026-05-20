@@ -273,3 +273,7 @@ Minor follow-up（不阻整合）：①get_config 同檔多次 read_to_string（
 ## §15 打包 P1 — 獨立可運行 App（2026-05-20）
 
 Sidecar 以 Bun `--compile` 單檔 binary 經 Tauri `externalBin` 隨附。`lib.rs` 新增純解析器（`SidecarLaunch::Binary` 優先 > `NodeScript` dev 回退）+ 單元測試；`mcp.rs` std::process transport 不動。tauri.conf：externalBin、macOS `app`/`dmg` targets、`.icns`、`beforeBuildCommand`（build:sidecar-bin + vad:assets）。`macos-private-api` Cargo feature 補入版控。Bun 為**建置期**前置（非 runtime）。Gates：tsc/vitest/cargo（dev box，T4 起 externalBin 預檢需先建 binary）；`npm run package` + binary smoke + 無-Node 機器安裝驗收於 Windows + Mac mini M4（使用者驗）。P2 簽署 / P3 CI+Releases 為獨立後續。
+
+## §16 健康狀態面板 + 錄音前置檢查（2026-05-21）
+
+新增 Rust 端 `HealthState` 統一儲存五項 probe 結果（mic_device / mic_perm / mac_a11y / stt_key / hotkey），webview / sidecar / Rust 內部三來源各自推送。Tray 選單在每次 mutation 重建顯示 ✓/⚠ + 失敗項點此開啟 OS 設定（mic/Accessibility）或 Settings 視窗（key/hotkey）。webview 訂閱 `mediaDevices.devicechange` 與 `permissions.onchange` 即時 emit，無 polling。`triggerToggle` 進 listening 前 `await invoke('get_health')`，blockers 非空則不轉態並 `showInjectError` 顯示原因。`mcp.rs` / `pipeline.ts` / `sidecar/*` / injectors 全部不動。新增 `src/core/health.ts` 純 helper + `tests/health.test.ts`、`derive_health` Rust 純函式 + 7 個 Rust 單元測試（5 核心 + hotkey suspended + mac_a11y None/Some(false)）。

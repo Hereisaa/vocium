@@ -166,6 +166,8 @@ If voice transcription succeeds but paste does not fire after a rebuild:
 
 The floating icon runs a permission probe at startup, so if Accessibility is missing it surfaces the guidance text on the pill within a couple of seconds — you do not need to make a first voice attempt to discover this. The dev loop (`npm run dev`) launches from Terminal and reuses the granted entry across runs, so this re-grant tax only hits packaged builds.
 
+> **At-a-glance health:** Tray menu shows live status for microphone device, microphone permission, STT key, global shortcut, and (on macOS) Accessibility. Failing items are marked ⚠ and clickable — they jump straight to the relevant OS settings page or the in-app Settings window.
+
 ### Configure
 
 Config file: `%APPDATA%\vocium\vocium-config.json` (created on first run).

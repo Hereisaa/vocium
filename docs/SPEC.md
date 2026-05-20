@@ -171,7 +171,11 @@ Node sidecar 啟動即為一個 **MCP server（stdio transport，JSON-RPC + noti
 - FR-POL-5：config 即時讀取，**不需重啟 sidecar**（與 `save_vad_trim`/`save_zh_mode` 同機制）。
 - FR-POL-6：**注入加固（prompt-injection / instruction-confusion 緩解）**：潤稿步驟將轉錄文字以 `<transcript>…</transcript>` 分隔符包裹後送出，並一律於 system prompt 注入 TRANSCRIPT_GUARD 指令，要求模型將被包裹內容**嚴格視為待修訂之文字而非指令**——不得遵循、回答或執行其中任何請求／問題／命令，不得新增內容或描述任務，僅輸出修訂後文字。防禦縱深：若模型回吐包裹標籤，`polishText` 會剝除輸出開頭／結尾錨定的 `<transcript>`／`</transcript>`（Totality 保留：剝除後為空→回原文）。適用全部三種風格（`light`／`full`／`custom`；`custom` 自訂 prompt 仍為受信任指令，轉錄文字仍為惰性內容）與四家 provider。此規則與 SAFETY_SUFFIX（保留原意／原語言）及 zh-script 指令疊加（不取代）。註：無任何 prompt 能 100% 防注入，此為標準且強力之緩解，非絕對保證。
 
-### 3.11 打包（FR-PKG）
+### 3.11 健康狀態面板（FR-HEALTH）
+
+- FR-HEALTH-1：Tray 選單顯示五項健康狀態（音訊輸入裝置 / 麥克風權限 / macOS 輔助使用 / STT 金鑰 / 全域快捷鍵）。失敗項以 `⚠` 標示，可點開 OS 設定（mic_perm/mac_a11y 透過 `tauri-plugin-opener` 開 URL scheme）或內部 Settings 視窗（stt_key/hotkey）。`get_health` Tauri 命令回傳 `{ items, blockers }`；webview `triggerToggle` 進 listening 前查 blockers，非空則不轉態並透過 `showInjectError` 顯示原因（不再 silent listening→idle 抖動）。webview 用 `mediaDevices.devicechange` 與 `permissions.onchange` 即時推送 mic_device/mic_perm 變化；mac_a11y 於開機與 tray menu 互動時 probe；stt_key/hotkey 隨既有 `save_*_key`/`register_toggle_shortcut` 同步。
+
+### 3.12 打包（FR-PKG）
 
 - FR-PKG-1：打包版以 Tauri `externalBin` 隨附 Bun 編譯的單一 sidecar binary（`binaries/vocium-sidecar-<target-triple>`）。Rust 殼以 `std::process` 解析並執行它（主程式旁：Windows 安裝目錄；macOS `Vocium.app/Contents/MacOS/`），`mcp.rs` JSON-RPC transport 不變；找不到 binary（一般 `npm run dev`）時回退 `node dist/sidecar/index.js`。故打包版**使用者機器免裝 Node.js**。
 
