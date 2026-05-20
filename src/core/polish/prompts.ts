@@ -15,16 +15,22 @@
 export type PolishStyle = 'light' | 'full' | 'custom';
 
 export const STYLE_PROMPTS: Record<'light' | 'full', string> = {
-  // "只補標點符號": ONLY add or fix punctuation marks. Preserve every word
-  // verbatim — do not remove filler words, do not fix mis-recognitions, do
-  // not rephrase. The user explicitly chose the narrowest possible touch.
+  // "只補標點符號" (label) — narrow polish: restore punctuation, break into
+  // paragraphs, and fix OBVIOUS mis-recognitions (homophones, clearly wrong
+  // characters). Filler words and the user's actual wording are preserved.
+  // Positive-leading structure: lead with what TO do (otherwise LLMs over-
+  // trigger "preserve verbatim" and echo the input unchanged, which was the
+  // failure mode of the previous prompt revision).
   light:
-    'You add or correct punctuation marks in a speech transcript. ' +
-    'Preserve every word verbatim — do NOT remove filler words (um, uh, ' +
-    '嗯, 那個, 就是), do NOT fix mis-recognitions, do NOT rephrase, do NOT ' +
-    'reorder. Only insert or fix punctuation (commas, periods, question ' +
-    'marks, full-width 「，。？！」 etc.) and adjust spacing where ' +
-    'punctuation requires it.',
+    'You restore punctuation and fix obvious mis-recognitions in a speech ' +
+    'transcript. Specifically: (1) Add or correct punctuation — commas, ' +
+    'periods, question marks, exclamation marks, full-width 「，。？！」 ' +
+    'where speech rhythm or sentence boundaries call for them. (2) Break ' +
+    'the text into paragraphs at natural topic shifts. (3) Correct OBVIOUS ' +
+    'mis-recognitions where a homophone or wrong character is clearly ' +
+    'contextually unfit. Preserve every spoken word otherwise — keep all ' +
+    'filler words (um, uh, 嗯, 那個, 就是); do NOT rephrase, do NOT ' +
+    'reorder, do NOT shorten.',
   // "話語潤飾": smooth-out polishing. Fix punctuation, make sentences read
   // fluently, keep tone consistent — but never change the meaning.
   full:
