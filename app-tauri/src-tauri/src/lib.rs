@@ -196,7 +196,7 @@ fn parse_shortcut(spec: &str) -> Option<Shortcut> {
 /// apply_hotkey (new binding) and resume_hotkey (re-arm after recording).
 fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String> {
     let h = app.clone();
-    app.global_shortcut()
+    let result = app.global_shortcut()
         .on_shortcut(sc, move |_a, _s, ev| {
             let dir = h.state::<ShellState>().config.config_dir.clone();
             let ptt = read_input_mode(&dir) == "ptt";
@@ -215,8 +215,19 @@ fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String>
                     let _ = invoke_tool(hh, t, json!({})).await;
                 });
             }
-        })
-        .map_err(|_| "taken".to_string())
+        });
+    match result {
+        Ok(()) => {
+            *app.state::<ShellState>().health_hotkey_registered.lock().unwrap() = true;
+            rebuild_tray_menu(app);
+            Ok(())
+        }
+        Err(_) => {
+            *app.state::<ShellState>().health_hotkey_registered.lock().unwrap() = false;
+            rebuild_tray_menu(app);
+            Err("taken".to_string())
+        }
+    }
 }
 
 fn apply_hotkey(app: &AppHandle, spec: &str) -> Result<(), String> {
@@ -274,6 +285,7 @@ fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
     } else {
         suspend_hotkey(&app);
     }
+    rebuild_tray_menu(&app);
     Ok(())
 }
 
@@ -570,6 +582,23 @@ fn get_health(state: tauri::State<'_, ShellState>) -> Result<Value, String> {
     serde_json::to_value(&report).map_err(|e| e.to_string())
 }
 
+/// Receive a webview-side probe of mic device count + permission state.
+/// Called at boot and on every devicechange / permission.onchange in
+/// `app-tauri/ui/app.js`. We merge into HealthState (only the two fields
+/// the webview owns) and rebuild the tray. Never throws to the caller.
+#[tauri::command]
+fn emit_health_webview(
+    app: AppHandle,
+    state: tauri::State<'_, ShellState>,
+    mic_device_count: u32,
+    mic_perm: String,
+) -> Result<(), String> {
+    *state.health_mic_device_count.lock().unwrap() = mic_device_count;
+    *state.health_mic_perm.lock().unwrap() = mic_perm;
+    rebuild_tray_menu(&app);
+    Ok(())
+}
+
 #[tauri::command]
 async fn submit_audio(
     app: AppHandle,
@@ -827,10 +856,12 @@ async fn set_groq_key(app: AppHandle, key: String) -> Result<Value, String> {
     *app.state::<ShellState>().client.lock().unwrap() = Some(new_client);
 
     // Re-derive effective provider from the file we just wrote.
-    let (stt_provider, _) = derive_active(&dir);
+    let (stt_provider, stt_key_set) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
+    *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
+    rebuild_tray_menu(&app);
     log(&format!("[set_groq_key] applied; provider now {stt_provider}"));
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
@@ -863,10 +894,12 @@ async fn restart_sidecar_apply(app: &AppHandle) -> Result<(), String> {
             return Err(e);
         }
     }
-    let (stt_provider, _) = derive_active(&dir);
+    let (stt_provider, stt_key_set) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
+    *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
+    rebuild_tray_menu(app);
     Ok(())
 }
 
@@ -1067,7 +1100,8 @@ pub fn run() {
             save_vad_trim,
             save_polish,
             clear_polish_key,
-            get_health
+            get_health,
+            emit_health_webview
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
