@@ -1111,6 +1111,31 @@ pub fn run() {
                 Ok(client) => {
                     log_setup("[boot] sidecar connected");
                     *handle.state::<ShellState>().client.lock().unwrap() = Some(client);
+                    #[cfg(target_os = "macos")]
+                    {
+                        let app_for_probe = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            match invoke_tool(app_for_probe.clone(), "probe_inject", json!({})).await {
+                                Ok(v) => {
+                                    // Sidecar's `ok(...)` returns { content: [{ type:'text', text: JSON({ok, message?}) }] }
+                                    let ok = v
+                                        .get("content")
+                                        .and_then(|c| c.get(0))
+                                        .and_then(|c| c.get("text"))
+                                        .and_then(|t| t.as_str())
+                                        .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                                        .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
+                                        .unwrap_or(false);
+                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
+                                    rebuild_tray_menu(&app_for_probe);
+                                }
+                                Err(_) => {
+                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(false);
+                                    rebuild_tray_menu(&app_for_probe);
+                                }
+                            }
+                        });
+                    }
                 }
                 Err(e) => {
                     log_setup(&format!("[boot] sidecar NOT connected: {e}"));
@@ -1212,7 +1237,29 @@ fn build_tray(
                 .unwrap_or_else(|_| app.default_window_icon().cloned().unwrap()),
         )
         .menu(&menu)
-        .on_menu_event(move |app, event| match event.id.as_ref() {
+        .on_menu_event(move |app, event| {
+            #[cfg(target_os = "macos")]
+            {
+                let app_for_reprobe = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(v) = invoke_tool(app_for_reprobe.clone(), "probe_inject", json!({})).await {
+                        let ok = v
+                            .get("content")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c| c.get("text"))
+                            .and_then(|t| t.as_str())
+                            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                            .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
+                            .unwrap_or(false);
+                        let cur = *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap();
+                        if cur != Some(ok) {
+                            *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
+                            rebuild_tray_menu(&app_for_reprobe);
+                        }
+                    }
+                });
+            }
+            match event.id.as_ref() {
             "show" => {
                 if let Some(w) = app.get_webview_window("icon") {
                     let _ = w.show();
@@ -1240,6 +1287,7 @@ fn build_tray(
                 app.exit(0);
             }
             _ => {}
+        }
         })
         .build(app)?;
 
