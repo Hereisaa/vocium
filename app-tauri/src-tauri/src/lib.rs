@@ -566,16 +566,7 @@ async fn probe_inject(app: AppHandle) -> Result<Value, String> {
 /// always in sync.
 #[tauri::command]
 fn get_health(state: tauri::State<'_, ShellState>) -> Result<Value, String> {
-    let mic_perm = state.health_mic_perm.lock().unwrap().clone();
-    let inputs = HealthInputs {
-        mic_device_count: *state.health_mic_device_count.lock().unwrap(),
-        mic_perm: &mic_perm,
-        mac_a11y_ok: *state.health_mac_a11y_ok.lock().unwrap(),
-        stt_key_set: *state.health_stt_key_set.lock().unwrap(),
-        hotkey_registered: *state.health_hotkey_registered.lock().unwrap(),
-        hotkey_suspended: *state.hotkey_suspended.lock().unwrap(),
-    };
-    let report = derive_health(inputs);
+    let report = snapshot_health_report(&state);
     serde_json::to_value(&report).map_err(|e| e.to_string())
 }
 
@@ -1122,6 +1113,11 @@ pub fn run() {
             *handle.state::<ShellState>().hotkey_ok.lock().unwrap() = hotkey_ok;
 
             // 5. System tray.
+            // Seed health-panel inputs that have a known boot-time truth so
+            // the very first rebuild_tray_menu render is correct.
+            *handle.state::<ShellState>().health_hotkey_registered.lock().unwrap() = hotkey_ok;
+            let (_active_provider, stt_key_set_initial) = derive_active(&cfg.config_dir);
+            *handle.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set_initial;
             build_tray(&handle, &cfg, hotkey_ok)?;
             rebuild_tray_menu(&handle);
 
@@ -1216,11 +1212,11 @@ fn build_tray(
     Ok(())
 }
 
-/// Rebuild the tray menu with the current health-panel items prepended.
-/// Idempotent and cheap (Tauri rebuilds the menu native object); called
-/// after every mutation of any HealthState field.
-fn rebuild_tray_menu(app: &AppHandle) {
-    let state = app.state::<ShellState>();
+/// Snapshot the six health-panel input mutexes and compute the live
+/// HealthReport. Called by both `get_health` (returns JSON to webview)
+/// and `rebuild_tray_menu` (drives the tray menu). Lock order is fixed
+/// to match the field declaration order in `ShellState`.
+fn snapshot_health_report(state: &ShellState) -> HealthReport {
     let mic_perm = state.health_mic_perm.lock().unwrap().clone();
     let inputs = HealthInputs {
         mic_device_count: *state.health_mic_device_count.lock().unwrap(),
@@ -1230,7 +1226,15 @@ fn rebuild_tray_menu(app: &AppHandle) {
         hotkey_registered: *state.health_hotkey_registered.lock().unwrap(),
         hotkey_suspended: *state.hotkey_suspended.lock().unwrap(),
     };
-    let report = derive_health(inputs);
+    derive_health(inputs)
+}
+
+/// Rebuild the tray menu with the current health-panel items prepended.
+/// Idempotent and cheap (Tauri rebuilds the menu native object); called
+/// after every mutation of any HealthState field.
+fn rebuild_tray_menu(app: &AppHandle) {
+    let state = app.state::<ShellState>();
+    let report = snapshot_health_report(&state);
 
     // Build one MenuItem per health item. Labels match buildTrayLabel in
     // src/core/health.ts exactly so the Tray and any future webview surface
@@ -1274,8 +1278,15 @@ fn rebuild_tray_menu(app: &AppHandle) {
     // controls. The existing controls' MenuItem instances must be rebuilt
     // here too (muda does not let you reuse handles across menus).
     let cfg = read_config();
-    let hotkey_ok = *state.health_hotkey_registered.lock().unwrap()
-        && !*state.hotkey_suspended.lock().unwrap();
+    // Derive hotkey_ok from the report so the tray "快捷鍵" row label always
+    // agrees with the health item we just produced. Re-locking would risk
+    // divergence if any writer ran between the two reads (currently impossible
+    // since both run on the main thread, but the report-as-source-of-truth
+    // discipline is cheaper than proving the invariant by hand).
+    let hotkey_item = report.items.iter().find(|i| i.id == "hotkey");
+    let hotkey_ok = hotkey_item
+        .map(|i| matches!(i.status, HealthStatus::Ok))
+        .unwrap_or(false);
     let hotkey_label = if hotkey_ok {
         format!("快捷鍵：{}", cfg.hotkey)
     } else {
@@ -1302,13 +1313,20 @@ fn rebuild_tray_menu(app: &AppHandle) {
     ];
     for r in trailing { all_refs.push(r); }
 
-    let Ok(menu) = Menu::with_items(app, &all_refs) else { return; };
+    let Ok(menu) = Menu::with_items(app, &all_refs) else {
+        (state.log)("[rebuild_tray_menu] Menu::with_items failed; keeping previous menu");
+        return;
+    };
 
     if let Some(tray) = app.tray_by_id("vocium-tray") {
-        let _ = tray.set_menu(Some(menu));
+        if let Err(e) = tray.set_menu(Some(menu)) {
+            (state.log)(&format!("[rebuild_tray_menu] tray.set_menu failed: {}", e));
+        }
         // The on_menu_event handler is preserved across set_menu calls in
         // Tauri 2; we do NOT rebuild it here. New ids (health items) are
         // handled in the same closure (extended in Task 7).
+    } else {
+        (state.log)("[rebuild_tray_menu] tray_by_id(\"vocium-tray\") returned None");
     }
 }
 
