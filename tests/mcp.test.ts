@@ -59,11 +59,21 @@ describe('MCP server', () => {
   });
 
   it('toggle + submit_audio runs full pipeline back to idle', async () => {
-    const { client } = await connected();
-    await call(client, 'toggle'); // -> listening
-    const r = await call(client, 'submit_audio', { audioBase64: 'AA==', mimeType: 'audio/webm' });
-    expect(r.text).toBe('integration-text');
-    expect((await call(client, 'get_state')).state).toBe('idle');
+    // Use an empty temp configDir so the pipeline runs without polish (no
+    // polishEnabled / no key in this dir → polishText returns input unchanged).
+    // Otherwise this test reads the developer's real ~/.config/vocium config
+    // and a polish provider configured there would mutate `integration-text`
+    // (e.g. the 'light' style legitimately adds a sentence-ending period).
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vocium-mcp-'));
+    try {
+      const { client } = await connected(tmp);
+      await call(client, 'toggle'); // -> listening
+      const r = await call(client, 'submit_audio', { audioBase64: 'AA==', mimeType: 'audio/webm' });
+      expect(r.text).toBe('integration-text');
+      expect((await call(client, 'get_state')).state).toBe('idle');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('polish_text returns { text }, host-controlled, total (no key → input unchanged)', async () => {

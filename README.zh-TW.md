@@ -246,7 +246,7 @@ Node sidecar 本身是一個**獨立 MCP server**——任何 MCP host（Claude 
 
 **`inject_text`** — `{ text }` → `{ ok }`。把文字打進作業系統目前焦點的視窗（剪貼簿＋模擬貼上）。與 STT 無關，可注入任意字串。會落在「呼叫當下焦點所在」的視窗，焦點由呼叫端負責。
 
-**`polish_text`** — `{ text, style? }` → `{ text }`。用本機設定的 LLM provider 與金鑰潤飾文字（清贅詞、補標點、通順，不改原意）。Headless、由 host 控制：MCP host 決定是否呼叫，不受桌面 `polishEnabled` 開關影響。和其他工具一樣，金鑰從執行 sidecar 那台機器的本機 Vocium config 讀取，呼叫端不傳金鑰。
+**`polish_text`** — `{ text, style? }` → `{ text }`。用本機設定的 LLM provider 與金鑰潤飾文字。三種類別：`light`（「只補標點符號」— 補標點 + 自然分段 + 修正明顯錯字／同音字，保留 filler）、`full`（「話語潤飾」— 含 light 全部行為，另加 filler 清理 + 句子流暢化）、`custom`（自訂 prompt）。一律不改原意。Headless、由 host 控制：MCP host 決定是否呼叫，不受桌面 `polishEnabled` 開關影響。和其他工具一樣，金鑰從執行 sidecar 那台機器的本機 Vocium config 讀取，呼叫端不傳金鑰。
 
 在 MCP host 設定中註冊（先 `npm run build`）：
 
