@@ -539,6 +539,16 @@ async fn get_state(app: AppHandle) -> Result<Value, String> {
     invoke_tool(app, "get_state", json!({})).await
 }
 
+/// Permission probe. The webview calls this once at boot so a stale macOS
+/// Accessibility entry (after rebuilding the .app with a fresh signature/path)
+/// is surfaced to the user immediately, instead of after the first voice
+/// attempt. Returns the same {ok,message} shape as inject(). Windows skips
+/// (no Accessibility-equivalent gate); sidecar returns ok:true.
+#[tauri::command]
+async fn probe_inject(app: AppHandle) -> Result<Value, String> {
+    invoke_tool(app, "probe_inject", json!({})).await
+}
+
 #[tauri::command]
 async fn submit_audio(
     app: AppHandle,
@@ -1013,6 +1023,7 @@ pub fn run() {
             toggle,
             cancel,
             get_state,
+            probe_inject,
             submit_audio,
             audio_error,
             get_config,

@@ -1,7 +1,7 @@
 // src/sidecar/pipeline.ts
 import type { createVoiceSession } from '../core/state-machine.js';
 import type { SttAdapter } from '../core/stt/types.js';
-import type { Injector } from '../core/inject/types.js';
+import type { Injector, InjectResult } from '../core/inject/types.js';
 import { describeSttError, GUIDANCE_MSG } from '../core/stt/describe-error.js';
 import { convertZh } from '../core/zh-convert.js';
 
@@ -98,6 +98,13 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
       return { ...raw, text: convertZh(raw.text, getZhMode()) };
     },
     async injectText(text: string) { return injector.inject(text); },
+    async probeInject(): Promise<InjectResult> {
+      // probe is optional: platforms without permission gating (Windows) may
+      // omit it; that case maps to ok:true so the webview never sees a false
+      // warning on those platforms.
+      if (typeof injector.probe === 'function') return injector.probe();
+      return { ok: true };
+    },
     async polishOnly(text: string, style?: 'light' | 'full' | 'custom') {
       return polish(text, style);
     },

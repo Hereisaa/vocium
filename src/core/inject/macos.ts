@@ -148,4 +148,40 @@ export class MacInjector implements Injector {
     this.queue = run.catch(() => undefined);
     return run.catch(() => undefined);
   }
+
+  /** Permission probe: run a no-op `System Events` AppleScript through the
+   *  same osascript path inject() uses. If macOS hasn't granted Vocium
+   *  Accessibility permission (the common reason: the entry in System
+   *  Settings still points at a now-stale earlier build of the .app), the
+   *  call fails with -1719 and we return the same human-readable guidance
+   *  inject() would have returned — but without writing the clipboard or
+   *  pasting anything. Total: never throws. */
+  async probe(): Promise<InjectResult> {
+    const spawn = this.deps.spawn;
+    if (!spawn) {
+      return { ok: false, message: 'spawn unavailable; cannot probe inject path' };
+    }
+    const run = this.queue.then(async (): Promise<InjectResult> => {
+      try {
+        // No-op System Events script: triggers the same Accessibility ACL
+        // check as a real Cmd+V keystroke but performs no observable action.
+        await spawnAndWait(spawn, 'osascript', [
+          '-e', 'tell application "System Events" to return',
+        ]);
+        return { ok: true };
+      } catch (e) {
+        const m = (e as Error).message ?? '';
+        if (ACCESS_DENIED.test(m)) {
+          return {
+            ok: false,
+            message:
+              '請到 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 開啟 Vocium 後再試（若清單已有舊版 Vocium，請先移除再加入新版）',
+          };
+        }
+        return { ok: false, message: m };
+      }
+    });
+    this.queue = run.catch(() => undefined);
+    return run.catch(() => ({ ok: true })); // probe is informational only
+  }
 }

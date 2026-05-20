@@ -192,6 +192,36 @@ describe('MacInjector', () => {
     expect(r.ok).toBe(false);
     expect(r.message).toContain('已複製，請手動貼上');
   });
+
+  it('probe(): ok when osascript no-op succeeds (Accessibility granted)', async () => {
+    const { spawn, spawns } = makeSpawn();
+    const inj = new MacInjector({ execFile: (() => {}) as any, spawn, delayMs: 0 });
+    const r = await inj.probe();
+    expect(r.ok).toBe(true);
+    // No pbcopy: probe must NOT touch the clipboard.
+    expect(spawns.some((s) => s.program === 'pbcopy')).toBe(false);
+    // Exactly one osascript invocation, running a benign System Events return.
+    const osa = spawns.filter((s) => s.program === 'osascript');
+    expect(osa).toHaveLength(1);
+    expect(osa[0].args[1]).toContain('System Events');
+    expect(osa[0].args[1]).not.toContain('keystroke');
+    expect(osa[0].args[1]).not.toContain('key code');
+  });
+
+  it('probe(): surfaces the Accessibility guidance when osascript is not trusted', async () => {
+    const { spawn } = makeSpawn({
+      exitCodeFor: { osascript: 1 },
+      stderrFor: {
+        osascript:
+          'execution error: System Events got an error: osascript is not allowed assistive access. (-1719)',
+      },
+    });
+    const inj = new MacInjector({ execFile: (() => {}) as any, spawn, delayMs: 0 });
+    const r = await inj.probe();
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain('輔助使用');
+    expect(r.message).toContain('Vocium');
+  });
 });
 
 describe('createInjector factory', () => {

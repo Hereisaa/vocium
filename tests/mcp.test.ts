@@ -38,11 +38,11 @@ async function call(client: any, name: string, args: any = {}) {
 }
 
 describe('MCP server', () => {
-  it('lists the 9 tools', async () => {
+  it('lists the 10 tools', async () => {
     const { client } = await connected();
     const names = (await client.listTools()).tools.map((t: any) => t.name).sort();
     expect(names).toEqual(
-      ['cancel','get_state','inject_text','polish_text','start_listening','stop_listening','submit_audio','toggle','transcribe_clip'].sort()
+      ['cancel','get_state','inject_text','polish_text','probe_inject','start_listening','stop_listening','submit_audio','toggle','transcribe_clip'].sort()
     );
   });
 

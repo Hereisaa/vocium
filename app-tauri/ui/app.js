@@ -65,14 +65,17 @@ let dragLocked = false;   // when true, the #meta drag handle is disabled
 function applyView(state) {
   const v = VIEW[state] || VIEW.idle;
   pill.className = 'pill ' + v.cls;
-  labelEl.textContent = v.label;
+  // While an inject-error message is being displayed, keep the label pinned
+  // so it isn't overwritten by the racing state_changed('error') + 1.5 s
+  // RESET → state_changed('idle') sequence. The pill class still updates so
+  // the colour/animation reflects current state.
+  if (!injectErrorClearTimer) labelEl.textContent = v.label;
 }
 
 // Inject failure: clipboard succeeded but the paste keystroke didn't (most
 // often: macOS Accessibility permission was reset after rebuilding the .app
-// at a new path/signature). The pipeline already short-circuits to the error
-// animation via state_changed; this overlays the guidance text onto the pill
-// for ~8 s so the user knows exactly what to fix without checking any log.
+// at a new path/signature). Holds the guidance text on the pill for ~8 s,
+// suppressing applyView label writes during that window.
 let injectErrorClearTimer = null;
 function showInjectError(message) {
   if (!message) return;
@@ -580,4 +583,15 @@ applyLockVisual();
       applyView(r.state);
     }
   } catch (_) { /* sidecar may still be starting */ }
+  // Inject preflight: detect a stale macOS Accessibility entry up front
+  // (after rebuilding the .app the system keeps an entry pointing at the
+  // old, now-invalid binary — the green checkbox lies) so the user sees
+  // the actionable guidance the moment Vocium launches, not after their
+  // first voice attempt silently fails to paste.
+  try {
+    const res = await invoke('probe_inject');
+    let inner = null;
+    try { inner = JSON.parse(res?.content?.[0]?.text ?? 'null'); } catch (_) { /* ignore */ }
+    if (inner && inner.ok === false && inner.message) showInjectError(inner.message);
+  } catch (_) { /* probe is best-effort; never blocks the UI */ }
 })();
