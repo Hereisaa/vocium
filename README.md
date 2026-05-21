@@ -5,11 +5,11 @@
 <h1 align="center">Vocium</h1>
 
 <p align="center">
-  <b>AI‑powered voice typing for the desktop.</b>
+  <b>桌面 AI 智慧語音輸入。</b>
 </p>
 
 <p align="center">
-  <b>English</b> · <a href="README.zh-TW.md">繁體中文</a>
+  <b>繁體中文</b> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
@@ -19,171 +19,171 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.gif" width="940" alt="Vocium — AI voice input demo (hotkey → speak → text inserted)" />
+  <img src="docs/assets/showcase.gif" width="940" alt="Vocium — AI 語音輸入示範（快捷鍵 → 說話 → 文字落入輸入框）" />
 </p>
 
 ---
 
-Press a hotkey, speak, and AI transcribes your voice and pastes it straight into the focused field — no focus stolen, no server, no bundled credentials. Supports Windows and macOS.
+按下快捷鍵、開口說話，AI 即時將語音轉為文字並自動貼入目前焦點的輸入框——不搶焦點、無伺服器、不內建任何憑證。支援 Windows 與 macOS。
 
-It's also **MCP‑native**: any AI assistant or script can reuse its speech‑to‑text and text‑injection as tools.
+它同時是 **MCP 原生**：任何 AI 助手或腳本都能把它的語音轉文字與文字注入當成工具呼叫。
 
-## Architecture
+## 架構
 
-A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic over a single MCP protocol — the shell is just one client of that server. The sidecar daemon owns the state machine, STT, AI polish, and text injection; the shell handles only the window, tray, global shortcut, and microphone capture.
+輕薄的 Tauri 2（Rust）殼驅動一個 Node sidecar，以單一 MCP 協定對外暴露核心邏輯——殼層只是該 server 的其中一個 client。sidecar daemon 掌管狀態機、STT、AI 潤稿與文字注入；殼層只負責視窗、系統列、全域快捷鍵與麥克風錄音。
 
-## Features
+## 功能
 
-- **Floating icon** — lock/unlock drag, minimize to tray, never steals focus
-- **Toggle or push‑to‑talk** — with a custom global hotkey
-- **Multi‑provider STT** — Groq, OpenAI Whisper, Gemini; bring‑your‑own‑key, stored only on your device
-- **AI polish** — optional LLM cleanup pass before injection (punctuation, fillers, fluency)
-- **Chinese output** — force Traditional or Simplified; opt‑in VAD silence trimming
-- **MCP‑native** — a standalone MCP server any MCP host can call
+- **懸浮 ICON** — 鎖定／解除拖曳、縮小到系統匣、不搶焦點
+- **切換模式或按鍵發話** — 可自訂全域快捷鍵
+- **多家雲端 STT** — Groq、OpenAI Whisper、Gemini；自備金鑰（BYOK），僅存本機
+- **AI 潤稿** — 注入前可選的 LLM 潤飾（標點、贅詞、通順）
+- **中文輸出** — 強制繁體或簡體；可選 VAD 靜音修剪
+- **MCP 原生** — 內建獨立 MCP server，任何 MCP host 都能呼叫
 
 ---
 
-### Prerequisites
+### 前置需求
 
-| Tool | Why | Notes |
+| 工具 | 用途 | 備註 |
 |---|---|---|
-| **Node.js ≥ 20** | runs the sidecar in dev | includes `npm` |
-| **Rust toolchain** | builds the Tauri shell | — |
-| **Bun** | only for `npm run package` | build‑time; not needed for `npm run dev` |
+| **Node.js ≥ 20** | dev 時跑 sidecar | 內含 `npm` |
+| **Rust 工具鏈** | 建置 Tauri 殼 | — |
+| **Bun** | 僅 `npm run package` 需要 | 建置期；`npm run dev` 不需要 |
 
-Platform extras:
-**Windows** — WebView2 Runtime (pre‑installed on Win 10 2020+/11) + MSVC Build Tools (*"Desktop development with C++"* workload).
-**macOS** — Xcode Command Line Tools (`xcode-select --install`).
+平台額外需求：
+**Windows** — WebView2 Runtime（Win 10 2020+/11 已內建）+ MSVC Build Tools（勾選 *「使用 C++ 的桌面開發」* 工作負載）。
+**macOS** — Xcode Command Line Tools（`xcode-select --install`）。
 
 ---
 
-## Setup
+## 快速安裝指令 
 
-No published binaries yet — build from source.
+無發佈的安裝檔 —— 從原始碼建置
 
-### Install the toolchain
+### 前置環境
 
-**🪟 Windows (PowerShell):**
+**🪟 Windows（PowerShell）：**
 ```powershell
-winget install --id OpenJS.NodeJS.LTS          # Node.js (LTS, ≥ 20)
+winget install --id OpenJS.NodeJS.LTS          # Node.js（LTS, ≥ 20）
 winget install --id Rustlang.Rustup            # Rust
-powershell -c "irm bun.sh/install.ps1 | iex"   # Bun — build-time only
-winget install --id Microsoft.VisualStudio.2022.BuildTools  # select "Desktop development with C++"
+powershell -c "irm bun.sh/install.ps1 | iex"   # Bun — 僅建置期
+winget install --id Microsoft.VisualStudio.2022.BuildTools  # 勾「使用 C++ 的桌面開發」
 ```
 
-**🍎 macOS (Terminal):**
+**🍎 macOS（Terminal）：**
 ```bash
-xcode-select --install                                          # Xcode CLT (system dialog)
-brew install node                                               # Node.js (≥ 20), or use nvm
+xcode-select --install                                          # Xcode CLT（系統對話框）
+brew install node                                               # Node.js（≥ 20），或用 nvm
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Rust
-curl -fsSL https://bun.sh/install | bash                        # Bun — build-time only
+curl -fsSL https://bun.sh/install | bash                        # Bun — 僅建置期
 ```
 
-After installing Rust / Bun, open a new shell so the updated `PATH` is picked up.
+安裝 Rust / Bun 後請開新 shell，讓更新後的 `PATH` 生效。
 
-### Run from source
+### 從原始碼執行
 
 ```bash
 git clone https://github.com/Hereisaa/vocium.git vocium
 cd vocium
 npm install
-npm run dev   # builds the sidecar + launches the app via `tauri dev`
+npm run dev   # 編譯 sidecar 並透過 `tauri dev` 啟動桌面程式
 ```
 
-In dev the sidecar runs via Node — Bun is not required.
+dev 模式 sidecar 以 Node 執行，不需要 Bun。
 
-### Package the app
+### 打包成應用程式
 
 ```bash
-npm run package # builds a standalone installer
-# output in `app-tauri/src-tauri/target/release/bundle/`
+npm run package # 產生獨立安裝檔
+# 產物在 `app-tauri/src-tauri/target/release/bundle/`
 ```
 
 **🪟 Windows**
 
-| Format | Path | Notes |
+| 格式 | 路徑 | 說明 |
 |---|---|---|
-| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | Group‑Policy / silent‑install |
-| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | smaller; common for OSS |
+| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | 群組原則／靜默安裝 |
+| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | 體積小，OSS 常用 |
 
-First launch (unsigned): SmartScreen → **More info → Run anyway**.
+首次啟動（未簽署）：SmartScreen →**其他資訊 → 仍要執行**。
 
 **🍎 macOS**
 
-| Format | Path | Notes |
+| 格式 | 路徑 | 說明 |
 |---|---|---|
-| `.app` | `bundle/macos/Vocium.app` | runnable application bundle |
-| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | disk image for distribution |
+| `.app` | `bundle/macos/Vocium.app` | 可執行的應用程式 bundle |
+| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | 散佈用磁碟映像 |
 
-First launch (unsigned): Gatekeeper → **right‑click → Open → Open anyway** (once).
-> Unsigned builds require re‑granting Accessibility on every rebuild — see [Permissions](#permissions).
+首次啟動（未簽署）：Gatekeeper →**右鍵 → 打開 → 仍要打開**（一次）。
+※ 未簽署版每次 rebuild 需重新授權輔助使用——見 [權限](#權限)。
 
 ---
 
-## Permissions
+## 權限
 
-Vocium needs OS‑level permissions on first run. The list and recovery flow differ by platform.
+Vocium 首次執行需要作業系統層級權限，內容與還原流程兩平台略有不同。
 
 **🪟 Windows**
 
-| Permission | Why | How |
+| 權限 | 用途 | 怎麼給 |
 |---|---|---|
-| **Microphone** | Recording your voice | A standard Windows prompt appears the first time Vocium records — click *Allow* |
+| **麥克風** | 錄你的語音 | 首次錄音時 Windows 跳標準權限對話框——點*允許* |
 
-No paste permission is required — Vocium uses `Set-Clipboard` + `SendKeys`, neither of which needs elevated rights.
+不需要貼上權限——Vocium 用 `Set-Clipboard` + `SendKeys`，兩者皆不需提權。
 
 **🍎 macOS**
 
-| Permission | Why | How |
+| 權限 | 用途 | 怎麼給 |
 |---|---|---|
-| **Microphone** | Recording your voice | A standard macOS prompt appears the first time Vocium records; grant it to the app (or to the terminal running `npm run dev`) |
-| **Accessibility** | Sending the paste keystroke (Cmd+V) into the focused app | **System Settings ▸ Privacy & Security ▸ Accessibility** — add Vocium and enable the toggle |
+| **麥克風** | 錄你的語音 | 首次錄音時 macOS 跳系統提示；授予給 App（或執行 `npm run dev` 的終端機） |
+| **輔助使用** | 把貼上按鍵（Cmd+V）送到焦點 App | **系統設定 ▸ 隱私權與安全性 ▸ 輔助使用** — 加入 Vocium 並打勾啟用 |
 
-If Accessibility is not granted, the transcribed text is still copied to the clipboard and the floating icon shows guidance text — you can paste manually with Cmd+V.
+未授予輔助使用時，轉錄文字仍會複製到剪貼簿，懸浮 ICON 顯示指引文字 —— 你可手動 Cmd+V 貼上。
 
-> **If auto-paste stops working after `npm run package` — how to fix it:**
-> Every `npm run package` produces a new ad-hoc signature, and macOS treats each rebuild as a different app — the old Accessibility checkbox still shows green but points at a stale binary. If transcription works but paste doesn't fire after a rebuild:
-> **System Settings ▸ Privacy & Security ▸ Accessibility → remove the old Vocium row → add the new `Vocium.app` and enable it**.
-> The dev loop (`npm run dev`) reuses the granted entry, so this only affects packaged builds.
-
----
-
-## Tray health panel
-
-The tray menu shows live status for microphone device, microphone permission, STT key, global shortcut, and (on macOS) Accessibility. Failing items are marked ⚠ and clickable — they jump straight to the relevant OS settings page or the in‑app Settings window. If a blocking check fails (no microphone, or permission denied), pressing the hotkey won't enter listening; the UI surfaces the reason instead.
+> **遇到 npm run package 之後無法觸發自動貼上，解決方式** :
+每次 `npm run package` 都產生新的 ad-hoc 簽章，macOS 把每次 rebuild 當成不同 App —— 舊的輔助使用綠勾還在，但指向已失效的 binary。若 rebuild 後「轉錄成功但貼上不發生」：
+**系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 → 移除舊的 Vocium 列 → 加入新的 `Vocium.app` 並啟用**。
+dev loop（`npm run dev`）重用已授權的 entry，故此問題只出現在 packaged 版。
 
 ---
 
-## Usage
+## Tray 健康面板
 
-1. Focus any text field. (If nothing is focused, the result is copied to the clipboard.)
-2. Press the hotkey or click Vocium → Vocium shows **listening**.
-3. **Speak.**
-4. Press again → transcribed and inserted.
-
-**Toggle** — press to start, press again to stop and transcribe.
-**Push‑to‑talk** — hold to record, release to transcribe.
-
-First run needs an STT API key — see [CONFIGURATION.md](docs/CONFIGURATION.md).
+系統列選單即時顯示麥克風裝置、麥克風權限、STT 金鑰、全域快捷鍵、（macOS）輔助使用的狀態。失敗項以 ⚠ 標示且可點——直接開啟對應的系統設定頁或內部設定視窗。若有阻斷性檢查失敗（無麥克風或權限被拒），按快捷鍵不會進入聆聽，UI 顯示原因。
 
 ---
 
-## Use as an MCP tool
+## 操作
 
-The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop, Cursor, an Agent SDK, scripts) can reuse Vocium's speech‑to‑text and text injection without the desktop app.
+1. 把焦點放在任一輸入框。（當下無焦點則複製到剪貼簿）
+2. 按快捷鍵 或 點擊 Vocium → Vocium 進入 **聆聽中**。
+3. **說話。**
+4. 再按一次 → 轉錄成功
 
-Three headless tools:
+**切換模式** — 按一次開始，再按一次停止並轉錄。
+**按鍵發話** — 按住錄音，鬆手即轉錄。
 
-| Tool | Input → Output | Does |
+首次執行需設定 STT API 金鑰——見 [CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md)。
+
+---
+
+## 作為 MCP 工具使用
+
+Node sidecar 本身是一個 **獨立 MCP server**——任何 MCP host（Claude Desktop、Cursor、Agent SDK、腳本）都能重用 Vocium 的語音轉文字與文字注入，不必開桌面 app。
+
+三個 headless 工具：
+
+| 工具 | 輸入 → 輸出 | 作用 |
 |---|---|---|
-| `transcribe_clip` | `{ audioBase64, mimeType, language? }` → `{ text }` | Transcribe audio with your configured provider; applies your Traditional/Simplified preference. Read‑only. |
-| `inject_text` | `{ text }` → `{ ok }` | Type text into the OS‑focused window (clipboard + paste). The caller owns focus. |
-| `polish_text` | `{ text, style? }` → `{ text }` | LLM cleanup. `style`: `light` (punctuation + obvious fixes, fillers kept), `full` (also removes fillers, smooths flow), `custom` (your prompt). |
+| `transcribe_clip` | `{ audioBase64, mimeType, language? }` → `{ text }` | 用你設定的 provider 轉錄音訊，套用繁／簡偏好。唯讀。 |
+| `inject_text` | `{ text }` → `{ ok }` | 把文字打進作業系統焦點視窗（剪貼簿＋貼上）。焦點由呼叫端負責。 |
+| `polish_text` | `{ text, style? }` → `{ text }` | LLM 潤飾。`style`：`light`（補標點＋修明顯錯字，保留贅詞）、`full`（另加去贅詞＋通順）、`custom`（自訂 prompt）。 |
 
-- API keys are read from the local Vocium config on the machine running the sidecar — **callers never pass or see a key**.
-- The caller supplies the audio (Vocium does not open the microphone headlessly).
-- On macOS, `inject_text` needs the standard Accessibility permission (see [Permissions](#permissions)).
-- Register in an MCP host (after `npm run build`). The entry point is **`dist/sidecar/main.js`**:
+- 金鑰從執行 sidecar 那台機器的本機 Vocium config 讀取——**呼叫端不傳也看不到金鑰**。
+- 呼叫端提供音訊（Vocium 不會 headless 開麥克風）。
+- macOS 上 `inject_text` 需要標準的輔助使用權限（見 [權限](#權限)）。
+- 在 MCP host 設定中註冊（先 `npm run build`）。進入點是 **`dist/sidecar/main.js`**：
 
 ```json
 {
@@ -193,28 +193,28 @@ Three headless tools:
 }
 ```
 
-> The MCP server also exposes six **state‑machine tools** (`toggle`, `start_listening`, `stop_listening`, `cancel`, `get_state`, `submit_audio`) that drive the desktop shell's live recording flow, plus `probe_inject` for diagnostics.
->
-> **External integrations normally need only the three headless tools above.**
+> MCP Server 另外還有暴露六個 **狀態機工具**（`toggle`、`start_listening`、`stop_listening`、`cancel`、`get_state`、`submit_audio`）供桌面殼層驅動現場錄音流程，以及診斷用的 `probe_inject`。
+> 
+> **外部整合通常只需要上面三個 headless 工具**
 
-**Embedding in your own host?**
-Import the factory instead of spawning a process: `import { buildServer } from '<path>/vocium/dist/sidecar/index.js'`, then `buildServer().connect(yourTransport)`.
-(`index.js` only exports the factory; running it directly starts nothing — `main.js` is the stdio entry point.)
-The sidecar and the Tauri shell build independently — the shell is just one MCP client of this same server.
+**想用嵌入方式？** 
+與其 spawn 行程，不如直接 import factory：`import { buildServer } from '<path>/vocium/dist/sidecar/index.js'`，再 `buildServer().connect(你的 transport)`。
+（`index.js` 僅 export factory，直接跑它不會啟動任何東西——`main.js` 才是 stdio 進入點。）
+sidecar 與 Tauri 殼層各自獨立 build，殼層只是這同一個 server 的其中一個 MCP client。
 
 ---
 
-## Documentation
+## 文件
 
-| Doc | What |
+| 文件 | 內容 |
 |---|---|
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `vocium-config.json`, BYOK key setup, AI polish |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What's shipped, planned, and deferred |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, build gates, adding providers |
-| [docs/DESIGN_MOCKUP.html](docs/DESIGN_MOCKUP.html), [docs/ICON_DESIGN.html](docs/ICON_DESIGN.html) | Design mockups (open in a browser) |
+| [docs/CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md) | `vocium-config.json`、各家 BYOK 金鑰設定、AI 潤稿 |
+| [docs/ROADMAP.zh-TW.md](docs/ROADMAP.zh-TW.md) | 已完成／規劃中／延後的項目 |
+| [docs/CONTRIBUTING.zh-TW.md](docs/CONTRIBUTING.zh-TW.md) | 開發流程、build gates、新增 provider |
+| [docs/DESIGN_MOCKUP.html](docs/DESIGN_MOCKUP.html)、[docs/ICON_DESIGN.html](docs/ICON_DESIGN.html)  | 設計圖 |
 
 ---
 
-## License
+## 授權
 
 MIT
