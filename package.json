@@ -20,7 +20,7 @@
     "dev": "npm run build && npm run vad:assets && tauri dev --config app-tauri/src-tauri/tauri.conf.json",
     "build:sidecar-bin": "node scripts/build-sidecar-bin.mjs",
     "smoke:sidecar-bin": "node scripts/smoke-sidecar-bin.mjs",
-    "package": "tauri build --config app-tauri/src-tauri/tauri.conf.json"
+    "package": "tauri build --config app-tauri/src-tauri/tauri.conf.json --config app-tauri/src-tauri/tauri.package.conf.json"
   },
   "engines": {
     "node": ">=20.0.0"
