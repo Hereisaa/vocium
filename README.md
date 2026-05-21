@@ -81,10 +81,20 @@ curl -fsSL https://bun.sh/install | bash                        # Bun — 僅建
 
 安裝 Rust / Bun 後請開新 shell，讓更新後的 `PATH` 生效。
 
+### 確認版本
+
+```bash
+node -v   # ≥ 20（建議 LTS）
+npm -v    # 應乾淨印出版本，不該報相容性錯誤
+cargo -V
+```
+
+若 `npm` 報 Node/npm 版本不相容（例如 `npm vX is known not to run on Node.js vY`），重裝 Node 即可——它內建的 npm 會與 Node 版本匹配。
+
 ### 從原始碼執行
 
 ```bash
-git clone https://github.com/Hereisaa/vocium.git vocium
+git clone https://github.com/Hereisaa/vocium.git
 cd vocium
 npm install
 npm run dev   # 編譯 sidecar 並透過 `tauri dev` 啟動桌面程式

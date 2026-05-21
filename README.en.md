@@ -81,10 +81,20 @@ curl -fsSL https://bun.sh/install | bash                        # Bun — build-
 
 After installing Rust / Bun, open a new shell so the updated `PATH` is picked up.
 
+### Verify your toolchain
+
+```bash
+node -v   # ≥ 20 (LTS recommended)
+npm -v    # should print cleanly — no version-compatibility error
+cargo -V
+```
+
+If `npm` reports a Node/npm mismatch (e.g. `npm vX is known not to run on Node.js vY`), reinstall Node — its bundled npm matches the Node version.
+
 ### Run from source
 
 ```bash
-git clone https://github.com/Hereisaa/vocium.git vocium
+git clone https://github.com/Hereisaa/vocium.git
 cd vocium
 npm install
 npm run dev   # builds the sidecar + launches the app via `tauri dev`
