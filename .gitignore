@@ -25,6 +25,9 @@ docs/logs/
 # --- internal AI workflow docs — not for the public repo ---
 docs/superpowers/
 
+# --- local-only architecture spec (kept on dev machines, not published) ---
+docs/SPEC.md
+
 # --- OS / editor noise ---
 .DS_Store
 Thumbs.db
