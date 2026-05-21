@@ -34,25 +34,25 @@
        in app.js). NO subtitle (.sub) anymore. -->
   <div class="iconwin">
     <div class="controls" id="controls">
-      <button class="wbtn lock" id="btnLock" title="鎖定/解除水平拖曳">
+      <button class="wbtn lock" id="btnLock" title="鎖定/解除水平拖曳" data-i18n-title="ctl.lock">
         <svg class="i"><use href="#ic-unlock" id="lockUse" /></svg>
       </button>
-      <button class="wbtn min" id="btnMin" title="縮小到系統匣">
+      <button class="wbtn min" id="btnMin" title="縮小到系統匣" data-i18n-title="ctl.min">
         <svg class="i"><use href="#ic-min" /></svg>
       </button>
-      <button class="wbtn close" id="btnClose" title="結束 Vocium">
+      <button class="wbtn close" id="btnClose" title="結束 Vocium" data-i18n-title="ctl.close">
         <svg class="i"><use href="#ic-close" /></svg>
       </button>
     </div>
     <div class="pill s-idle" id="pill">
-      <div class="orb" id="orb" title="點此或按快捷鍵開始／停止">
+      <div class="orb" id="orb" title="點此或按快捷鍵開始／停止" data-i18n-title="orb.title">
         <div class="core"></div>
         <div class="ring"></div>
         <div class="bars">
           <span></span><span></span><span></span><span></span><span></span>
         </div>
       </div>
-      <div class="meta" id="meta" title="拖曳此處可水平移動">
+      <div class="meta" id="meta" title="拖曳此處可水平移動" data-i18n-title="meta.title">
         <div class="label" id="label">Vocium</div>
       </div>
     </div>
@@ -64,6 +64,7 @@
   <script src="vad/ort.wasm.min.js"></script>
   <script>self.ort = typeof ort !== 'undefined' ? ort : undefined;</script>
   <script src="vad/vad.bundle.min.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

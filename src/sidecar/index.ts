@@ -7,6 +7,7 @@ import { resolveActive } from '../core/stt/resolve-active.js';
 import { createInjector } from '../core/inject/injector.js';
 import type { Injector } from '../core/inject/types.js';
 import { loadConfig, readZhMode, readPolishConfig } from '../core/config.js';
+import { guidanceMsg } from '../core/stt/describe-error.js';
 import { polishText, resolvePolishKey } from '../core/polish/polish.js';
 import { createPipeline } from './pipeline.js';
 import { registerTools } from './mcp-tools.js';
@@ -43,9 +44,13 @@ export function buildServer(opts: BuildOpts = {}): McpServer {
     // a ~100–300ms powershell.exe cold start every paste. windowsHide avoids a
     // console flash; the injector falls back to one-shot execFile if unusable.
     spawn: ((c: string, a: string[]) => spawn(c, a, { windowsHide: true })) as any,
+    lang: cfg.lang,
   });
+  // No-key guidance text resolved from the live config: the message names the
+  // active provider and respects the UI language.
+  const guidance = guidanceMsg(cfg.lang, active.provider);
   const pipeline = createPipeline({
-    session, stt, injector, noKey,
+    session, stt, injector, noKey, lang: cfg.lang, guidance,
     // live read per call — picks up the setting change without sidecar restart
     getZhMode: () => readZhMode(fs as any, path as any, cfgDir),
     polish: async (text: string, styleOverride?: 'light' | 'full' | 'custom') => {

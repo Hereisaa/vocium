@@ -3,6 +3,7 @@ import type { createVoiceSession } from '../core/state-machine.js';
 import type { SttAdapter } from '../core/stt/types.js';
 import type { Injector, InjectResult } from '../core/inject/types.js';
 import { describeSttError, GUIDANCE_MSG } from '../core/stt/describe-error.js';
+import type { Lang } from '../core/stt/describe-error.js';
 import { convertZh } from '../core/zh-convert.js';
 
 type Session = ReturnType<typeof createVoiceSession>;
@@ -12,8 +13,15 @@ export interface PipelineDeps {
   stt: SttAdapter;
   injector: Injector;
   /** Resolved at boot: sttProvider==='groq' but no API key. When true,
-   *  submitAudio short-circuits transcription and injects GUIDANCE_MSG. */
+   *  submitAudio short-circuits transcription and injects the no-key guidance. */
   noKey?: boolean;
+  /** User-facing UI language. Selects zh-TW (default) vs en for the STT-error
+   *  categories injected on failure. */
+  lang?: Lang;
+  /** Localized no-key guidance text. Resolved at the call site from lang +
+   *  active provider. Defaults to the zh-TW Groq GUIDANCE_MSG so callers that
+   *  omit it (e.g. tests) keep the previous behavior. */
+  guidance?: string;
   /** Resolved per-call from the live setting (no sidecar restart needed).
    *  'twp' → force Traditional(TW), 'cn' → force Simplified. */
   getZhMode?: () => 'twp' | 'cn';
@@ -25,7 +33,7 @@ export interface PipelineDeps {
 export interface AudioPayload { audioBase64: string; mimeType: string; language?: string; }
 export interface SubmitAudioResult { text: string; injectError?: string; }
 
-export function createPipeline({ session, stt, injector, noKey = false, getZhMode = () => 'twp', polish = async (t: string) => t }: PipelineDeps) {
+export function createPipeline({ session, stt, injector, noKey = false, lang = 'zh-TW', guidance = GUIDANCE_MSG, getZhMode = () => 'twp', polish = async (t: string) => t }: PipelineDeps) {
   let resetTimer: ReturnType<typeof setTimeout> | null = null;
   function fail() {
     session.send('FAIL');
@@ -62,10 +70,10 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
       if (noKey) {
         // Not an error: user simply hasn't configured a key. Calm normal flow.
         session.send('TRANSCRIBED'); // -> injecting
-        const r = await injector.inject(GUIDANCE_MSG);
-        if (!r.ok) { fail(); return { text: GUIDANCE_MSG, ...(r.message ? { injectError: r.message } : {}) }; }
+        const r = await injector.inject(guidance);
+        if (!r.ok) { fail(); return { text: guidance, ...(r.message ? { injectError: r.message } : {}) }; }
         session.send('INJECTED');    // -> idle
-        return { text: GUIDANCE_MSG };
+        return { text: guidance };
       }
       try {
         const raw = await stt.transcribe({
@@ -82,7 +90,7 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
       } catch (e) {
         // STT failed: inject a short categorized message into the focused field,
         // then play the error animation. Do NOT rethrow — handled by injection.
-        const msg = describeSttError(e);
+        const msg = describeSttError(e, lang);
         try { await injector.inject(msg); } catch { /* injection best-effort */ }
         fail();
         return { text: msg };
@@ -91,7 +99,7 @@ export function createPipeline({ session, stt, injector, noKey = false, getZhMod
     async transcribeClip(p: AudioPayload): Promise<{ text: string; durationMs?: number }> {
       // Consistent with submitAudio: no key -> guidance text, never a raw
       // 'Groq API key not configured' throw leaking to MCP consumers.
-      if (noKey) return { text: GUIDANCE_MSG };
+      if (noKey) return { text: guidance };
       const raw = await stt.transcribe({
         audio: Buffer.from(p.audioBase64, 'base64'), mimeType: p.mimeType, language: p.language,
       });

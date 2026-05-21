@@ -69,7 +69,9 @@ function applyView(state) {
   // so it isn't overwritten by the racing state_changed('error') + 1.5 s
   // RESET → state_changed('idle') sequence. The pill class still updates so
   // the colour/animation reflects current state.
-  if (!injectErrorClearTimer) labelEl.textContent = v.label;
+  if (!injectErrorClearTimer) {
+    labelEl.textContent = (window.I18N && window.I18N.t('state.' + state)) || v.label;
+  }
 }
 
 // Inject failure: clipboard succeeded but the paste keystroke didn't (most
@@ -310,8 +312,22 @@ async function startRecording() {
   if (recorder && recorder.state === 'recording') return;
   chunks = [];
   submitOnStop = true;
+  // Read the user's chosen mic (empty = system default). One tiny invoke
+  // before the (already-slow) getUserMedia is negligible and always uses the
+  // latest selection.
+  let micId = '';
+  try { const cfg = await invoke('get_config'); micId = (cfg && cfg.micDeviceId) || ''; } catch { /* default */ }
+  const audioConstraint = micId ? { deviceId: { exact: micId } } : true;
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+    } catch (e) {
+      // Chosen device unplugged / OverconstrainedError → retry with system default.
+      if (micId) {
+        try { mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+        catch (e2) { throw e2; }
+      } else { throw e; }
+    }
   } catch (e) {
     submitOnStop = false;
     reportAudioError(`麥克風存取失敗：${e && e.message ? e.message : e}`);
@@ -476,11 +492,11 @@ async function triggerToggle() {
     // additional information (derive_health's Block conditions are exclusively
     // mic_device_count == 0 and mic_perm === 'denied', both owned here).
     if (lastMicDeviceCount === 0) {
-      showInjectError('找不到麥克風 — 請連接音訊輸入裝置');
+      showInjectError(window.I18N ? window.I18N.t('preflight.noMic') : '找不到麥克風 — 請連接音訊輸入裝置');
       return;
     }
     if (lastMicPerm === 'denied') {
-      showInjectError('已拒絕 — 請至系統設定授予');
+      showInjectError(window.I18N ? window.I18N.t('preflight.permDenied') : '已拒絕 — 請至系統設定授予');
       return;
     }
     currentState = 'listening';
@@ -553,7 +569,9 @@ window.addEventListener('keydown', async (e) => {
 function applyLockVisual() {
   lockUse.setAttribute('href', dragLocked ? '#ic-lock' : '#ic-unlock');
   btnLock.classList.toggle('on', dragLocked);
-  btnLock.title = dragLocked ? '點擊解除鎖定' : '鎖定水平拖曳';
+  btnLock.title = window.I18N
+    ? window.I18N.t(dragLocked ? 'ctl.lockOn' : 'ctl.lockOff')
+    : (dragLocked ? '點擊解除鎖定' : '鎖定水平拖曳');
 }
 
 btnLock.addEventListener('click', async () => {
@@ -623,6 +641,14 @@ listen('config', (event) => {
     dragLocked = p.dragLocked;
     applyLockVisual();
   }
+  // Live language switch: the Settings window saves the UI language and the
+  // shell relays it here so the pill re-localizes without an app restart.
+  if (p.lang && window.I18N) {
+    window.I18N.setLang(p.lang);
+    window.I18N.applyI18n();
+    applyView(currentState); // re-localize the pill label
+    applyLockVisual();        // re-localize the lock-button title
+  }
 });
 
 // Initialize view + sync drag-lock and current state from the shell on load.
@@ -631,6 +657,13 @@ applyLockVisual();
 (async () => {
   try {
     const cfg = await invoke('get_config');
+    // Language: drive the pill + control titles from cfg.lang (default zh-TW).
+    if (window.I18N) {
+      window.I18N.setLang((cfg && cfg.lang) || 'zh-TW');
+      window.I18N.applyI18n();
+      applyView(currentState); // re-localize the pill label after setLang
+      applyLockVisual();        // re-localize the lock button title
+    }
     if (cfg && typeof cfg.dragLocked === 'boolean') {
       dragLocked = cfg.dragLocked;
       applyLockVisual();

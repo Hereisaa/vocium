@@ -73,9 +73,10 @@ describe('config', () => {
     expect(cfg.openaiModel).toBe('whisper-1');
     expect(cfg.openaiBaseUrl).toBe('https://api.openai.com/v1');
     expect(cfg.geminiApiKey).toBe('');
-    expect(cfg.geminiModel).toBe('gemini-1.5-flash');
+    expect(cfg.geminiModel).toBe('gemini-3.5-flash');
     expect(cfg.inputMode).toBe('toggle');
     expect(cfg.vadTrim).toBe(false);
+    expect(cfg.micDeviceId).toBe('');
   });
 
   it("normalizes unknown/'local' sttProvider to 'groq' on load", () => {

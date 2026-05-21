@@ -78,6 +78,22 @@ export class MacInjector implements Injector {
 
   constructor(private deps: ProcDeps) {}
 
+  /** Localized clipboard-fallback message: "Copied — paste manually (reason)". */
+  private copiedManual(reason: string): string {
+    return this.deps.lang === 'en'
+      ? `Copied — paste manually (${reason})`
+      : `已複製，請手動貼上（${reason}）`;
+  }
+
+  /** Localized Accessibility-permission guidance shown after a paste keystroke
+   *  is blocked. `tail` is the parenthetical reassurance, which differs between
+   *  the inject() and probe() paths. */
+  private accessibilityGuidance(tail: string): string {
+    return this.deps.lang === 'en'
+      ? `Open System Settings ▸ Privacy & Security ▸ Accessibility, enable Vocium, then retry (${tail})`
+      : `請到 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 開啟 Vocium 後再試（${tail}）`;
+  }
+
   async inject(text: string): Promise<InjectResult> {
     const delay = Math.max(0, Math.round(this.deps.delayMs ?? 120));
     const spawn = this.deps.spawn;
@@ -91,7 +107,7 @@ export class MacInjector implements Injector {
     if (!spawn) {
       return {
         ok: false,
-        message: '已複製，請手動貼上（spawn unavailable; pbcopy/osascript cannot run）',
+        message: this.copiedManual('spawn unavailable; pbcopy/osascript cannot run'),
       };
     }
     // TextEncoder is a Web standard: produces deterministic UTF-8 bytes,
@@ -121,11 +137,14 @@ export class MacInjector implements Injector {
         if (ACCESS_DENIED.test(m)) {
           return {
             ok: false,
-            message:
-              '請到 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 開啟 Vocium 後再試（文字已複製，可手動貼上）',
+            message: this.accessibilityGuidance(
+              this.deps.lang === 'en'
+                ? 'text is copied — you can paste manually'
+                : '文字已複製，可手動貼上',
+            ),
           };
         }
-        return { ok: false, message: `已複製，請手動貼上（${m}）` };
+        return { ok: false, message: this.copiedManual(m) };
       }
     });
     this.queue = run.catch(() => undefined);
@@ -174,8 +193,11 @@ export class MacInjector implements Injector {
         if (ACCESS_DENIED.test(m)) {
           return {
             ok: false,
-            message:
-              '請到 系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 開啟 Vocium 後再試（若清單已有舊版 Vocium，請先移除再加入新版）',
+            message: this.accessibilityGuidance(
+              this.deps.lang === 'en'
+                ? 'if an old Vocium is already listed, remove it first and add the new one'
+                : '若清單已有舊版 Vocium，請先移除再加入新版',
+            ),
           };
         }
         return { ok: false, message: m };

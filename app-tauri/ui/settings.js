@@ -7,6 +7,7 @@ const recBtn     = document.getElementById('rec');
 const saveBtn    = document.getElementById('save');
 const cancelBtn  = document.getElementById('cancel');
 const errEl      = document.getElementById('err');
+const micSel     = document.getElementById('micSel');
 
 const keyInput   = document.getElementById('keyInput');
 const keyToggle  = document.getElementById('keyToggle');
@@ -31,22 +32,51 @@ const polishKeyToggle   = document.getElementById('polishKeyToggle');
 const polishKeyClear    = document.getElementById('polishKeyClear');
 const polishModelSel    = document.getElementById('polishModelSel');
 const polishModelCustom = document.getElementById('polishModelCustom');
+const polishModelDelete = document.getElementById('polishModelDelete');
 const polishCustomPrompt = document.getElementById('polishCustomPrompt');
 
 // ── Model lists (mirrors core/stt/models.ts — duplication is intentional) ──
 const STT_MODELS = {
-  groq:   ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'],
-  openai: ['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe'],
-  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
+  groq: [
+    { id: 'whisper-large-v3-turbo', label: 'whisper-large-v3-turbo（預設・快）', labelEn: 'whisper-large-v3-turbo (default · fast)' },
+    { id: 'whisper-large-v3', label: 'whisper-large-v3（較慢・較準）', labelEn: 'whisper-large-v3 (slower · more accurate)' },
+  ],
+  openai: [
+    { id: 'whisper-1', label: 'whisper-1（預設・便宜）', labelEn: 'whisper-1 (default · cheap)' },
+    { id: 'gpt-4o-transcribe', label: 'gpt-4o-transcribe（最準・較貴）', labelEn: 'gpt-4o-transcribe (most accurate · pricier)' },
+    { id: 'gpt-4o-mini-transcribe', label: 'gpt-4o-mini-transcribe（快・平價）', labelEn: 'gpt-4o-mini-transcribe (fast · value)' },
+  ],
+  gemini: [
+    { id: 'gemini-3.5-flash', label: 'gemini-3.5-flash（預設・快）', labelEn: 'gemini-3.5-flash (default · fast)' },
+    { id: 'gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite（最快・最便宜）', labelEn: 'gemini-3.1-flash-lite (fastest · cheapest)' },
+    { id: 'gemini-3.1-pro-preview', label: 'gemini-3.1-pro-preview（最準・較貴）', labelEn: 'gemini-3.1-pro-preview (most accurate · pricier)' },
+  ],
 };
 const CUSTOM = '__custom__';
 
 // ── Polish model lists (mirrors core/stt/models.ts POLISH_MODELS — duplication is intentional) ──
 const POLISH_MODELS = {
-  groq:   ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-  openai: ['gpt-4o-mini', 'gpt-4o'],
-  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro'],
-  claude: ['claude-3-5-haiku-latest', 'claude-3-5-sonnet-latest'],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile（預設・品質佳）', labelEn: 'llama-3.3-70b-versatile (default · good quality)' },
+    { id: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant（最快・最便宜）', labelEn: 'llama-3.1-8b-instant (fastest · cheapest)' },
+    { id: 'openai/gpt-oss-120b', label: 'openai/gpt-oss-120b（高品質・較慢）', labelEn: 'openai/gpt-oss-120b (high quality · slower)' },
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'meta-llama/llama-4-scout-17b-16e-instruct（新・快）', labelEn: 'meta-llama/llama-4-scout-17b-16e-instruct (new · fast)' },
+  ],
+  openai: [
+    { id: 'gpt-5.4-mini', label: 'gpt-5.4-mini（預設・快・平價）', labelEn: 'gpt-5.4-mini (default · fast · value)' },
+    { id: 'gpt-5.5', label: 'gpt-5.5（最佳・較貴）', labelEn: 'gpt-5.5 (best · pricier)' },
+    { id: 'gpt-5.4-nano', label: 'gpt-5.4-nano（最快・最便宜）', labelEn: 'gpt-5.4-nano (fastest · cheapest)' },
+  ],
+  gemini: [
+    { id: 'gemini-3.5-flash', label: 'gemini-3.5-flash（預設・快）', labelEn: 'gemini-3.5-flash (default · fast)' },
+    { id: 'gemini-3.1-pro-preview', label: 'gemini-3.1-pro-preview（最準・較貴）', labelEn: 'gemini-3.1-pro-preview (most accurate · pricier)' },
+    { id: 'gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite（最快・最便宜）', labelEn: 'gemini-3.1-flash-lite (fastest · cheapest)' },
+  ],
+  claude: [
+    { id: 'claude-haiku-4-5', label: 'claude-haiku-4-5（預設・快・便宜）', labelEn: 'claude-haiku-4-5 (default · fast · cheap)' },
+    { id: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6（平衡）', labelEn: 'claude-sonnet-4-6 (balanced)' },
+    { id: 'claude-opus-4-7', label: 'claude-opus-4-7（最佳・最貴）', labelEn: 'claude-opus-4-7 (best · priciest)' },
+  ],
 };
 
 // ── Cached config (populated by refreshFromConfig) ──────────────────────────
@@ -80,27 +110,28 @@ tabEls.forEach((t) => {
 /** Populate #modelSel options for a given provider. */
 function fillModels(provider, current) {
   const list = STT_MODELS[provider] || [];
+  const ids = list.map((m) => m.id);
   modelSel.innerHTML = '';
-  list.forEach((id) => {
+  list.forEach(({ id, label, labelEn }) => {
     const opt = document.createElement('option');
     opt.value = id;
-    opt.textContent = id;
+    opt.textContent = window.I18N.getLang() === 'en' ? (labelEn || id) : (label || id);
     modelSel.appendChild(opt);
   });
   // Add custom option
   const customOpt = document.createElement('option');
   customOpt.value = CUSTOM;
-  customOpt.textContent = '自訂…';
+  customOpt.textContent = window.I18N.t('opt.modelCustom');
   modelSel.appendChild(customOpt);
 
-  const inList = current && list.includes(current);
+  const inList = current && ids.includes(current);
   if (current && !inList) {
     // Custom value not in preset list
     modelSel.value = CUSTOM;
     modelCustom.value = current;
     modelCustom.style.display = '';
   } else {
-    modelSel.value = current || list[0] || '';
+    modelSel.value = current || ids[0] || '';
     modelCustom.value = '';
     modelCustom.style.display = 'none';
   }
@@ -165,32 +196,76 @@ const POLISH_PROVIDER_LABELS = {
   claude: 'Claude API Key',
 };
 
-/** Populate #polishModelSel options for a given provider. */
+// ── Remembered (user-entered) polish custom models, per provider ──────────────
+// Persisted in webview localStorage only (single-machine; never written to the
+// Rust config / never pushed). A non-preset model the user saved becomes a
+// reusable dropdown option with a ✕ delete affordance.
+const rememberedKey = (provider) => `vocium.polishModels.${provider}`;
+function getRememberedModels(provider) {
+  try {
+    const arr = JSON.parse(localStorage.getItem(rememberedKey(provider)) || '[]');
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string' && x.trim()) : [];
+  } catch { return []; }
+}
+function addRememberedModel(provider, model) {
+  const m = (model || '').trim();
+  if (!m || (POLISH_MODELS[provider] || []).some((x) => x.id === m)) return; // skip empty / preset
+  const list = getRememberedModels(provider);
+  if (list.includes(m)) return;
+  list.push(m);
+  try { localStorage.setItem(rememberedKey(provider), JSON.stringify(list)); } catch { /* quota/private mode */ }
+}
+function removeRememberedModel(provider, model) {
+  try {
+    localStorage.setItem(rememberedKey(provider),
+      JSON.stringify(getRememberedModels(provider).filter((x) => x !== model)));
+  } catch { /* best-effort */ }
+}
+
+/** Show the ✕ delete affordance only when the selected option is a remembered
+ *  (user-entered, non-preset) model. */
+function updatePolishModelDeleteBtn() {
+  if (!polishModelDelete) return;
+  const provider = polishProvSel.value;
+  const val = polishModelSel.value;
+  const isRemembered = !!val && val !== CUSTOM
+    && !(POLISH_MODELS[provider] || []).some((x) => x.id === val)
+    && getRememberedModels(provider).includes(val);
+  polishModelDelete.hidden = !isRemembered;
+}
+
+/** Populate #polishModelSel: presets → remembered customs → 自訂…. A non-preset
+ *  `current` (a custom the user set before) is remembered and shown as a real
+ *  selectable option rather than re-typed. Defaults to the first preset. */
 function fillPolishModels(provider, current) {
-  const list = POLISH_MODELS[provider] || [];
+  const presets = POLISH_MODELS[provider] || [];
+  const presetIds = presets.map((m) => m.id);
+  if (current && !presetIds.includes(current)) addRememberedModel(provider, current);
+  const remembered = getRememberedModels(provider).filter((m) => !presetIds.includes(m));
+
   polishModelSel.innerHTML = '';
-  list.forEach((id) => {
+  presets.forEach(({ id, label, labelEn }) => {
     const opt = document.createElement('option');
     opt.value = id;
-    opt.textContent = id;
+    opt.textContent = window.I18N.getLang() === 'en' ? (labelEn || id) : (label || id);
     polishModelSel.appendChild(opt);
   });
-  // Add custom option
+  remembered.forEach((id) => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id; // user-entered custom: no preset tag
+    polishModelSel.appendChild(opt);
+  });
   const customOpt = document.createElement('option');
   customOpt.value = CUSTOM;
-  customOpt.textContent = '自訂…';
+  customOpt.textContent = window.I18N.t('opt.modelCustom');
   polishModelSel.appendChild(customOpt);
 
-  const inList = current && list.includes(current);
-  if (current && !inList) {
-    polishModelSel.value = CUSTOM;
-    polishModelCustom.value = current;
-    polishModelCustom.style.display = '';
-  } else {
-    polishModelSel.value = current || list[0] || '';
-    polishModelCustom.value = '';
-    polishModelCustom.style.display = 'none';
-  }
+  const known = [...presetIds, ...remembered];
+  polishModelSel.value = (current && known.includes(current)) ? current : (presetIds[0] || '');
+  polishModelCustom.value = '';
+  polishModelCustom.style.display = 'none';
+  updatePolishModelDeleteBtn();
 }
 
 polishModelSel.addEventListener('change', () => {
@@ -200,16 +275,29 @@ polishModelSel.addEventListener('change', () => {
   } else {
     polishModelCustom.style.display = 'none';
   }
+  updatePolishModelDeleteBtn();
 });
 
-// Single source of truth for the "no key set" placeholder text (shared by STT and polish key fields).
-const KEY_PLACEHOLDER_UNSET = '貼上金鑰後按儲存';
+if (polishModelDelete) {
+  polishModelDelete.addEventListener('click', () => {
+    const provider = polishProvSel.value;
+    const val = polishModelSel.value;
+    if (!val || val === CUSTOM) return;
+    removeRememberedModel(provider, val);
+    fillPolishModels(provider, ''); // re-render → default to first preset
+  });
+}
+
+// Single source of truth for the "no key set" placeholder text (shared by STT
+// and polish key fields). A function (not a const) so it follows live language
+// switches.
+function keyPhUnset() { return window.I18N.t('ph.key'); }
 
 // Last polish key snapshot for placeholder restore without round-trip.
 let lastPolishKeySet  = false;
 let lastPolishKeyMask = '';
 // Desired empty-state placeholder for the current polish provider (Fix 1).
-let polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+let polishSharedPlaceholder = keyPhUnset();
 
 function applyPolishKeyState(keySet, keyMask) {
   lastPolishKeySet  = !!keySet;
@@ -253,27 +341,32 @@ function renderPolishProvider(provider) {
     const p = cachedCfg.polish;
     if (provider === 'claude') {
       // claude always has its own key slot — use normal unset placeholder
-      polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+      polishSharedPlaceholder = keyPhUnset();
       applyPolishKeyState(p.hasClaudeKey, p.claudeKeyMask);
     } else {
       // groq / openai / gemini — show override key state; if no override but STT key
       // for same provider is available, surface a "will reuse" placeholder.
       if (p.hasPolishOverride) {
         // has a dedicated polish key — use normal unset placeholder for empty-state restores
-        polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+        polishSharedPlaceholder = keyPhUnset();
         applyPolishKeyState(true, p.polishKeyMask);
       } else {
         const sharedAvail = p.sharedKeyAvailable && p.sharedKeyAvailable[provider];
         // Fix 4: sharedLabel only needed when sharedAvail
         polishSharedPlaceholder = sharedAvail
-          ? `沿用語音轉文字的 ${POLISH_PROVIDER_LABELS[provider].replace(' API Key', '')} 金鑰（留空＝沿用）`
-          : KEY_PLACEHOLDER_UNSET;
+          ? window.I18N.t('ph.polishShared').replace('{p}', POLISH_PROVIDER_LABELS[provider].replace(' API Key', ''))
+          : keyPhUnset();
         applyPolishKeyState(false, '');
       }
     }
-    fillPolishModels(provider, p.model || '');
+    // Only honor the saved model for the provider it was actually saved under.
+    // polish.model is a single value (not per-provider), so switching the
+    // dropdown to a different provider must default to that provider's first
+    // preset — otherwise e.g. a saved Groq model leaks into OpenAI's custom box.
+    const savedModel = (p.provider && provider === p.provider) ? (p.model || '') : '';
+    fillPolishModels(provider, savedModel);
   } else {
-    polishSharedPlaceholder = KEY_PLACEHOLDER_UNSET;
+    polishSharedPlaceholder = keyPhUnset();
     applyPolishKeyState(false, '');
     fillPolishModels(provider, '');
   }
@@ -292,7 +385,7 @@ let polishClearConfirmTimer = null;
 function resetPolishClearConfirm() {
   polishClearConfirm = false;
   if (polishClearConfirmTimer) { clearTimeout(polishClearConfirmTimer); polishClearConfirmTimer = null; }
-  if (!polishKeyClear.hidden) polishKeyClear.textContent = '✕ 清除金鑰';
+  if (!polishKeyClear.hidden) polishKeyClear.textContent = window.I18N.t('btn.clearKey');
 }
 
 polishKeyClear.addEventListener('click', () => {
@@ -300,7 +393,7 @@ polishKeyClear.addEventListener('click', () => {
   if (polishProvSel.value === 'local') return;
   if (!polishClearConfirm) {
     polishClearConfirm = true;
-    polishKeyClear.textContent = '✕ 再按一次確認清除';
+    polishKeyClear.textContent = window.I18N.t('btn.clearKeyConfirm');
     if (polishClearConfirmTimer) clearTimeout(polishClearConfirmTimer);
     polishClearConfirmTimer = setTimeout(resetPolishClearConfirm, 3000);
     return;
@@ -376,28 +469,84 @@ function makeSeg(containerEl, attrKey) {
   };
 }
 
+/**
+ * Sliding on/off switch. Same { get(), set(v) } contract as makeSeg so the
+ * load/save code stays unchanged: get() returns 'on'|'off', set('on'|'off').
+ */
+function makeSwitch(el, onChange) {
+  let on = false;
+  function render() {
+    if (!el) return;
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+  function toggle() { on = !on; render(); if (onChange) onChange(); }
+  if (el) {
+    el.addEventListener('click', toggle);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
+    });
+  }
+  return {
+    get: () => (on ? 'on' : 'off'),
+    set: (v) => { on = v === 'on'; render(); },
+  };
+}
+
 // inputMode seg (#imSeg, data-im)
 const imSeg  = makeSeg(document.getElementById('imSeg'),  'im');
-// VAD seg (#vadSeg, data-vad)
-const vadSeg = makeSeg(document.getElementById('vadSeg'), 'vad');
-// Polish enabled seg (#polishEnabledSeg, data-pen)
-const polishEnabledSeg = makeSeg(document.getElementById('polishEnabledSeg'), 'pen');
+// UI language seg (#langSeg, data-lang) — switches the whole UI live.
+const langSeg = makeSeg(document.getElementById('langSeg'), 'lang');
+function applyLangLive(lang) {
+  window.I18N.setLang(lang === 'en' ? 'en' : 'zh-TW');
+  window.I18N.applyI18n(document);
+  // Re-render JS-built dynamic strings (model/mic dropdowns + placeholders).
+  if (cachedCfg) {
+    renderProvider(provSel.value);
+    renderPolishProvider(polishProvSel.value);
+    fillMicDevices(micSel.value);
+  }
+}
+document.getElementById('langSeg').querySelectorAll('.seg-opt').forEach((o) => {
+  const onPick = () => {
+    const lang = o.dataset.lang === 'en' ? 'en' : 'zh-TW';
+    applyLangLive(lang);
+    invoke('save_lang', { lang }).catch((reason) => console.error('[settings] save_lang failed:', reason));
+  };
+  o.addEventListener('click', onPick);
+  o.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onPick(); } });
+});
+// VAD switch (#vadSeg) — on/off
+const vadSeg = makeSwitch(document.getElementById('vadSeg'));
+// Polish enabled switch (#polishEnabledSeg) — on/off. Toggling it shows/hides
+// the whole polish config block below (#polishFields).
+const polishFields = document.getElementById('polishFields');
+function syncPolishFields() {
+  if (polishFields) polishFields.style.display = polishEnabledSeg.get() === 'on' ? '' : 'none';
+}
+const polishEnabledSeg = makeSwitch(document.getElementById('polishEnabledSeg'), syncPolishFields);
+syncPolishFields(); // initial state: off → hidden
 // Polish style seg (#polishStyleSeg, data-pstyle)
 const polishStyleSeg   = makeSeg(document.getElementById('polishStyleSeg'),   'pstyle');
 
-// Wire polishStyleSeg change: show/hide custom prompt textarea (mirrors STT modelCustom toggle).
-// makeSeg exposes only get()/set() — no onChange hook — so per-opt listeners are the established
-// idiom (same pattern used throughout this file). keydown gets e.preventDefault() to match
-// makeSeg's own keydown handler and prevent Space from scrolling the pane.
+// Wire polishStyleSeg change: show/hide the custom-prompt textarea. When the
+// user picks 自訂 Prompt, reveal the textarea, scroll it into view, and (on a
+// mouse pick) focus it so they can type immediately. makeSeg exposes no
+// onChange hook, so per-opt listeners are the established idiom here.
+function applyPolishStyle(pstyle, focusInput) {
+  const isCustom = pstyle === 'custom';
+  polishCustomPrompt.style.display = isCustom ? '' : 'none';
+  if (isCustom) {
+    polishCustomPrompt.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (focusInput) polishCustomPrompt.focus({ preventScroll: true });
+  }
+}
 document.getElementById('polishStyleSeg').querySelectorAll('.seg-opt').forEach((o) => {
-  o.addEventListener('click', () => {
-    polishCustomPrompt.style.display = o.dataset.pstyle === 'custom' ? '' : 'none';
-  });
+  o.addEventListener('click', () => applyPolishStyle(o.dataset.pstyle, true));
   o.addEventListener('keydown', (e) => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      polishCustomPrompt.style.display = o.dataset.pstyle === 'custom' ? '' : 'none';
-      o.focus();
+      applyPolishStyle(o.dataset.pstyle, false); // makeSeg keeps focus on the option
     }
   });
 });
@@ -451,7 +600,7 @@ let clearConfirmTimer = null;
 function resetClearConfirm() {
   clearConfirm = false;
   if (clearConfirmTimer) { clearTimeout(clearConfirmTimer); clearConfirmTimer = null; }
-  if (!keyClear.hidden) keyClear.textContent = '✕ 清除金鑰';
+  if (!keyClear.hidden) keyClear.textContent = window.I18N.t('btn.clearKey');
 }
 
 /**
@@ -465,7 +614,7 @@ function applyKeyState(keySet, keyMask) {
   keyClear.hidden = !lastKeySet;
   resetClearConfirm();
   if (keyInput.value) return; // user is typing — leave it alone
-  keyInput.placeholder = lastKeySet ? (lastKeyMask || '••••••••') : KEY_PLACEHOLDER_UNSET;
+  keyInput.placeholder = lastKeySet ? (lastKeyMask || '••••••••') : keyPhUnset();
 }
 
 function updateToggleVisibility() {
@@ -537,7 +686,7 @@ function setArmed(on) {
   armed = on;
   capturedThisSession = false;
   recBtn.classList.toggle('armed', on);
-  recBtn.textContent = on ? '● 錄製中…' : '錄製';
+  recBtn.textContent = on ? window.I18N.t('btn.recording') : window.I18N.t('btn.record');
   // Suspend Vocium's global hotkey while recording so pressing the current
   // combo doesn't trigger it; resume when recording ends.
   invoke('set_hotkey_enabled', { enabled: !on }).catch(() => {});
@@ -554,7 +703,7 @@ window.addEventListener('keydown', (e) => {
   if (e.shiftKey) mods.push('Shift');
   if (e.altKey)   mods.push('Alt');
   if (e.metaKey)  mods.push('Win');
-  if (mods.length === 0) { showErr('需含至少一個修飾鍵（Ctrl/Shift/Alt/Win）＋一個主鍵'); return; }
+  if (mods.length === 0) { showErr(window.I18N.t('err.hotkeyNeedMod')); return; }
   clearErr();
   pendingSpec = [...mods, main].join('+');
   capturedThisSession = true;
@@ -572,6 +721,31 @@ window.addEventListener('keyup', (e) => {
 
 recBtn.addEventListener('click', () => { clearErr(); setArmed(true); });
 
+// ── Microphone selection ──────────────────────────────────────────────────────
+// Populate #micSel from the OS audio-input devices. Labels require mic
+// permission; if unavailable we still list devices by index. Always offer a
+// "system default" option whose value is '' (empty = let the OS choose).
+async function fillMicDevices(current) {
+  if (!micSel) return;
+  let devices = [];
+  try { devices = await navigator.mediaDevices.enumerateDevices(); } catch { /* ignore */ }
+  const mics = devices.filter((d) => d.kind === 'audioinput');
+  micSel.innerHTML = '';
+  const def = document.createElement('option');
+  def.value = '';
+  def.textContent = window.I18N.t('mic.default');
+  micSel.appendChild(def);
+  mics.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `${window.I18N.t('lbl.mic')} ${i + 1}`;
+    micSel.appendChild(opt);
+  });
+  // Select current if still present; else fall back to system default ('').
+  const ids = Array.from(micSel.options).map((o) => o.value);
+  micSel.value = (current && ids.includes(current)) ? current : '';
+}
+
 // ── Config refresh ────────────────────────────────────────────────────────────
 /**
  * Pull authoritative state from the shell. Runs on load AND every time the
@@ -581,6 +755,12 @@ async function refreshFromConfig() {
   try {
     const cfg = await invoke('get_config');
     cachedCfg = cfg;
+
+    // i18n: apply saved UI language first so static markup + the dynamic
+    // strings built below all render in the right language.
+    window.I18N.setLang((cfg && cfg.lang) || 'zh-TW');
+    window.I18N.applyI18n(document);
+    langSeg.set((cfg && cfg.lang) === 'en' ? 'en' : 'zh-TW');
 
     // Hotkey
     if (cfg && cfg.hotkey) currentSpec = cfg.hotkey;
@@ -597,6 +777,9 @@ async function refreshFromConfig() {
 
     // VAD
     vadSeg.set(cfg && cfg.vadTrim ? 'on' : 'off');
+
+    // Microphone
+    fillMicDevices((cfg && cfg.micDeviceId) || '');
 
     // zh mode
     currentZh = (cfg && cfg.zhConvert === 'cn') ? 'cn' : 'twp';
@@ -618,6 +801,7 @@ async function refreshFromConfig() {
   } catch (e) { console.error('[settings] get_config failed:', e); }
   updateToggleVisibility();
   updatePolishToggleVisibility();
+  syncPolishFields();
   renderCombo(pendingSpec || currentSpec);
 }
 
@@ -634,9 +818,9 @@ saveBtn.addEventListener('click', async () => {
       if (armed) setArmed(false);
     }
   } catch (reason) {
-    if (reason === 'parse')  showErr('組合無效：需修飾鍵＋主鍵');
-    else if (reason === 'taken') showErr(`此組合已被占用，仍保留原快捷鍵 ${currentSpec}`);
-    else showErr(`設定失敗：${reason}`);
+    if (reason === 'parse')  showErr(window.I18N.t('err.hotkeyParse'));
+    else if (reason === 'taken') showErr(window.I18N.t('err.hotkeyTaken') + currentSpec);
+    else showErr(window.I18N.t('err.hotkeySet') + reason);
     renderCombo(currentSpec);
     pendingSpec = null;
     return; // hotkey failed — don't proceed
@@ -646,7 +830,7 @@ saveBtn.addEventListener('click', async () => {
   const sel = provSel.value;
   if (sel === 'local') {
     // D4: never persist local; surface info via keyErr transiently
-    keyErr.textContent = '本地 STT 尚未推出，啟用來源未變更';
+    keyErr.textContent = window.I18N.t('err.localStt');
     keyErr.style.display = 'block';
     setTimeout(() => { keyErr.style.display = 'none'; }, 3000);
     // Fall through — still save inputMode / vad / zh / hotkey
@@ -671,7 +855,7 @@ saveBtn.addEventListener('click', async () => {
         keyInput.value = '';
         if (r && r.sttProvider) { /* success path — provider name available via r.sttProvider */ }
       } catch (reason) {
-        keyErr.textContent = `金鑰套用失敗：${reason}（請重啟程式）`;
+        keyErr.textContent = window.I18N.t('err.key') + reason + window.I18N.t('err.keyRestart');
         keyErr.style.display = 'block';
         return; // keep window open so the error is visible
       }
@@ -681,7 +865,7 @@ saveBtn.addEventListener('click', async () => {
       try {
         await invoke('set_stt_provider', { provider: sel });
       } catch (reason) {
-        keyErr.textContent = `切換 STT 來源失敗：${reason}`;
+        keyErr.textContent = window.I18N.t('err.sttSwitch') + reason;
         keyErr.style.display = 'block';
         return;
       }
@@ -695,7 +879,7 @@ saveBtn.addEventListener('click', async () => {
     try {
       await invoke('save_input_mode', { mode: pendingIm });
     } catch (reason) {
-      showErr(`輸入模式套用失敗：${reason}`);
+      showErr(window.I18N.t('err.inputMode') + reason);
       return;
     }
   }
@@ -707,10 +891,14 @@ saveBtn.addEventListener('click', async () => {
     try {
       await invoke('save_vad_trim', { enabled: pendingVad === 'on' });
     } catch (reason) {
-      showErr(`VAD 設定套用失敗：${reason}`);
+      showErr(window.I18N.t('err.vad') + reason);
       return;
     }
   }
+
+  // 4b. Microphone: persist the chosen input device (empty = system default).
+  try { await invoke('save_mic_device', { deviceId: micSel.value }); }
+  catch (reason) { showErr(window.I18N.t('err.mic') + reason); return; }
 
   // 5. zh mode: apply only if changed
   if (pendingZh !== currentZh) {
@@ -718,7 +906,7 @@ saveBtn.addEventListener('click', async () => {
       await invoke('save_zh_mode', { mode: pendingZh });
       currentZh = pendingZh;
     } catch (reason) {
-      showErr(`中文輸出套用失敗：${reason}`);
+      showErr(window.I18N.t('err.zh') + reason);
       return;
     }
   }
@@ -730,6 +918,8 @@ saveBtn.addEventListener('click', async () => {
       ? polishModelCustom.value.trim()
       : polishModelSel.value;
     const pSel = polishProvSel.value;
+    // Remember a freshly-typed custom model so it becomes a reusable option next time.
+    if (polishModelSel.value === CUSTOM && pModel) addRememberedModel(pSel, pModel);
     try {
       await invoke('save_polish', {
         enabled: polishEnabledSeg.get() === 'on',
@@ -742,25 +932,28 @@ saveBtn.addEventListener('click', async () => {
       });
       polishKeyInput.value = '';
     } catch (reason) {
-      showErr(`AI 潤稿設定套用失敗：${reason}`);
+      showErr(window.I18N.t('err.polish') + reason);
       return;
     }
   }
 
-  // Success feedback animation on Save button
-  // (dedup: a rapid 2nd save must not capture the '✓ 已套用' transient as label)
+  // Per UX: do NOT close after save. Re-sync masked fields to new state.
+  await refreshFromConfig();
+
+  // Success feedback on the Save button. MUST run AFTER refreshFromConfig:
+  // that call's applyI18n pass rewrites #save's text (data-i18n="btn.save"),
+  // which would otherwise instantly clobber the transient "✓ Applied" label
+  // and leave only the colour change.
+  // (dedup: a rapid 2nd save must not capture the transient as the label)
   if (saveBtn._okTimer) { clearTimeout(saveBtn._okTimer); }
   else { saveBtn._okLabel = saveBtn.textContent; } // original captured once
   saveBtn.classList.add('ok');
-  saveBtn.textContent = '✓ 已套用';
+  saveBtn.textContent = window.I18N.t('btn.saveOk');
   saveBtn._okTimer = setTimeout(() => {
     saveBtn.classList.remove('ok');
     saveBtn.textContent = saveBtn._okLabel;
     saveBtn._okTimer = null;
   }, 1000);
-
-  // Per UX: do NOT close after save. Re-sync masked fields to new state.
-  await refreshFromConfig();
 });
 
 // ── Cancel / dismiss ─────────────────────────────────────────────────────────
@@ -794,7 +987,7 @@ keyClear.addEventListener('click', () => {
   if (provSel.value === 'local') return; // should not appear for local, guard anyway
   if (!clearConfirm) {
     clearConfirm = true;
-    keyClear.textContent = '✕ 再按一次確認清除';
+    keyClear.textContent = window.I18N.t('btn.clearKeyConfirm');
     if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
     clearConfirmTimer = setTimeout(resetClearConfirm, 3000);
     return;
@@ -808,7 +1001,7 @@ keyClear.addEventListener('click', () => {
       return refreshFromConfig();
     })
     .catch((reason) => {
-      keyErr.textContent = `清除金鑰失敗：${reason}`;
+      keyErr.textContent = window.I18N.t('err.clearKey') + reason;
       keyErr.style.display = 'block';
     });
 });
@@ -829,6 +1022,11 @@ getCurrentWindow().onFocusChanged(({ payload: focused }) => {
   // Re-sync hotkey + masked key state + all settings from the shell every reopen.
   refreshFromConfig();
 });
+
+// ── Microphone hot-plug ───────────────────────────────────────────────────────
+// Re-populate the dropdown when devices are added/removed, preserving the
+// current selection if it survives.
+navigator.mediaDevices.addEventListener('devicechange', () => fillMicDevices(micSel.value));
 
 // ── Initial load ──────────────────────────────────────────────────────────────
 refreshFromConfig();

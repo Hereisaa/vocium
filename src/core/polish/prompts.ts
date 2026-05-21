@@ -15,7 +15,7 @@
 export type PolishStyle = 'light' | 'full' | 'custom';
 
 export const STYLE_PROMPTS: Record<'light' | 'full', string> = {
-  // "只補標點符號" (label) — narrow polish: restore punctuation, break into
+  // "基礎校正" (label) — narrow polish: restore punctuation, break into
   // paragraphs, and fix OBVIOUS mis-recognitions (homophones, clearly wrong
   // characters). Filler words and the user's actual wording are preserved.
   // Positive-leading structure: lead with what TO do (otherwise LLMs over-

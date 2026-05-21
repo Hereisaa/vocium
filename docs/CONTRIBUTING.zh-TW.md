@@ -49,11 +49,11 @@ export const STT_MODELS: Record<CloudProvider, ModelOption[]> = {
     { id: 'whisper-large-v3', label: 'whisper-large-v3' },
   ],
   openai: [{ id: 'whisper-1', label: 'whisper-1（預設）' }],
-  gemini: [{ id: 'gemini-1.5-flash', label: 'gemini-1.5-flash（預設）' }],
+  gemini: [{ id: 'gemini-3.5-flash', label: 'gemini-3.5-flash（預設）' }],
 };
 
 export const DEFAULT_MODEL: Record<CloudProvider, string> = {
-  groq: 'whisper-large-v3-turbo', openai: 'whisper-1', gemini: 'gemini-1.5-flash',
+  groq: 'whisper-large-v3-turbo', openai: 'whisper-1', gemini: 'gemini-3.5-flash',
 };
 ```
 

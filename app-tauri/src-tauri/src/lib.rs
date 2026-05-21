@@ -93,7 +93,17 @@ struct VociumConfig {
     stt_provider: String, // resolved label: "groq" | "mock"
     icon_offset_x: i32,
     drag_locked: bool,
+    /// UI language for the Rust shell (tray + health panel). Normalized to
+    /// "en" only when stored value is exactly "en"; everything else (incl.
+    /// missing) is "zh-TW". Mirrors src/core/config.ts `lang` normalization.
+    lang: String,
     config_dir: PathBuf,
+}
+
+/// Pick the right localized string for the current shell language.
+/// Brand strings (Vocium, provider names) and glyphs are never passed here.
+fn tr(lang: &str, zh: &str, en: &str) -> String {
+    if lang == "en" { en } else { zh }.to_string()
 }
 
 fn config_dir() -> PathBuf {
@@ -115,6 +125,7 @@ fn read_config() -> VociumConfig {
     let mut hotkey = "Ctrl+Shift+Space".to_string();
     let mut icon_offset_x = 0i32;
     let mut drag_locked = false;
+    let mut lang = "zh-TW".to_string();
 
     if let Ok(raw) = std::fs::read_to_string(&file) {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
@@ -127,6 +138,9 @@ fn read_config() -> VociumConfig {
             if let Some(d) = v.get("dragLocked").and_then(|x| x.as_bool()) {
                 drag_locked = d;
             }
+            if v.get("lang").and_then(|x| x.as_str()) == Some("en") {
+                lang = "en".to_string();
+            }
         }
     }
 
@@ -138,6 +152,7 @@ fn read_config() -> VociumConfig {
         stt_provider,
         icon_offset_x,
         drag_locked,
+        lang,
         config_dir: dir,
     }
 }
@@ -708,6 +723,7 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
     let file = s.config.config_dir.join("vocium-config.json");
     let (mut hotkey, mut drag_locked) = (s.config.hotkey.clone(), s.config.drag_locked);
     let mut zh_convert = "twp".to_string();
+    let mut lang = "zh-TW".to_string();
     if let Ok(raw) = std::fs::read_to_string(&file) {
         if let Ok(v) = serde_json::from_str::<Value>(&raw) {
             if let Some(h) = v.get("hotkey").and_then(|x| x.as_str()) {
@@ -718,6 +734,10 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
             }
             if let Some(z) = v.get("zhConvert").and_then(|x| x.as_str()) {
                 if z == "twp" || z == "cn" { zh_convert = z.to_string(); }
+            }
+            // Normalize like src/core/config.ts: only exact "en" is English.
+            if v.get("lang").and_then(|x| x.as_str()) == Some("en") {
+                lang = "en".to_string();
             }
         }
     }
@@ -759,7 +779,9 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
         "providers": providers,
         "inputMode": input_mode,
         "vadTrim": vad_trim,
+        "micDeviceId": read_str(&cfgv, "micDeviceId"),
         "zhConvert": zh_convert,
+        "lang": lang,
         "polish": {
             "enabled": cfgv.get("polishEnabled").and_then(|x| x.as_bool()).unwrap_or(false),
             "provider": polish_provider,
@@ -981,6 +1003,30 @@ fn save_vad_trim(app: AppHandle, enabled: bool) -> Result<(), String> {
     patch_config(&dir, "vadTrim", json!(enabled))
 }
 
+/// UI language persist (no sidecar restart — only the shell tray/health
+/// strings care). After persisting, rebuild the tray so the menu and health
+/// panel re-localize immediately. Normalized so only "en" is English.
+#[tauri::command]
+fn save_lang(app: AppHandle, lang: String) -> Result<(), String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    let v = if lang == "en" { "en" } else { "zh-TW" };
+    patch_config(&dir, "lang", serde_json::Value::String(v.to_string()))?;
+    rebuild_tray_menu(&app);
+    // Relay to the icon webview so the pill re-localizes live (it owns its own
+    // language state and only reads lang at boot otherwise).
+    let _ = app.emit("config", serde_json::json!({ "lang": v }));
+    Ok(())
+}
+
+/// micDeviceId persist (no restart — the webview reads it live via get_config
+/// before each getUserMedia). Empty string = system default microphone.
+#[tauri::command]
+fn save_mic_device(app: AppHandle, device_id: String) -> Result<(), String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    patch_config(&dir, "micDeviceId", serde_json::Value::String(device_id))?;
+    Ok(())
+}
+
 /// Persist AI-polish settings. No sidecar restart (polish is live-read,
 /// mirrors save_vad_trim/save_zh_mode). Empty key fields = unchanged.
 #[tauri::command]
@@ -1098,6 +1144,8 @@ pub fn run() {
             clear_provider_key,
             save_input_mode,
             save_vad_trim,
+            save_lang,
+            save_mic_device,
             save_polish,
             clear_polish_key,
             get_health,
@@ -1191,35 +1239,40 @@ fn build_tray(
     cfg: &VociumConfig,
     hotkey_ok: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let lang = cfg.lang.as_str();
     let hotkey_label = if hotkey_ok {
-        format!("快捷鍵：{}", cfg.hotkey)
+        tr(lang, &format!("快捷鍵：{}", cfg.hotkey), &format!("Hotkey: {}", cfg.hotkey))
     } else {
-        format!("快捷鍵：{}（註冊失敗）", cfg.hotkey)
+        tr(
+            lang,
+            &format!("快捷鍵：{}（註冊失敗）", cfg.hotkey),
+            &format!("Hotkey: {} (registration failed)", cfg.hotkey),
+        )
     };
 
-    let show = MenuItem::with_id(app, "show", "顯示 ICON", true, None::<&str>)?;
-    let hide = MenuItem::with_id(app, "hide", "隱藏 ICON", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", tr(lang, "顯示 ICON", "Show icon"), true, None::<&str>)?;
+    let hide = MenuItem::with_id(app, "hide", tr(lang, "隱藏 ICON", "Hide icon"), true, None::<&str>)?;
     // Read-only informational items (enabled=false).
     let hk = MenuItem::with_id(app, "hk", &hotkey_label, false, None::<&str>)?;
     *app.state::<ShellState>().hk_item.lock().unwrap() = Some(hk.clone());
     let settings_item =
-        MenuItem::with_id(app, "settings", "設定…", true, None::<&str>)?;
+        MenuItem::with_id(app, "settings", tr(lang, "設定…", "Settings…"), true, None::<&str>)?;
     let stt = MenuItem::with_id(
         app,
         "stt",
-        &format!("STT：{}", cfg.stt_provider),
+        &tr(lang, &format!("STT：{}", cfg.stt_provider), &format!("STT: {}", cfg.stt_provider)),
         false,
         None::<&str>,
     )?;
     *app.state::<ShellState>().stt_item.lock().unwrap() = Some(stt.clone());
     let open_cfg =
-        MenuItem::with_id(app, "open_cfg", "開啟設定檔位置", true, None::<&str>)?;
+        MenuItem::with_id(app, "open_cfg", tr(lang, "開啟設定檔位置", "Open config folder"), true, None::<&str>)?;
     // Distinct separator instances: muda OS menu-item ID reuse is undefined on
     // Windows, so each separator slot needs its own instance.
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
-    let quit = MenuItem::with_id(app, "quit", "結束", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", tr(lang, "結束", "Quit"), true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
@@ -1228,7 +1281,7 @@ fn build_tray(
 
     let cfg_dir = cfg.config_dir.clone();
     let _tray = TrayIconBuilder::with_id("vocium-tray")
-        .tooltip("Vocium — 待命")
+        .tooltip(&tr(lang, "Vocium — 待命", "Vocium — idle"))
         // Embed the generated B+ icon at COMPILE TIME so the tray is always the
         // current art, independent of bundle-icon embedding/dev caching (the
         // old default_window_icon() path showed a stale icon under tauri dev).
@@ -1355,6 +1408,44 @@ fn rebuild_tray_menu(app: &AppHandle) {
     let state = app.state::<ShellState>();
     let report = snapshot_health_report(&state);
 
+    // Read the live UI language once; both the health loop and the trailing
+    // controls re-localize from it. read_config() is cheap (single file read).
+    let cfg = read_config();
+    let lang = cfg.lang.as_str();
+
+    // `derive_health` intentionally emits STABLE zh-TW messages (it is the pure
+    // data layer with unit tests asserting those strings). Localization happens
+    // here at the DISPLAY layer: map the finite set of zh messages to English.
+    // The two interpolating cases ("{n} 個裝置可用", "未知狀態 ({x})") are
+    // recomputed from the same ShellState inputs rather than parsed back.
+    let mic_device_count = *state.health_mic_device_count.lock().unwrap();
+    let mic_perm_raw = state.health_mic_perm.lock().unwrap().clone();
+    let tr_health_msg = |zh: &str| -> String {
+        if lang != "en" {
+            return zh.to_string();
+        }
+        match zh {
+            "找不到麥克風 — 請連接音訊輸入裝置" =>
+                "No microphone found — connect an audio input device".to_string(),
+            "已授予" => "Granted".to_string(),
+            "已拒絕 — 請至系統設定授予" =>
+                "Denied — grant it in OS settings".to_string(),
+            "未授予" => "Not granted".to_string(),
+            "已設定" => "Set".to_string(),
+            "未設定" => "Not set".to_string(),
+            "已註冊" => "Registered".to_string(),
+            "註冊失敗" => "Registration failed".to_string(),
+            "暫停中" => "Suspended".to_string(),
+            // Interpolating cases — recompute from the raw inputs.
+            other if other.ends_with("個裝置可用") =>
+                format!("{} device(s) available", mic_device_count),
+            other if other.starts_with("未知狀態") =>
+                format!("Unknown state ({})", mic_perm_raw),
+            // Unmapped → fall back to the zh message (never lose information).
+            other => other.to_string(),
+        }
+    };
+
     // Build one MenuItem per health item. Labels match buildTrayLabel in
     // src/core/health.ts exactly so the Tray and any future webview surface
     // stay visually consistent.
@@ -1362,16 +1453,16 @@ fn rebuild_tray_menu(app: &AppHandle) {
     for it in &report.items {
         let glyph = if matches!(it.status, HealthStatus::Ok) { "✓" } else { "⚠" };
         let name = match it.id {
-            "mic_device" => "麥克風",
-            "mic_perm" => "麥克風權限",
-            "mac_a11y" => "輔助使用",
-            "stt_key" => "STT 金鑰",
-            "hotkey" => "全域快捷鍵",
-            _ => "?",
+            "mic_device" => tr(lang, "麥克風", "Microphone"),
+            "mic_perm" => tr(lang, "麥克風權限", "Microphone permission"),
+            "mac_a11y" => tr(lang, "輔助使用", "Accessibility"),
+            "stt_key" => tr(lang, "STT 金鑰", "STT key"),
+            "hotkey" => tr(lang, "全域快捷鍵", "Global shortcut"),
+            _ => "?".to_string(),
         };
         let main = match &it.message {
-            Some(m) => format!("{}：{}", name, m),
-            None => name.to_string(),
+            Some(m) => format!("{}：{}", name, tr_health_msg(m)),
+            None => name,
         };
         let head = format!("{} {}", glyph, main);
         let is_failing = !matches!(it.status, HealthStatus::Ok);
@@ -1380,7 +1471,11 @@ fn rebuild_tray_menu(app: &AppHandle) {
             Some("open_mic_settings") | Some("open_a11y_settings")
         );
         let label = if is_failing && is_os_action {
-            format!("{} → 點此開啟系統設定", head)
+            tr(
+                lang,
+                &format!("{} → 點此開啟系統設定", head),
+                &format!("{} → click to open OS settings", head),
+            )
         } else {
             head
         };
@@ -1396,7 +1491,6 @@ fn rebuild_tray_menu(app: &AppHandle) {
     // Rebuild the full menu: health items, separator, then the existing
     // controls. The existing controls' MenuItem instances must be rebuilt
     // here too (muda does not let you reuse handles across menus).
-    let cfg = read_config();
     // Derive hotkey_ok from the report so the tray "快捷鍵" row label always
     // agrees with the health item we just produced. Re-locking would risk
     // divergence if any writer ran between the two reads (currently impossible

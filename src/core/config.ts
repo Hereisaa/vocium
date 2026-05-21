@@ -17,8 +17,10 @@ export interface VociumConfig {
   iconOffsetX: number;
   dragLocked: boolean;
   zhConvert: 'twp' | 'cn';
+  lang: 'zh-TW' | 'en';
   inputMode: 'toggle' | 'ptt';
   vadTrim: boolean;
+  micDeviceId: string;
   polishEnabled: boolean;
   polishProvider: 'groq' | 'openai' | 'gemini' | 'claude';
   polishModel: string;
@@ -38,14 +40,16 @@ export const DEFAULTS: VociumConfig = {
   openaiModel: 'whisper-1',
   openaiBaseUrl: 'https://api.openai.com/v1',
   geminiApiKey: '',
-  geminiModel: 'gemini-1.5-flash',
+  geminiModel: 'gemini-3.5-flash',
   mockText: '這是一段由 Vocium 模擬語音輸入產生的文字。',
   maxListenMs: 30000,
   iconOffsetX: 0,
   dragLocked: false,
   zhConvert: 'twp',
+  lang: 'zh-TW',
   inputMode: 'toggle',
   vadTrim: false,
+  micDeviceId: '',
   polishEnabled: false,
   polishProvider: 'groq',
   polishModel: 'llama-3.3-70b-versatile',
@@ -92,6 +96,7 @@ export function loadConfig(fs: FsLike, path: PathLike, dir: string): VociumConfi
       const merged = { ...DEFAULTS, ...parsed } as VociumConfig;
       merged.sttProvider = normalizeProvider(merged.sttProvider);
       if (merged.inputMode !== 'ptt') merged.inputMode = 'toggle';
+      merged.lang = merged.lang === 'en' ? 'en' : 'zh-TW';
       merged.vadTrim = merged.vadTrim === true;
       merged.polishProvider = normalizePolishProvider(merged.polishProvider);
       merged.polishStyle = normalizePolishStyle(merged.polishStyle);

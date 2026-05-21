@@ -10,40 +10,51 @@
   <div class="settings">
     <div class="s-body">
       <div class="s-tabs" id="tabs" role="tablist">
-        <span class="s-tab active" role="tab" data-tab="general" tabindex="0">一般</span>
-        <span class="s-tab" role="tab" data-tab="stt" tabindex="-1">語音轉文字</span>
-        <span class="s-tab" role="tab" data-tab="polish" tabindex="-1">AI 潤稿</span>
+        <span class="s-tab active" role="tab" data-tab="general" tabindex="0" data-i18n="tab.general">一般</span>
+        <span class="s-tab" role="tab" data-tab="stt" tabindex="-1" data-i18n="tab.stt">語音轉文字</span>
+        <span class="s-tab" role="tab" data-tab="polish" tabindex="-1" data-i18n="tab.polish">AI 潤稿</span>
       </div>
 
       <!-- ===== 一般 ===== -->
       <div class="s-pane active" id="pane-general">
         <div class="field">
-          <div class="flabel">全域快捷鍵</div>
+          <div class="flabel" data-i18n="lbl.lang">介面語言</div>
+          <div class="seg" id="langSeg" role="radiogroup" aria-label="介面語言">
+            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-lang="zh-TW">中文</span>
+            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-lang="en">English</span>
+          </div>
+        </div>
+        <div class="field">
+          <div class="flabel" data-i18n="lbl.hotkey">全域快捷鍵</div>
           <div class="hkrow">
             <div class="hkcombo" id="combo"></div>
-            <div class="recbtn" id="rec">錄製</div>
+            <div class="recbtn" id="rec" data-i18n="btn.record">錄製</div>
           </div>
           <div class="s-err" id="err" style="display:none"></div>
         </div>
         <div class="field">
-          <div class="flabel">中文輸出（中文字繁／簡）</div>
-          <div class="seg" id="zhSeg" role="radiogroup" aria-label="中文輸出字體">
-            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-mode="twp">繁體（台灣）</span>
-            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-mode="cn">簡體</span>
-          </div>
+          <div class="flabel" id="micSelLabel" data-i18n="lbl.mic">麥克風</div>
+          <select class="selfield" id="micSel" aria-labelledby="micSelLabel"></select>
         </div>
         <div class="field">
-          <div class="flabel">輸入模式</div>
+          <div class="flabel" data-i18n="lbl.inputMode">輸入模式</div>
           <div class="seg" id="imSeg" role="radiogroup" aria-label="輸入模式">
-            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-im="toggle">切換</span>
-            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-im="ptt">按住說</span>
+            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-im="toggle" data-i18n="seg.toggle">切換</span>
+            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-im="ptt" data-i18n="seg.ptt">按住說</span>
           </div>
         </div>
         <div class="field">
-          <div class="flabel">靜音修剪（VAD）</div>
-          <div class="seg" id="vadSeg" role="radiogroup" aria-label="靜音修剪">
-            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-vad="off">關</span>
-            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-vad="on">開</span>
+          <div class="flabel" data-i18n="lbl.vad">靜音修剪（VAD）</div>
+          <button type="button" class="switch" id="vadSeg" role="switch" aria-checked="false" aria-label="靜音修剪（VAD）" tabindex="0">
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+        <div class="s-divider"></div>
+        <div class="field">
+          <div class="flabel" data-i18n="lbl.zh">中文輸出（中文字繁／簡）</div>
+          <div class="seg" id="zhSeg" role="radiogroup" aria-label="中文輸出字體">
+            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-mode="twp" data-i18n="seg.twp">繁體（台灣）</span>
+            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-mode="cn" data-i18n="seg.cn">簡體</span>
           </div>
         </div>
       </div>
@@ -51,103 +62,104 @@
       <!-- ===== 語音轉文字 ===== -->
       <div class="s-pane" id="pane-stt">
         <div class="field">
-          <div class="flabel" id="provSelLabel">STT 來源</div>
+          <div class="flabel" id="provSelLabel" data-i18n="lbl.sttProvider">STT 來源</div>
           <select class="selfield" id="provSel" aria-labelledby="provSelLabel">
             <option value="groq">Groq</option>
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
-            <option value="local">本地</option>
+            <option value="local" data-i18n="opt.local">本地</option>
           </select>
         </div>
         <div id="provFields">
           <div class="field">
             <div class="flabel" id="keyLabel">Groq API Key</div>
             <div class="keywrap">
-              <input id="keyInput" type="password" placeholder="貼上金鑰後按儲存"
+              <input id="keyInput" type="password" placeholder="貼上金鑰後按儲存" data-i18n-ph="ph.key"
                      autocomplete="off" spellcheck="false" class="keyinput" aria-labelledby="keyLabel" />
-              <span class="eye" id="keyToggle" role="button" title="顯示/隱藏" aria-label="顯示或隱藏金鑰"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="eye" id="keyToggle" role="button" title="顯示/隱藏" data-i18n-title="title.keyToggle" aria-label="顯示或隱藏金鑰" data-i18n-aria="aria.keyToggle"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
             </div>
             <div class="s-err" id="keyErr" style="display:none"></div>
-            <span class="clearkey" id="keyClear" role="button" hidden>✕ 清除金鑰</span>
+            <span class="clearkey" id="keyClear" role="button" hidden data-i18n="btn.clearKey">✕ 清除金鑰</span>
           </div>
           <div class="field">
-            <div class="flabel" id="modelSelLabel">模型</div>
+            <div class="flabel" id="modelSelLabel" data-i18n="lbl.model">模型</div>
             <select class="selfield" id="modelSel" aria-labelledby="modelSelLabel"></select>
             <input id="modelCustom" class="keyinput" style="display:none;margin-top:8px"
-                   placeholder="輸入 model id" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
+                   placeholder="輸入 model id" data-i18n-ph="ph.modelId" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
           </div>
           <div class="field" id="baseUrlField" style="display:none">
-            <div class="flabel" id="baseUrlLabel">Base URL（選填）</div>
+            <div class="flabel" id="baseUrlLabel" data-i18n="lbl.baseUrl">Base URL（選填）</div>
             <input id="baseUrlInput" class="keyinput" autocomplete="off" spellcheck="false"
                    placeholder="https://api.openai.com/v1" aria-labelledby="baseUrlLabel" />
           </div>
         </div>
         <div class="field" id="localStub" style="display:none">
-          <div class="flabel">本地語音轉文字</div>
-          <div class="s-stub">本地 STT 即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini）。<br>目前啟用來源不變。</div>
+          <div class="flabel" data-i18n="lbl.localStt">本地語音轉文字</div>
+          <div class="s-stub"><span data-i18n="stub.localStt">本地 STT 即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini）。</span><br><span data-i18n="stub.localSttKeep">目前啟用來源不變。</span></div>
         </div>
       </div>
 
       <!-- ===== AI 潤稿 ===== -->
       <div class="s-pane" id="pane-polish">
         <div class="field">
-          <div class="flabel">啟用 AI 潤稿</div>
-          <div class="seg" id="polishEnabledSeg" role="radiogroup" aria-label="啟用 AI 潤稿">
-            <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-pen="off">關</span>
-            <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pen="on">開</span>
-          </div>
+          <div class="flabel" data-i18n="lbl.polishEnable">啟用 AI 潤稿</div>
+          <button type="button" class="switch" id="polishEnabledSeg" role="switch" aria-checked="false" aria-label="啟用 AI 潤稿" tabindex="0">
+            <span class="switch-knob"></span>
+          </button>
         </div>
         <div id="polishFields">
           <div class="field">
-            <div class="flabel" id="polishProvLabel">來源</div>
+            <div class="flabel" id="polishProvLabel" data-i18n="lbl.polishProvider">來源</div>
             <select class="selfield" id="polishProvSel" aria-labelledby="polishProvLabel">
               <option value="groq">Groq</option>
               <option value="openai">OpenAI</option>
               <option value="gemini">Gemini</option>
               <option value="claude">Claude</option>
-              <option value="local">本地</option>
+              <option value="local" data-i18n="opt.local">本地</option>
             </select>
           </div>
           <div id="polishCloudFields">
             <div class="field">
               <div class="flabel" id="polishKeyLabel">API Key</div>
               <div class="keywrap">
-                <input id="polishKeyInput" type="password" placeholder="貼上金鑰後按儲存"
+                <input id="polishKeyInput" type="password" placeholder="貼上金鑰後按儲存" data-i18n-ph="ph.key"
                        autocomplete="off" spellcheck="false" class="keyinput" aria-labelledby="polishKeyLabel" />
-                <span class="eye" id="polishKeyToggle" role="button" title="顯示/隱藏" aria-label="顯示或隱藏金鑰"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                <span class="eye" id="polishKeyToggle" role="button" title="顯示/隱藏" data-i18n-title="title.keyToggle" aria-label="顯示或隱藏金鑰" data-i18n-aria="aria.keyToggle"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
               </div>
-              <span class="clearkey" id="polishKeyClear" role="button" hidden>✕ 清除金鑰</span>
+              <span class="clearkey" id="polishKeyClear" role="button" hidden data-i18n="btn.clearKey">✕ 清除金鑰</span>
             </div>
             <div class="field">
-              <div class="flabel" id="polishModelLabel">模型</div>
+              <div class="flabel" id="polishModelLabel" data-i18n="lbl.model">模型</div>
               <select class="selfield" id="polishModelSel" aria-labelledby="polishModelLabel"></select>
               <input id="polishModelCustom" class="keyinput" style="display:none;margin-top:8px"
-                     placeholder="輸入 model id" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
+                     placeholder="輸入 model id" data-i18n-ph="ph.modelId" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
+              <span class="clearkey" id="polishModelDelete" role="button" hidden data-i18n="btn.deleteModel">✕ 刪除此自訂模型</span>
             </div>
             <div class="field">
-              <div class="flabel">風格</div>
+              <div class="flabel" data-i18n="lbl.polishStyle">風格</div>
               <div class="seg" id="polishStyleSeg" role="radiogroup" aria-label="潤稿類別">
-                <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-pstyle="light">只補標點符號</span>
-                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="full">話語潤飾</span>
-                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="custom">自訂 Prompt</span>
+                <span class="seg-opt" role="radio" aria-checked="true" tabindex="0" data-pstyle="light" data-i18n="seg.styleLight">基礎校正</span>
+                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="full" data-i18n="seg.styleFull">話語潤飾</span>
+                <span class="seg-opt" role="radio" aria-checked="false" tabindex="-1" data-pstyle="custom" data-i18n="seg.styleCustom">自訂 Prompt</span>
               </div>
-              <textarea id="polishCustomPrompt" class="keyinput" rows="3"
-                        style="display:none;margin-top:8px;resize:vertical"
-                        placeholder="自訂潤稿指令（保留原意與原語言）" aria-label="自訂潤稿 prompt"></textarea>
+              <textarea id="polishCustomPrompt" class="keyinput" rows="6"
+                        style="display:none;margin-top:8px;resize:vertical;min-height:120px"
+                        placeholder="自訂潤稿指令（保留原意與原語言）" data-i18n-ph="ph.customPrompt" aria-label="自訂潤稿 prompt"></textarea>
             </div>
           </div>
           <div class="field" id="polishLocalStub" style="display:none">
-            <div class="flabel">本地 AI 潤稿</div>
-            <div class="s-stub">本地 AI 潤稿即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini / Claude）。</div>
+            <div class="flabel" data-i18n="lbl.localPolish">本地 AI 潤稿</div>
+            <div class="s-stub" data-i18n="stub.localPolish">本地 AI 潤稿即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini / Claude）。</div>
           </div>
         </div>
       </div>
     </div>
     <div class="s-foot">
-      <div class="sbtn" id="cancel">取消</div>
-      <div class="sbtn primary" id="save">儲存並套用</div>
+      <div class="sbtn primary" id="save" data-i18n="btn.save">儲存並套用</div>
+      <div class="sbtn" id="cancel" data-i18n="btn.cancel">取消</div>
     </div>
   </div>
+  <script src="i18n.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>

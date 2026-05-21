@@ -45,6 +45,9 @@ export interface ProcDeps {
   delayMs?: number;
   /** Per-command sentinel wait before declaring a persistent host dead. */
   hostTimeoutMs?: number;
+  /** User-facing UI language for injector failure/guidance messages.
+   *  Default 'zh-TW' when absent (preserves prior behavior). */
+  lang?: 'zh-TW' | 'en';
 }
 
 export class NotImplementedError extends Error {

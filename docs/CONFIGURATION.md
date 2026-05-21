@@ -15,7 +15,7 @@ Edit via **Tray → Vocium → Settings…** (three tabs: General / Speech-to-Te
   "openaiModel": "whisper-1",
   "openaiBaseUrl": "",                 // optional; leave empty to use api.openai.com
   "geminiApiKey": "<your-gemini-key>", // optional; fill in when using the Gemini provider
-  "geminiModel": "gemini-1.5-flash",
+  "geminiModel": "gemini-3.5-flash",
   "inputMode": "toggle",               // "toggle" | "ptt" (push-to-talk mode)
   "vadTrim": false,                    // whether to enable automatic silence trimming
   "maxListenMs": 30000,
@@ -43,7 +43,7 @@ Polish categories:
 
 | Category | Behavior |
 |---|---|
-| **只補標點符號** (Punctuation only, `light`) | Restores punctuation, breaks into paragraphs, and fixes obvious mis-recognitions. Filler words are left untouched. |
+| **基礎校正** (Basic correction, `light`) | Restores punctuation, breaks into paragraphs, and fixes obvious mis-recognitions. Filler words are left untouched. |
 | **話語潤飾** (Full polish, `full`) | Everything `light` does, plus removes filler words and smooths sentence flow. |
 | **自訂 Prompt** (Custom prompt, `custom`) | Uses your own custom system prompt. |
 

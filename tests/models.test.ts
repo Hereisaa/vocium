@@ -13,7 +13,7 @@ describe('STT_MODELS', () => {
   it('matches config defaults', () => {
     expect(DEFAULT_MODEL.groq).toBe('whisper-large-v3-turbo');
     expect(DEFAULT_MODEL.openai).toBe('whisper-1');
-    expect(DEFAULT_MODEL.gemini).toBe('gemini-1.5-flash');
+    expect(DEFAULT_MODEL.gemini).toBe('gemini-3.5-flash');
   });
 });
 

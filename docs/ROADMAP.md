@@ -15,7 +15,7 @@ Vocium is fully functional on Windows 11 and macOS. It supports three cloud STT 
 - **Floating icon** — always-on-top overlay; lock/unlock drag, minimize to system tray, never steals focus
 - **Toggle and Push-to-Talk (PTT)** — configurable global hotkey with immediate effect; hotkey recorder in Settings
 - **Multi-provider STT** — Groq, OpenAI Whisper, Gemini; bring-your-own-key, stored only on your device; curated model list with a custom escape hatch
-- **AI polish** — optional LLM post-processing before injection (add punctuation, remove filler words, improve fluency); providers: Groq, OpenAI, Gemini, Claude; three styles: punctuation-only, full polish, custom prompt; any failure falls back to the raw transcript
+- **AI polish** — optional LLM post-processing before injection (add punctuation, remove filler words, improve fluency); providers: Groq, OpenAI, Gemini, Claude; three styles: basic correction, full polish, custom prompt; any failure falls back to the raw transcript
 - **Chinese output** — force Traditional (Taiwan) or Simplified; conversion runs after AI polish to preserve intent
 - **VAD silence trimming** — opt-in; strips leading/trailing silence before sending to STT
 - **Tray health panel** — five probes (microphone device, microphone permission, macOS Accessibility, STT API key, global hotkey); failures link directly to OS settings; pre-flight check before recording starts
