@@ -620,12 +620,41 @@ async fn submit_audio(
     audio_base64: String,
     mime_type: String,
 ) -> Result<Value, String> {
-    invoke_tool(
-        app,
+    let v = invoke_tool(
+        app.clone(),
         "submit_audio",
         json!({ "audioBase64": audio_base64, "mimeType": mime_type }),
     )
-    .await
+    .await?;
+    // macOS: a completed inject is direct proof of the Accessibility grant —
+    // macOS fires NO event when the user enables it in System Settings, so the
+    // tray health panel would otherwise stay stale ("not granted") even though
+    // paste now works. Infer mac_a11y from the inject outcome and refresh.
+    // SubmitAudioResult = { text, injectError? }: absent injectError ⇒ inject
+    // succeeded ⇒ granted; an injectError mentioning Accessibility ⇒ denied;
+    // any other failure ⇒ leave a11y untouched (unrelated).
+    #[cfg(target_os = "macos")]
+    {
+        let inject_err = v
+            .get("content").and_then(|c| c.get(0)).and_then(|c| c.get("text"))
+            .and_then(|t| t.as_str())
+            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+            .and_then(|inner| inner.get("injectError").and_then(|e| e.as_str()).map(str::to_string));
+        let granted = match inject_err.as_deref() {
+            None => Some(true),
+            Some(m) if m.contains("輔助使用") || m.contains("Accessibility") => Some(false),
+            Some(_) => None,
+        };
+        if let Some(g) = granted {
+            let st = app.state::<ShellState>();
+            let cur = *st.health_mac_a11y_ok.lock().unwrap();
+            if cur != Some(g) {
+                *st.health_mac_a11y_ok.lock().unwrap() = Some(g);
+                rebuild_tray_menu(&app);
+            }
+        }
+    }
+    Ok(v)
 }
 
 /// Audio failure path. The real sidecar exposes NO `report_audio_error` tool,
