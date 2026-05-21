@@ -221,7 +221,7 @@ sidecar 與 Tauri 殼層各自獨立 build，殼層只是這同一個 server 的
 | [docs/CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md) | `vocium-config.json`、各家 BYOK 金鑰設定、AI 潤稿 |
 | [docs/ROADMAP.zh-TW.md](docs/ROADMAP.zh-TW.md) | 已完成／規劃中／延後的項目 |
 | [docs/CONTRIBUTING.zh-TW.md](docs/CONTRIBUTING.zh-TW.md) | 開發流程、build gates、新增 provider |
-| [docs/DESIGN_MOCKUP.html](docs/DESIGN_MOCKUP.html)、[docs/ICON_DESIGN.html](docs/ICON_DESIGN.html)  | 設計圖 |
+| [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html)、[ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) | 設計圖（線上預覽） |
 
 ---
 

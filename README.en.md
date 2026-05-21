@@ -221,7 +221,7 @@ The sidecar and the Tauri shell build independently — the shell is just one MC
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `vocium-config.json`, BYOK key setup, AI polish |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What's shipped, planned, and deferred |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, build gates, adding providers |
-| [docs/DESIGN_MOCKUP.html](docs/DESIGN_MOCKUP.html), [docs/ICON_DESIGN.html](docs/ICON_DESIGN.html) | Design mockups (open in a browser) |
+| [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html), [ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) | Design mockups (live preview) |
 
 ---
 
