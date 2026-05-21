@@ -84,7 +84,7 @@ After installing Rust / Bun, open a new shell so the updated `PATH` is picked up
 ### Run from source
 
 ```bash
-git clone <repo-url> vocium
+git clone https://github.com/Hereisaa/vocium.git vocium
 cd vocium
 npm install
 npm run dev   # builds the sidecar + launches the app via `tauri dev`

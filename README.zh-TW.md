@@ -84,7 +84,7 @@ curl -fsSL https://bun.sh/install | bash                        # Bun — 僅建
 ### 從原始碼執行
 
 ```bash
-git clone <repo-url> vocium
+git clone https://github.com/Hereisaa/vocium.git vocium
 cd vocium
 npm install
 npm run dev   # 編譯 sidecar 並透過 `tauri dev` 啟動桌面程式

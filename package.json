@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Desktop voice input tool — Node sidecar (single MCP server) + Tauri shell",
   "type": "module",
+  "license": "MIT",
+  "author": "Hereisaa",
+  "repository": { "type": "git", "url": "https://github.com/Hereisaa/vocium.git" },
   "main": "dist/sidecar/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
