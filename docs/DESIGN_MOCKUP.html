@@ -226,7 +226,7 @@
         align-items: center;
         gap: 9px;
         width: auto;
-        height: 52px;
+        height: 44px;
         padding: 0 13px 0 11px;
         background: var(--pill-bg);
         border: 1px solid var(--pill-stroke);
@@ -238,16 +238,16 @@
       /* orb enlarged for a bigger, easier click target (esp. idle) */
       .orb {
         position: relative;
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         flex: none;
         display: grid;
         place-items: center;
         cursor: pointer;
       }
       .orb .core {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
         border-radius: 50%;
         background: var(--accent);
         transition: background 0.25s;
@@ -680,13 +680,13 @@
       /* shadcn ToggleGroup 風：中性軌 + 抬升 active，低飽和無豔色（變體1採用） */
       .seg { display:flex; width:100%; border:1px solid var(--stroke);
         border-radius:8px; background:var(--panel-2); padding:3px; gap:3px; }
-      .seg-opt { flex:1; text-align:center; padding:7px 0; font-size:12px;
+      .seg-opt { flex:1; text-align:center; padding:8px 0; font-size:14px;
+        letter-spacing:1px;
         cursor:pointer; color:var(--text-dim); background:transparent;
         border-radius:6px; user-select:none;
         transition:background .15s ease, color .15s ease; }
       .seg-opt:not(.active):hover { color:var(--text); }
-      .seg-opt.active { background:#2a3340; color:var(--text); font-weight:600;
-        box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+      .seg-opt.active { background:var(--accent); color:#0e1117; font-weight:600; }
       /* 分頁（role=tablist）＝底線頁籤，非按鈕。同 markup，靠 role 區分 */
       .seg[role="tablist"] { background:none; border:none;
         border-bottom:1px solid var(--stroke); border-radius:0;
@@ -698,6 +698,15 @@
         color:var(--text); box-shadow:none; border-bottom-color:#6f9c95; }
       .seg[role="tablist"] .seg-opt:not(.active):hover { background:none;
         color:var(--text); }
+      /* sliding on/off switch (binary toggles: VAD, polish-enabled) + divider */
+      .switch { align-self:flex-start; width:46px; height:26px; padding:0; border:none;
+        border-radius:999px; background:var(--panel-2); box-shadow:inset 0 0 0 1px var(--stroke);
+        cursor:pointer; }
+      .switch .switch-knob { display:block; width:20px; height:20px; margin:3px;
+        border-radius:50%; background:var(--text-dim); }
+      .switch.on { background:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+      .switch.on .switch-knob { transform:translateX(20px); background:#0e1117; }
+      .s-divider { height:1px; background:var(--stroke); border:0; margin:6px 0 2px; }
       .keywrap { position:relative; width:100%; min-width:0; }
       .keyinput { width:100%; background:#0d0f14; border:1px solid #2a2f3a;
         color:#e8eaf0; border-radius:8px; padding:8px 34px 8px 10px; font:inherit; }
@@ -1165,7 +1174,7 @@
 
       <h2>6 · 設定視窗（三分頁：一般 · 語音轉文字 · AI 潤稿）</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:-8px 0 18px;line-height:1.7">
-        設定視窗分為三個分頁：一般、語音轉文字、AI 潤稿。一般包含快捷鍵、中文輸出、輸入模式與靜音修剪；語音轉文字可選擇來源、填入 API 金鑰並挑選模型；AI 潤稿即將推出。
+        設定視窗分為三個分頁：一般、語音轉文字、AI 潤稿。一般含介面語言、全域快捷鍵、麥克風、輸入模式、靜音修剪（VAD）與中文輸出；語音轉文字可選來源、填金鑰並挑模型；AI 潤稿可開關並選供應商／金鑰／模型／風格。
       </p>
       <div class="grid grid-2">
 
@@ -1178,6 +1187,13 @@
                 <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
               </div>
               <div class="field">
+                <div class="flabel">介面語言</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">中文</span>
+                  <span class="seg-opt" role="radio">English</span>
+                </div>
+              </div>
+              <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
                   <div class="hkcombo">
@@ -1187,11 +1203,8 @@
                 </div>
               </div>
               <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
-                <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio">簡體</span>
-                </div>
+                <div class="flabel">麥克風</div>
+                <div class="selfield"><span>系統預設</span><span class="chev">▾</span></div>
               </div>
               <div class="field">
                 <div class="flabel">輸入模式</div>
@@ -1202,19 +1215,24 @@
               </div>
               <div class="field">
                 <div class="flabel">靜音修剪（VAD）</div>
+                <div class="switch"><span class="switch-knob"></span></div>
+              </div>
+              <div class="s-divider"></div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
                 <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio">關</span>
-                  <span class="seg-opt" role="radio">開</span>
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
                 </div>
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
-            <b>一般 · 預設</b>包含快捷鍵、中文輸出、輸入模式（切換／按住說）與靜音修剪（VAD）四項設定。
+            <b>一般 · 預設</b>包含介面語言、全域快捷鍵、麥克風、輸入模式（切換／按住說）、靜音修剪（VAD）與中文輸出。
           </div>
         </div>
 
@@ -1224,6 +1242,13 @@
             <div class="s-body">
               <div class="seg" role="tablist">
                 <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
+              </div>
+              <div class="field">
+                <div class="flabel">介面語言</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">中文</span>
+                  <span class="seg-opt" role="radio">English</span>
+                </div>
               </div>
               <div class="field">
                 <div class="flabel">全域快捷鍵</div>
@@ -1236,11 +1261,8 @@
                 <div class="s-err">⚠ 此組合已被其他程式占用，註冊失敗 — 仍保留原快捷鍵 Ctrl+Shift+Space。</div>
               </div>
               <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
-                <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio">簡體</span>
-                </div>
+                <div class="flabel">麥克風</div>
+                <div class="selfield"><span>系統預設</span><span class="chev">▾</span></div>
               </div>
               <div class="field">
                 <div class="flabel">輸入模式</div>
@@ -1251,19 +1273,24 @@
               </div>
               <div class="field">
                 <div class="flabel">靜音修剪（VAD）</div>
+                <div class="switch on"><span class="switch-knob"></span></div>
+              </div>
+              <div class="s-divider"></div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
                 <div class="seg" role="radiogroup">
-                  <span class="seg-opt" role="radio">關</span>
-                  <span class="seg-opt active" role="radio">開</span>
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
                 </div>
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
-            <b>一般 · 錄製衝突 + 啟用態</b>錄製快捷鍵時若組合已被占用，顯示警告並保留原快捷鍵；輸入模式切換至「按住說」、靜音修剪開啟的狀態。
+            <b>一般 · 錄製衝突 + 啟用態</b>錄製快捷鍵時若組合已被占用，顯示警告並保留原快捷鍵；輸入模式切換至「按住說」、靜音修剪（VAD）開啟的狀態。
           </div>
         </div>
 
@@ -1293,8 +1320,8 @@
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
@@ -1331,8 +1358,8 @@
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
@@ -1362,12 +1389,12 @@
               <div class="field">
                 <div class="flabel">模型</div>
                 <div class="selfield cust"><span>自訂…</span><span class="chev">▾</span></div>
-                <div class="keyinput" aria-hidden="true" style="padding:8px 10px;margin-top:8px">gemini-2.5-flash-preview</div>
+                <div class="keyinput" aria-hidden="true" style="padding:8px 10px;margin-top:8px">gemini-3.1-pro-exp</div>
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
@@ -1392,8 +1419,8 @@
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
@@ -1402,25 +1429,49 @@
         </div>
 
         <!-- ===== 分頁：AI 潤稿＋儲存回饋 ===== -->
-        <!-- Card 7: AI 潤稿 · stub -->
+        <!-- Card 7: AI 潤稿 · 真實分頁 -->
         <div class="card">
           <div class="settings">
             <div class="s-body">
               <div class="seg" role="tablist">
                 <span class="seg-opt" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt active" role="tab">AI 潤稿</span>
               </div>
-              <div class="field soon">
-                <div class="flabel">AI 潤稿</div>
-                <div class="s-hint">轉錄後 AI 潤飾（清贅詞／補標點，不改原意）即將推出。<br>屆時此頁含：開關 · 供應商 · 金鑰 · 模型 · 風格。</div>
+              <div class="field">
+                <div class="flabel">啟用 AI 潤稿</div>
+                <div class="switch on"><span class="switch-knob"></span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">來源</div>
+                <div class="selfield"><span>Groq</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">Groq API Key</div>
+                <div class="keywrap">
+                  <div class="keyinput" aria-hidden="true">gsk_••••••3f9a</div>
+                  <span class="eye"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                </div>
+                <span class="clearkey">✕ 清除金鑰</span>
+              </div>
+              <div class="field">
+                <div class="flabel">模型</div>
+                <div class="selfield"><span>llama-3.3-70b-versatile（預設・品質佳）</span><span class="chev">▾</span></div>
+              </div>
+              <div class="field">
+                <div class="flabel">風格</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">基礎校正</span>
+                  <span class="seg-opt" role="radio">話語潤飾</span>
+                  <span class="seg-opt" role="radio">自訂 Prompt</span>
+                </div>
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary">儲存並套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
-            <b>AI 潤稿</b>即將推出：轉錄後可選用 AI 清理贅詞、補標點，不改變原意。
+            <b>AI 潤稿</b>開關／供應商（Groq · OpenAI · Gemini · Claude）／金鑰／模型／三種風格（基礎校正 · 話語潤飾 · 自訂 Prompt）；預設關閉，任何失敗回退原文。
           </div>
         </div>
 
@@ -1432,6 +1483,13 @@
                 <span class="seg-opt active" role="tab">一般</span><span class="seg-opt" role="tab">語音轉文字</span><span class="seg-opt" role="tab">AI 潤稿</span>
               </div>
               <div class="field">
+                <div class="flabel">介面語言</div>
+                <div class="seg" role="radiogroup">
+                  <span class="seg-opt active" role="radio">中文</span>
+                  <span class="seg-opt" role="radio">English</span>
+                </div>
+              </div>
+              <div class="field">
                 <div class="flabel">全域快捷鍵</div>
                 <div class="hkrow">
                   <div class="hkcombo">
@@ -1441,11 +1499,8 @@
                 </div>
               </div>
               <div class="field">
-                <div class="flabel">中文輸出（中文字繁／簡）</div>
-                <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
-                  <span class="seg-opt" role="radio">簡體</span>
-                </div>
+                <div class="flabel">麥克風</div>
+                <div class="selfield"><span>系統預設</span><span class="chev">▾</span></div>
               </div>
               <div class="field">
                 <div class="flabel">輸入模式</div>
@@ -1456,15 +1511,20 @@
               </div>
               <div class="field">
                 <div class="flabel">靜音修剪（VAD）</div>
+                <div class="switch"><span class="switch-knob"></span></div>
+              </div>
+              <div class="s-divider"></div>
+              <div class="field">
+                <div class="flabel">中文輸出（中文字繁／簡）</div>
                 <div class="seg" role="radiogroup">
-                  <span class="seg-opt active" role="radio">關</span>
-                  <span class="seg-opt" role="radio">開</span>
+                  <span class="seg-opt active" role="radio">繁體（台灣）</span>
+                  <span class="seg-opt" role="radio">簡體</span>
                 </div>
               </div>
             </div>
             <div class="s-foot">
-              <div class="sbtn">取消</div>
               <div class="sbtn primary ok">✓ 已套用</div>
+              <div class="sbtn">取消</div>
             </div>
           </div>
           <div class="tag">
@@ -1501,7 +1561,7 @@
           / blur14
         </div>
         <div class="swatch">
-          radius 16 · pill 高 52／寬隨內容 · orb 36（core idle 19）· 控制鈕 22
+          radius 16 · pill 高 44／寬隨內容 · orb 32（core idle 19）· 控制鈕 22
           透明/SVG15 · font Segoe UI
         </div>
       </div>
