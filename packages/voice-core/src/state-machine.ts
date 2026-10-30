@@ -16,13 +16,19 @@ export interface VoiceSessionOpts {
 
 export function createVoiceSession({ onState }: VoiceSessionOpts) {
   let state: VoiceState = 'idle';
+  let epoch = 0;
   return {
     getState: () => state,
+    /** Number of transitions so far. Two observations with the same state
+     *  but different epochs are different visits to that state — a caller
+     *  that was cancelled and superseded by a newer round can tell. */
+    getEpoch: () => epoch,
     send(event: VoiceEvent) {
       const next = TABLE[state][event];
       if (!next || next === state) return; // unknown/ignored or no change
       const prev = state;
       state = next;
+      epoch += 1;
       onState(state, prev);
     },
   };

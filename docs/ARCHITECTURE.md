@@ -86,13 +86,13 @@ scripts/copy-vad-assets.mjs     複製 VAD 資產
 
 1. 使用者按快捷鍵或點 ICON。Rust 發 `hotkey` 事件（`toggle` / `start_listening` / `stop_listening`，依 `inputMode`）；webview 做 pre-flight（無麥克風或權限被拒則顯示提示並停止），然後 `session.send('TOGGLE')`。
 2. 進入 `listening`：`getUserMedia` → `MediaRecorder` 開始錄音；`maxListenMs` 到期自動 TOGGLE。
-   - **競態防護**：`getUserMedia` 回來時若狀態已不是 `listening`（例如首次權限對話框期間使用者已放開按鍵），不啟動錄音器；若卡在 `transcribing` 則 CANCEL 回 idle。每次開始錄音前一律丟棄殘留的舊錄音器。
+   - **競態防護**：每次 `startRecording` 有自己的世代號，任何 `await` 之後發現已被更新的一輪取代就釋放串流退出；`getUserMedia` 回來時若狀態已不是 `listening`（例如首次權限對話框期間使用者已放開按鍵），不啟動錄音器，若卡在 `transcribing` 則 CANCEL 回 idle。每次開始錄音前一律丟棄殘留的舊錄音器。
 3. 離開 `listening`：`transcribing` 代表要送出；`idle` 代表取消、音訊丟棄。
-4. 送出：讀取最新設定 → 可選 VAD 裁剪（失敗即用原音訊）→ 以 `Uint8Array` 建立**本次專用的 pipeline**（設定變更免重啟）→ `submitAudio`。
+4. 送出：讀取最新設定 → 可選 VAD 裁剪（失敗即用原音訊）→ 若這段期間使用者已取消（狀態不再是 `transcribing`）就靜靜丟棄 → 以 `Uint8Array` 建立**本次專用的 pipeline**（設定變更免重啟）→ `submitAudio`。
 5. pipeline：
    - 未設金鑰：CANCEL → idle，回傳 `notice`（UI 顯示在 ICON 上，**不貼上**）。
    - STT 失敗：FAIL → error，回傳 `notice`（同上）。
-   - 轉錄中被取消：丟棄晚到的結果，回傳 `cancelled: true`。
+   - 轉錄中被取消：丟棄晚到的結果，回傳 `cancelled: true`。判斷依據是「狀態仍為 transcribing **且** session epoch 未變」，所以即使使用者取消後立刻開始新一輪，上一輪的晚到結果（含失敗）也不會貼上或閃錯誤。
    - 結果為空白：CANCEL → idle，什麼都不貼。
    - 正常：polish（任何失敗退回原文）→ `convertZh` → TRANSCRIBED → `inject_text` → INJECTED → idle。注入失敗回傳 `injectError`（文字已在剪貼簿）。
 

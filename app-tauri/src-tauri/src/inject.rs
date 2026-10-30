@@ -83,12 +83,14 @@ pub fn probe(lang: &str) -> InjectResult {
 #[cfg(windows)]
 mod win {
     use super::*;
-    use windows::Win32::Foundation::{HANDLE, HGLOBAL, HWND};
+    use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL, HWND};
     use windows::Win32::System::DataExchange::{
         CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable,
         OpenClipboard, SetClipboardData,
     };
-    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    use windows::Win32::System::Memory::{
+        GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE,
+    };
     use windows::Win32::System::Ole::CF_UNICODETEXT;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_CONTROL, VK_V,
@@ -128,8 +130,11 @@ mod win {
             if p.is_null() {
                 return None;
             }
+            // Bound the terminator scan by the block size: a producer that
+            // forgot the trailing NUL must not walk us off the allocation.
+            let max = GlobalSize(hg) / 2;
             let mut len = 0usize;
-            while *p.add(len) != 0 {
+            while len < max && *p.add(len) != 0 {
                 len += 1;
             }
             let s = String::from_utf16_lossy(std::slice::from_raw_parts(p, len));
@@ -146,13 +151,17 @@ mod win {
                 .map_err(|e| format!("GlobalAlloc: {e}"))?;
             let p = GlobalLock(hg) as *mut u16;
             if p.is_null() {
+                let _ = GlobalFree(hg);
                 return Err("GlobalLock returned null".into());
             }
             std::ptr::copy_nonoverlapping(wide.as_ptr(), p, wide.len());
             let _ = GlobalUnlock(hg);
-            // On success the system owns the HGLOBAL; do not free it.
-            SetClipboardData(CF_UNICODETEXT.0 as u32, HANDLE(hg.0))
-                .map_err(|e| format!("SetClipboardData: {e}"))?;
+            // The system takes ownership of the HGLOBAL only when
+            // SetClipboardData succeeds; on failure it is still ours to free.
+            if let Err(e) = SetClipboardData(CF_UNICODETEXT.0 as u32, HANDLE(hg.0)) {
+                let _ = GlobalFree(hg);
+                return Err(format!("SetClipboardData: {e}"));
+            }
         }
         Ok(())
     }

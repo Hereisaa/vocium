@@ -81,6 +81,12 @@ export function createPipeline({ session, stt, injector, noKey = false, lang = '
      */
     async submitAudio(p: AudioPayload): Promise<SubmitAudioResult> {
       advanceFromListening();
+      // Identity of THIS transcribing visit. If the user cancels and starts a
+      // new round while our request is in flight, the session may be back in
+      // 'transcribing' for the newer round — same state, different epoch —
+      // and our late result must still be dropped.
+      const epoch = session.getEpoch();
+      const stillOurs = () => session.getState() === 'transcribing' && session.getEpoch() === epoch;
       if (noKey) {
         // Not an error: user simply hasn't configured a key. Calmly back to
         // idle; the UI shows the guidance.
@@ -94,10 +100,10 @@ export function createPipeline({ session, stt, injector, noKey = false, lang = '
         // The user may have cancelled (orb click / Esc) while the request was
         // in flight: the machine is already back in idle, so drop the result
         // instead of pasting stale text into whatever is focused now.
-        if (session.getState() !== 'transcribing') return { text: raw.text, cancelled: true };
+        if (!stillOurs()) return { text: raw.text, cancelled: true };
         let polished = raw.text;
         try { polished = await polish(raw.text); } catch { /* polish is best-effort: fall back to raw */ }
-        if (session.getState() !== 'transcribing') return { text: polished, cancelled: true };
+        if (!stillOurs()) return { text: polished, cancelled: true };
         const text = convertZh(polished, getZhMode()); // zh conversion is the FINAL transform (deterministic; normalizes whatever script polish produced)
         if (!text.trim()) {
           // Silence / nothing recognisable: inject nothing, no error state.
@@ -110,6 +116,9 @@ export function createPipeline({ session, stt, injector, noKey = false, lang = '
         session.send('INJECTED');    // -> idle
         return { text };
       } catch (e) {
+        // A failure that belongs to a cancelled/superseded round must not
+        // flash the error state over whatever the user is doing now.
+        if (!stillOurs()) return { text: '', cancelled: true };
         // STT failed: play the error animation and hand the categorized
         // message to the UI. Never paste it into the user's document.
         fail();

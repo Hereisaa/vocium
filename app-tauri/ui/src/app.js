@@ -62,6 +62,10 @@ const MAX_LISTEN_MS_DEFAULT = 30000;
 let recorder = null;
 let mediaStream = null;
 let chunks = [];
+// Bumped on every startRecording. A call that resumes from an await and finds
+// a newer generation must throw its stream away instead of installing a
+// second recorder (the globals belong to the newest capture only).
+let captureGen = 0;
 let maxListenTimer = null;
 let currentState = 'idle';
 let submitOnStop = false; // true while we WANT the next stop to submit audio
@@ -332,23 +336,35 @@ async function startRecording() {
   }
   chunks = [];
   submitOnStop = true;
+  const myGen = ++captureGen;
   const cfg = await loadConfig();
+  if (myGen !== captureGen) return; // superseded while reading config
   const micId = cfg.micDeviceId || '';
   const audioConstraint = micId ? { deviceId: { exact: micId } } : true;
+  let stream;
   try {
     try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
     } catch (e) {
       // Chosen device unplugged / OverconstrainedError → retry with system default.
       if (micId) {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } else { throw e; }
     }
   } catch (e) {
+    if (myGen !== captureGen) return; // a newer capture owns the UI now
     submitOnStop = false;
     reportAudioError(`麥克風存取失敗：${e && e.message ? e.message : e}`);
     return;
   }
+  if (myGen !== captureGen) {
+    // A newer startRecording already owns `recorder`/`mediaStream`; release
+    // the stream we just obtained and leave the newer capture alone.
+    log('discarding superseded mic stream (gen ' + myGen + ')');
+    stream.getTracks().forEach((t) => t.stop());
+    return;
+  }
+  mediaStream = stream;
 
   // The OS permission prompt (first run) can hold getUserMedia open for
   // seconds. If the user already released PTT / toggled again meanwhile, the
@@ -403,6 +419,13 @@ async function startRecording() {
       if (liveCfg.vadTrim) blob = await trimBlobSilence(blob);
       const effectiveMime = blob.type || mimeType;
       const audio = new Uint8Array(await blob.arrayBuffer());
+      // The user may have cancelled during the config read / VAD trim above
+      // (the pill still said 轉錄中). Nothing failed — just drop the audio
+      // quietly instead of letting submitAudio reject on the wrong state.
+      if (session.getState() !== 'transcribing') {
+        log('cancelled before submit; audio discarded');
+        return;
+      }
       // submitAudio always resolves ({ text, injectError?, cancelled? }); STT
       // failures become injected user-facing text inside voice-core.
       log(`submit ${audio.length} bytes ${effectiveMime} via ${liveCfg.sttProvider}`);

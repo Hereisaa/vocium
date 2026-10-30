@@ -45,3 +45,10 @@ describe('describeSttError', () => {
     expect(describeSttError(new Error('401'))).not.toBe(GUIDANCE_MSG);
   });
 });
+
+describe('plugin-http cancellation', () => {
+  it("classifies the plain 'Request canceled' rejection as a timeout", () => {
+    expect(describeSttError('Request canceled')).toBe('（語音轉錄失敗：請求逾時，請稍後再試）');
+    expect(describeSttError(new Error('Request canceled'), 'en')).toBe('Request timed out');
+  });
+});

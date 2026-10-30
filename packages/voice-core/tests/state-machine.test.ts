@@ -46,3 +46,17 @@ describe('voice session state machine', () => {
     expect(onState).not.toHaveBeenCalled();
   });
 });
+
+describe('epoch', () => {
+  it('increments on every accepted transition and not on ignored events', () => {
+    const s = createVoiceSession({ onState: () => {} });
+    expect(s.getEpoch()).toBe(0);
+    s.send('CANCEL');                 // ignored in idle
+    expect(s.getEpoch()).toBe(0);
+    s.send('TOGGLE'); s.send('TOGGLE'); // listening, transcribing
+    expect(s.getEpoch()).toBe(2);
+    s.send('CANCEL'); s.send('TOGGLE'); s.send('TOGGLE'); // idle, listening, transcribing again
+    expect(s.getState()).toBe('transcribing');
+    expect(s.getEpoch()).toBe(5);
+  });
+});

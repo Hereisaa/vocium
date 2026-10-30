@@ -54,7 +54,10 @@ export function describeSttError(e: unknown, lang: Lang = 'zh-TW'): string {
   if (m.includes('429') || m.includes('rate limit') || m.includes('rate_limit')) {
     return en ? EN_RATE_LIMIT : MSG_RATE_LIMIT;
   }
-  if (m.includes('timeout') || m.includes('aborterror') || m.includes('etimedout')) {
+  // 'request canceled' is what @tauri-apps/plugin-http rejects with when our
+  // AbortController fires (a plain string, not an AbortError).
+  if (m.includes('timeout') || m.includes('aborterror') || m.includes('etimedout')
+      || m.includes('request canceled') || m.includes('request cancelled')) {
     return en ? EN_TIMEOUT : MSG_TIMEOUT;
   }
   if (

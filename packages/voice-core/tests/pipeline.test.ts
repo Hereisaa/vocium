@@ -335,3 +335,45 @@ describe('pipeline cancellation during transcription', () => {
     expect(p.getState()).toBe('idle');
   });
 });
+
+describe('pipeline cancellation across rounds', () => {
+  it('drops a late result from a cancelled round even when a newer round is transcribing', async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const injected: string[] = [];
+    const injector = { inject: async (t: string) => { injected.push(t); return { ok: true }; } };
+    let releaseFirst!: () => void;
+    const slowStt = { transcribe: () => new Promise<{ text: string }>((r) => { releaseFirst = () => r({ text: 'stale' }); }) };
+    const fastStt = { transcribe: async () => ({ text: 'fresh' }) };
+
+    const p1 = createPipeline({ session, stt: slowStt, injector });
+    p1.toggle();                                                 // idle -> listening
+    const first = p1.submitAudio({ audio: new Uint8Array([0]), mimeType: 'audio/webm' }); // -> transcribing
+    p1.cancel();                                                 // transcribing -> idle (user gave up)
+
+    const p2 = createPipeline({ session, stt: fastStt, injector });
+    p2.toggle();                                                 // idle -> listening (new round)
+    p2.toggle();                                                 // listening -> transcribing
+    const secondP = p2.submitAudio({ audio: new Uint8Array([1]), mimeType: 'audio/webm' });
+    releaseFirst();                                              // stale result lands while round 2 is transcribing
+    const [r1, r2] = await Promise.all([first, secondP]);
+    expect(r1).toEqual({ text: 'stale', cancelled: true });
+    expect(r2).toEqual({ text: 'fresh' });
+    expect(injected).toEqual(['fresh']);
+    expect(session.getState()).toBe('idle');
+  });
+
+  it('a failure from a cancelled round does not flash error over the new round', async () => {
+    const session = createVoiceSession({ onState: () => {} });
+    const injector = { inject: async () => ({ ok: true }) };
+    let failFirst!: () => void;
+    const slowStt = { transcribe: () => new Promise<{ text: string }>((_r, rej) => { failFirst = () => rej(new Error('Groq STT failed: 500')); }) };
+    const p1 = createPipeline({ session, stt: slowStt, injector });
+    p1.toggle();
+    const first = p1.submitAudio({ audio: new Uint8Array([0]), mimeType: 'audio/webm' });
+    p1.cancel();
+    p1.toggle();                                                 // new round listening
+    failFirst();
+    expect(await first).toEqual({ text: '', cancelled: true });
+    expect(session.getState()).toBe('listening');                // untouched by the stale failure
+  });
+});

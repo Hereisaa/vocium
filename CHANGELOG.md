@@ -30,6 +30,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/archify/` — Archify architecture + voice-input workflow diagrams with
   source citations, rendered from the JSON candidates next to them.
 
+### Fixed (review follow-ups)
+
+- A late STT result (or failure) from a cancelled round is dropped even when a
+  newer round is already transcribing (session epoch check), instead of being
+  pasted or flashing an error over the new round.
+- Cancelling during the config-read / VAD-trim gap before submit now discards
+  the audio quietly instead of showing a bogus "send failed" error.
+- Overlapping `startRecording` calls (slow mic prompt + rapid toggling) no
+  longer leak a live recorder/stream; each capture has a generation number.
+- Windows injection: the clipboard `HGLOBAL` is freed when `GlobalLock` or
+  `SetClipboardData` fails; the previous-text scan is bounded by `GlobalSize`.
+- A `plugin-http` "Request canceled" rejection is classified as a timeout.
+
 ### Removed
 
 - MCP tools (`transcribe_clip`, `inject_text`, `polish_text`, state-machine tools),
