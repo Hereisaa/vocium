@@ -1,24 +1,21 @@
-//! Vocium Tauri 2 shell — thin MCP client over the Node sidecar.
+//! Vocium Tauri 2 shell — the OS layer of a single-process app.
 //!
-//! Responsibilities (FR-WIN / FR-TRG / FR-TRY):
-//!  - Spawn `node dist/sidecar/main.js` and speak MCP over its stdio (see mcp.rs).
-//!  - Position the frameless, transparent, always-on-top icon window at the
-//!    top-center of the primary monitor work area + iconOffsetX, then show it.
-//!  - Windows: apply WS_EX_NOACTIVATE so clicking/pasting never steals focus
-//!    from the user's app (paste lands where the user is typing).
-//!  - Global shortcut Ctrl+Shift+Space -> MCP `toggle`; registration failure ->
-//!    tray warning, never panic.
-//!  - System tray menu + state-following tooltip.
-//!  - Relay sidecar `state_changed` notification -> `state` event to webview.
+//! Responsibilities:
+//!  - Frameless, transparent, always-on-top icon window at the top-center of
+//!    the primary monitor (+ iconOffsetX); Windows gets WS_EX_NOACTIVATE so
+//!    clicking/pasting never steals focus from the user's app.
+//!  - Global shortcut -> `hotkey` event to the webview (toggle / PTT edges).
+//!  - System tray menu + health panel + state-following tooltip.
+//!  - Config file read/write (vocium-config.json) exposed as commands.
+//!  - Native text injection (clipboard + paste keystroke), see inject.rs.
 //!
-//! Recording is webview-driven (the real sidecar emits NO request_*_capture):
-//! the webview reacts to `state` transitions itself (see app.js).
+//! Everything else — state machine, recording, STT, polish, zh conversion —
+//! is voice-core (TypeScript) running inside the icon webview.
 
-mod mcp;
+mod inject;
 
 use std::borrow::Cow;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
@@ -29,23 +26,25 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-use mcp::{LogFn, McpClient};
+use inject::InjectResult;
 
-/// Shared app state: the MCP client handle once the sidecar is up.
+/// Diagnostic sink shared by every shell component.
+pub type LogFn = Arc<dyn Fn(&str) + Send + Sync>;
+
+/// Shared app state.
 struct ShellState {
-    client: Mutex<Option<Arc<McpClient>>>,
     hotkey_ok: Mutex<bool>,
     /// The currently-registered global toggle shortcut (for runtime re-binding).
     shortcut: Mutex<Option<Shortcut>>,
     /// The tray "快捷鍵：…" menu item so set_hotkey can refresh its label live.
     hk_item: Mutex<Option<MenuItem<Wry>>>,
-    /// The tray "STT：…" menu item so set_groq_key can refresh its label live.
+    /// The tray "STT：…" menu item so refresh_stt_health can update its label live.
     stt_item: Mutex<Option<MenuItem<Wry>>>,
     /// True while the global toggle hotkey is temporarily unregistered
     /// (the user is recording a new combo in Settings).
     hotkey_suspended: Mutex<bool>,
     // Health-panel inputs. Updated from three sources (webview emits for
-    // mic_device / mic_perm; sidecar probe_inject for mac_a11y; existing
+    // mic_device / mic_perm; native inject probe for mac_a11y; existing
     // config / shortcut write points for stt_key / hotkey). Each mutation
     // also rebuilds the tray menu so the panel stays current at open-time.
     health_mic_device_count: Mutex<u32>,
@@ -61,7 +60,7 @@ struct ShellState {
 }
 
 /// Append-only logger to `<config_dir>/logs/shell.log` with epoch-ms prefixes
-/// so timestamps across the shell and the MCP reader thread are comparable.
+/// so timestamps across threads are comparable.
 fn make_logger(config_dir: &std::path::Path) -> LogFn {
     let dir = config_dir.join("logs");
     let _ = std::fs::create_dir_all(&dir);
@@ -107,7 +106,7 @@ fn tr(lang: &str, zh: &str, en: &str) -> String {
 }
 
 fn config_dir() -> PathBuf {
-    // Mirrors src/sidecar/index.ts configDir(): %APPDATA%/vocium on Windows.
+    // %APPDATA%/vocium on Windows, ~/.config/vocium elsewhere.
     if let Ok(appdata) = std::env::var("APPDATA") {
         PathBuf::from(appdata).join("vocium")
     } else if let Ok(home) = std::env::var("HOME") {
@@ -117,8 +116,8 @@ fn config_dir() -> PathBuf {
     }
 }
 
-/// Read the SAME config file the sidecar uses. Best-effort: never panics; if the
-/// file is missing/broken we fall back to defaults (sidecar will create it).
+/// Read the shared config file. Best-effort: never panics; if the file is
+/// missing/broken we fall back to defaults (first write creates it).
 fn read_config() -> VociumConfig {
     let dir = config_dir();
     let file = dir.join("vocium-config.json");
@@ -225,10 +224,7 @@ fn register_toggle_shortcut(app: &AppHandle, sc: Shortcut) -> Result<(), String>
                 _ => None,
             };
             if let Some(t) = tool {
-                let hh = h.clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = invoke_tool(hh, t, json!({})).await;
-                });
+                let _ = h.emit("hotkey", json!({ "action": t }));
             }
         });
     match result {
@@ -304,167 +300,6 @@ fn set_hotkey_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// How to launch the sidecar.
-pub enum SidecarLaunch {
-    /// Self-contained compiled sidecar binary (bundled app, or dev binaries/).
-    Binary(PathBuf),
-    /// Dev fallback: `node <dist/sidecar/main.js>` when no binary is present.
-    NodeScript(PathBuf),
-}
-
-/// Pure + unit-testable. Search `dirs` in order for a file whose name starts
-/// with `vocium-sidecar-` (Tauri externalBin `<name>-<triple>` convention),
-/// honoring `exe_ext` (".exe" on Windows, "" elsewhere). If none, fall back
-/// to launching `node <dist_script>` (the existing dev behavior).
-pub fn resolve_sidecar_in(dirs: &[PathBuf], dist_script: PathBuf, exe_ext: &str) -> SidecarLaunch {
-    for d in dirs {
-        if let Ok(rd) = std::fs::read_dir(d) {
-            for entry in rd.flatten() {
-                let fname = entry.file_name();
-                let name = fname.to_string_lossy();
-                // Tauri externalBin convention: pre-bundle / dev the file is
-                // `vocium-sidecar-<rustc host-tuple>(.exe)` (lives in
-                // src-tauri/binaries/), but Tauri STRIPS the triple at bundle
-                // time, so the runtime file next to the main exe is the bare
-                // `vocium-sidecar(.exe)`. Both must match — verified empirically
-                // on Windows packaging (2026-05-21).
-                let stem: &str = if exe_ext.is_empty() {
-                    name.as_ref()
-                } else {
-                    name.strip_suffix(exe_ext).unwrap_or_else(|| name.as_ref())
-                };
-                let name_matches =
-                    stem == "vocium-sidecar" || stem.starts_with("vocium-sidecar-");
-                let ext_matches = exe_ext.is_empty() || name.ends_with(exe_ext);
-                let is_file = entry.file_type().map(|t| t.is_file()).unwrap_or(false);
-                if name_matches && ext_matches && is_file {
-                    return SidecarLaunch::Binary(entry.path());
-                }
-            }
-        }
-    }
-    SidecarLaunch::NodeScript(dist_script)
-}
-
-/// Existing dev walk-up for `dist/sidecar/main.js` (preserved verbatim,
-/// just extracted so the binary path can take precedence).
-fn dev_dist_script() -> PathBuf {
-    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
-        let p = PathBuf::from(&manifest)
-            .join("..")
-            .join("..")
-            .join("dist")
-            .join("sidecar")
-            .join("main.js");
-        if p.exists() {
-            return p;
-        }
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        let mut cur = exe.parent().map(|p| p.to_path_buf());
-        while let Some(dir) = cur {
-            let cand = dir.join("dist").join("sidecar").join("main.js");
-            if cand.exists() {
-                return cand;
-            }
-            cur = dir.parent().map(|p| p.to_path_buf());
-        }
-    }
-    PathBuf::from("dist/sidecar/main.js")
-}
-
-/// Runtime resolver: bundled binary sits next to the main executable
-/// (Windows install dir; macOS `Vocium.app/Contents/MacOS/`); dev binary in
-/// `src-tauri/binaries/`; otherwise the Node dev script.
-fn resolve_sidecar() -> SidecarLaunch {
-    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    let mut dirs: Vec<PathBuf> = Vec::new();
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(p) = exe.parent() {
-            dirs.push(p.to_path_buf());
-        }
-    }
-    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
-        dirs.push(PathBuf::from(&manifest).join("binaries"));
-    }
-    resolve_sidecar_in(&dirs, dev_dist_script(), exe_ext)
-}
-
-fn spawn_sidecar(
-    app: &AppHandle,
-    log: LogFn,
-    logs_dir: &std::path::Path,
-) -> Result<Arc<McpClient>, String> {
-    let launch = resolve_sidecar();
-
-    // Route sidecar stderr to a file. Previously Stdio::inherit() into a
-    // CREATE_NO_WINDOW GUI process silently discarded every sidecar crash/log,
-    // which is why a dead/erroring sidecar looked like an unexplained 30s hang.
-    let _ = std::fs::create_dir_all(logs_dir);
-    let stderr = match std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(logs_dir.join("sidecar.log"))
-    {
-        Ok(f) => Stdio::from(f),
-        Err(e) => {
-            log(&format!("[spawn] could not open sidecar.log ({e}); stderr -> null"));
-            Stdio::null()
-        }
-    };
-
-    let mut cmd = match &launch {
-        SidecarLaunch::Binary(p) => {
-            log(&format!("[spawn] sidecar binary = {}", p.display()));
-            Command::new(p)
-        }
-        SidecarLaunch::NodeScript(s) => {
-            log(&format!("[spawn] dev fallback: node {}", s.display()));
-            let mut c = Command::new("node");
-            c.arg(s);
-            c
-        }
-    };
-    cmd.stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(stderr);
-    #[cfg(target_os = "macos")]
-    {
-        // macOS `pbcopy` decides how to tag stdin bytes on the pasteboard based
-        // on LC_CTYPE / LANG. With the C/POSIX locale (the default for any
-        // process launched by launchd/Finder, including a bundled .app), it
-        // treats incoming UTF-8 bytes as legacy Mac text — so UTF-8 of "測試"
-        // (E6 B8 AC E8 A9 A6) lands on the pasteboard with a non-UTF-8 type;
-        // a UTF-8 paste target then decodes those same bytes via Big5/CP950
-        // and shows "皜祈岫". A terminal-launched `npm run dev` never repros
-        // this because it inherits LANG=*.UTF-8. Force UTF-8 here so every
-        // sidecar child (pbcopy, osascript, …) sees a UTF-8 locale.
-        cmd.env("LANG", "en_US.UTF-8").env("LC_CTYPE", "en_US.UTF-8");
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW: suppress the console window for the spawned sidecar.
-        cmd.creation_flags(0x0800_0000);
-    }
-    let child = cmd.spawn().map_err(|e| {
-        log(&format!("[spawn] failed to spawn sidecar: {e}"));
-        match &launch {
-            SidecarLaunch::Binary(p) => format!("failed to spawn sidecar `{}`: {e}", p.display()),
-            SidecarLaunch::NodeScript(s) => format!("failed to spawn sidecar `node {}`: {e}", s.display()),
-        }
-    })?;
-    log(&format!("[spawn] sidecar started (pid={})", child.id()));
-
-    let app_handle = app.clone();
-    let listener = Arc::new(move |state: String, prev: String| {
-        // Relay to webview as the `state` event (app.js drives recording from this).
-        let _ = app_handle.emit("state", json!({ "state": state, "prev": prev }));
-        update_tray_tooltip(&app_handle, &state);
-    });
-
-    McpClient::spawn(child, listener, log)
-}
 
 fn update_tray_tooltip(app: &AppHandle, state: &str) {
     let label = match state {
@@ -529,61 +364,91 @@ fn apply_no_activate(win: &tauri::WebviewWindow) {
     }
 }
 
-// ---- Tauri commands (webview -> shell -> sidecar) ---------------------------
+// ---- Tauri commands (webview -> shell) ----------------------------------------
 
-/// Run an MCP tool call OFF Tauri's main thread.
-///
-/// The blocking stdio round-trip (`McpClient::call_tool` -> `rx.recv_timeout`)
-/// MUST NOT run on a synchronous `#[tauri::command] fn` — Tauri executes those
-/// on the windowing/event-loop thread, so any latency (or a 30s timeout from a
-/// dropped response) froze the whole webview and Windows ghosted the window.
-/// Every command is now `async` and the blocking call is moved onto the
-/// blocking pool via `spawn_blocking`, keeping the UI thread free to animate.
-async fn invoke_tool(
-    app: AppHandle,
-    name: &'static str,
-    args: Value,
-) -> Result<Value, String> {
-    // Clone the Arc out under the lock, then DROP the std MutexGuard before any
-    // await (a guard is not Send across await points).
-    let (client, log) = {
-        let state = app.state::<ShellState>();
-        let client = state.client.lock().unwrap().as_ref().cloned();
-        (client, state.log.clone())
+/// Read the UI language live (the webview may change it at runtime).
+fn current_lang(dir: &std::path::Path) -> String {
+    let file = dir.join("vocium-config.json");
+    std::fs::read_to_string(&file)
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .and_then(|v| v.get("lang").and_then(|x| x.as_str()).map(String::from))
+        .filter(|l| l == "en")
+        .unwrap_or_else(|| "zh-TW".to_string())
+}
+
+/// macOS: a completed inject (or probe) is direct proof of the Accessibility
+/// grant — macOS fires NO event when the user enables it in System Settings,
+/// so the tray health panel would otherwise stay stale. Infer from the result.
+#[cfg(target_os = "macos")]
+fn note_a11y_from(app: &AppHandle, r: &InjectResult) {
+    let granted = match r.message.as_deref() {
+        None => Some(true),
+        Some(m) if m.contains("輔助使用") || m.contains("Accessibility") => Some(false),
+        Some(_) => None,
     };
-    let Some(client) = client else {
-        log(&format!("[cmd] {name} rejected: sidecar not connected"));
-        return Err("sidecar not connected".into());
-    };
-    log(&format!("[cmd] {name} dispatched -> spawn_blocking"));
-    tauri::async_runtime::spawn_blocking(move || client.call_tool(name, args))
+    if let Some(g) = granted {
+        let st = app.state::<ShellState>();
+        let cur = *st.health_mac_a11y_ok.lock().unwrap();
+        if cur != Some(g) {
+            *st.health_mac_a11y_ok.lock().unwrap() = Some(g);
+            rebuild_tray_menu(app);
+        }
+    }
+}
+
+/// Native text injection into the focused window. Runs on the blocking pool:
+/// it sleeps for focus/restore delays and must never block the event loop.
+#[tauri::command]
+async fn inject_text(app: AppHandle, text: String) -> Result<InjectResult, String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    let lang = current_lang(&dir);
+    let r = tauri::async_runtime::spawn_blocking(move || inject::inject(&text, &lang))
         .await
-        .map_err(|e| format!("sidecar task join error: {e}"))?
+        .map_err(|e| format!("inject task join error: {e}"))?;
+    #[cfg(target_os = "macos")]
+    note_a11y_from(&app, &r);
+    Ok(r)
 }
 
+/// Permission probe (macOS Accessibility) without touching the clipboard.
+/// The webview calls this at boot so a stale Accessibility entry (after
+/// rebuilding the .app) is surfaced immediately, not after the first paste.
 #[tauri::command]
-async fn toggle(app: AppHandle) -> Result<Value, String> {
-    invoke_tool(app, "toggle", json!({})).await
+async fn probe_inject(app: AppHandle) -> Result<InjectResult, String> {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
+    let lang = current_lang(&dir);
+    let r = tauri::async_runtime::spawn_blocking(move || inject::probe(&lang))
+        .await
+        .map_err(|e| format!("probe task join error: {e}"))?;
+    #[cfg(target_os = "macos")]
+    note_a11y_from(&app, &r);
+    Ok(r)
 }
 
+/// Append a webview diagnostic line to shell.log (the icon webview has no
+/// visible console in a packaged build).
 #[tauri::command]
-async fn cancel(app: AppHandle) -> Result<Value, String> {
-    invoke_tool(app, "cancel", json!({})).await
+fn log_line(app: AppHandle, line: String) {
+    (app.state::<ShellState>().log)(&line);
 }
 
+/// The webview owns the voice state machine; it reports every transition so
+/// the tray tooltip follows along.
 #[tauri::command]
-async fn get_state(app: AppHandle) -> Result<Value, String> {
-    invoke_tool(app, "get_state", json!({})).await
+fn report_state(app: AppHandle, state: String) {
+    update_tray_tooltip(&app, &state);
 }
 
-/// Permission probe. The webview calls this once at boot so a stale macOS
-/// Accessibility entry (after rebuilding the .app with a fresh signature/path)
-/// is surfaced to the user immediately, instead of after the first voice
-/// attempt. Returns the same {ok,message} shape as inject(). Windows skips
-/// (no Accessibility-equivalent gate); sidecar returns ok:true.
+/// Whole config file as stored (keys included — same process, local only).
+/// voice-core's `normalizeConfig` turns it into a typed VociumConfig.
 #[tauri::command]
-async fn probe_inject(app: AppHandle) -> Result<Value, String> {
-    invoke_tool(app, "probe_inject", json!({})).await
+fn read_config_raw(app: AppHandle) -> Result<Value, String> {
+    let file = app.state::<ShellState>().config.config_dir.join("vocium-config.json");
+    match std::fs::read_to_string(&file) {
+        Ok(raw) => serde_json::from_str::<Value>(&raw).map_err(|e| e.to_string()),
+        Err(_) => Ok(json!({})),
+    }
 }
 
 /// Return the latest snapshot of the unified health state. Consumers:
@@ -612,61 +477,6 @@ fn emit_health_webview(
     *state.health_mic_perm.lock().unwrap() = mic_perm;
     rebuild_tray_menu(&app);
     Ok(())
-}
-
-#[tauri::command]
-async fn submit_audio(
-    app: AppHandle,
-    audio_base64: String,
-    mime_type: String,
-) -> Result<Value, String> {
-    let v = invoke_tool(
-        app.clone(),
-        "submit_audio",
-        json!({ "audioBase64": audio_base64, "mimeType": mime_type }),
-    )
-    .await?;
-    // macOS: a completed inject is direct proof of the Accessibility grant —
-    // macOS fires NO event when the user enables it in System Settings, so the
-    // tray health panel would otherwise stay stale ("not granted") even though
-    // paste now works. Infer mac_a11y from the inject outcome and refresh.
-    // SubmitAudioResult = { text, injectError? }: absent injectError ⇒ inject
-    // succeeded ⇒ granted; an injectError mentioning Accessibility ⇒ denied;
-    // any other failure ⇒ leave a11y untouched (unrelated).
-    #[cfg(target_os = "macos")]
-    {
-        let inject_err = v
-            .get("content").and_then(|c| c.get(0)).and_then(|c| c.get("text"))
-            .and_then(|t| t.as_str())
-            .and_then(|s| serde_json::from_str::<Value>(s).ok())
-            .and_then(|inner| inner.get("injectError").and_then(|e| e.as_str()).map(str::to_string));
-        let granted = match inject_err.as_deref() {
-            None => Some(true),
-            Some(m) if m.contains("輔助使用") || m.contains("Accessibility") => Some(false),
-            Some(_) => None,
-        };
-        if let Some(g) = granted {
-            let st = app.state::<ShellState>();
-            let cur = *st.health_mac_a11y_ok.lock().unwrap();
-            if cur != Some(g) {
-                *st.health_mac_a11y_ok.lock().unwrap() = Some(g);
-                rebuild_tray_menu(&app);
-            }
-        }
-    }
-    Ok(v)
-}
-
-/// Audio failure path. The real sidecar exposes NO `report_audio_error` tool,
-/// so we drive the machine back via the real `cancel` tool and let app.js show
-/// the visual error. We do NOT invent a new sidecar tool (per Task 8 scope).
-#[tauri::command]
-async fn audio_error(app: AppHandle, message: String) -> Result<Value, String> {
-    {
-        let state = app.state::<ShellState>();
-        (state.log)(&format!("[cmd] webview audio error: {message}"));
-    }
-    invoke_tool(app, "cancel", json!({})).await
 }
 
 /// Single source of truth for "effective active provider + whether its key is
@@ -743,7 +553,7 @@ fn patch_config(dir: &std::path::Path, key: &str, val: Value) -> Result<(), Stri
 
 /// Expose shell-config-derived values (effective STT provider, hotkey, drag
 /// lock state, per-provider key info) to the webview. Shell-config-derived
-/// only — NOT a sidecar tool.
+/// only.
 #[tauri::command]
 fn get_config(app: AppHandle) -> Result<Value, String> {
     let s = app.state::<ShellState>();
@@ -842,8 +652,8 @@ fn save_drag_locked(app: AppHandle, locked: bool) -> Result<(), String> {
     patch_config(&dir, "dragLocked", json!(locked))
 }
 
-/// Persist the zh-convert mode ('twp'|'cn'). No sidecar restart — the sidecar
-/// re-reads it per transcription (read-only readZhMode). Invalid input is
+/// Persist the zh-convert mode ('twp'|'cn'). voice-core re-reads it per
+/// transcription (read-only readZhMode). Invalid input is
 /// rejected so the config never holds a bad value.
 #[tauri::command]
 fn save_zh_mode(app: AppHandle, mode: String) -> Result<(), String> {
@@ -854,17 +664,9 @@ fn save_zh_mode(app: AppHandle, mode: String) -> Result<(), String> {
     patch_config(&dir, "zhConvert", json!(mode))
 }
 
-/// Kill the sidecar child so no orphan node process remains after exit.
-fn shutdown_sidecar(app: &AppHandle) {
-    if let Some(c) = app.state::<ShellState>().client.lock().unwrap().as_ref() {
-        c.shutdown();
-    }
-}
-
-/// Quit the whole app: kill the sidecar child first so no orphan node remains.
+/// Quit the whole app.
 #[tauri::command]
 fn quit_app(app: AppHandle) {
-    shutdown_sidecar(&app);
     app.exit(0);
 }
 
@@ -880,43 +682,6 @@ fn set_hotkey(app: AppHandle, spec: String) -> Result<Value, String> {
     Ok(json!({ "ok": true, "hotkey": spec }))
 }
 
-/// Persist the Groq API key, restart the sidecar so it rebuilds its STT
-/// adapter with the new key, and refresh the tray "STT：…" label.
-#[tauri::command]
-async fn set_groq_key(app: AppHandle, key: String) -> Result<Value, String> {
-    let (dir, log) = {
-        let s = app.state::<ShellState>();
-        (s.config.config_dir.clone(), s.log.clone())
-    };
-    patch_config(&dir, "groqApiKey", json!(key))?;
-
-    // Restart sidecar via the same spawn/connect path used at boot so the
-    // adapter is rebuilt from the new key. Old child is killed first.
-    shutdown_sidecar(&app);
-    let logs_dir = dir.join("logs");
-    let new_client = match spawn_sidecar(&app, log.clone(), &logs_dir) {
-        Ok(c) => c,
-        Err(e) => {
-            log(&format!("[set_groq_key] sidecar restart failed: {e}"));
-            // Old child was killed; clear the client so invoke_tool fast-fails
-            // ("sidecar not connected") instead of 30s-hanging on a dead Arc.
-            *app.state::<ShellState>().client.lock().unwrap() = None;
-            return Err(e);
-        }
-    };
-    *app.state::<ShellState>().client.lock().unwrap() = Some(new_client);
-
-    // Re-derive effective provider from the file we just wrote.
-    let (stt_provider, stt_key_set) = derive_active(&dir);
-    if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
-        let _ = item.set_text(format!("STT：{stt_provider}"));
-    }
-    *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
-    rebuild_tray_menu(&app);
-    log(&format!("[set_groq_key] applied; provider now {stt_provider}"));
-    Ok(json!({ "ok": true, "sttProvider": stt_provider }))
-}
-
 // ---- Multi-provider helpers -------------------------------------------------
 
 fn provider_key_field(p: &str) -> Option<&'static str> {
@@ -928,34 +693,20 @@ fn provider_key_field(p: &str) -> Option<&'static str> {
     }
 }
 
-async fn restart_sidecar_apply(app: &AppHandle) -> Result<(), String> {
-    let (dir, log) = {
-        let s = app.state::<ShellState>();
-        (s.config.config_dir.clone(), s.log.clone())
-    };
-    shutdown_sidecar(app);
-    let logs_dir = dir.join("logs");
-    match spawn_sidecar(app, log.clone(), &logs_dir) {
-        Ok(c) => {
-            *app.state::<ShellState>().client.lock().unwrap() = Some(c);
-        }
-        Err(e) => {
-            log(&format!("[restart] sidecar restart failed: {e}"));
-            *app.state::<ShellState>().client.lock().unwrap() = None;
-            return Err(e);
-        }
-    }
+/// Re-derive the effective STT provider + key presence from the config file
+/// and refresh the tray label / health row. voice-core re-reads the config on
+/// every transcription, so nothing needs restarting.
+fn refresh_stt_health(app: &AppHandle) {
+    let dir = app.state::<ShellState>().config.config_dir.clone();
     let (stt_provider, stt_key_set) = derive_active(&dir);
     if let Some(item) = app.state::<ShellState>().stt_item.lock().unwrap().as_ref() {
         let _ = item.set_text(format!("STT：{stt_provider}"));
     }
     *app.state::<ShellState>().health_stt_key_set.lock().unwrap() = stt_key_set;
     rebuild_tray_menu(app);
-    Ok(())
 }
 
-/// Persist one provider's key + model (+ baseUrl for openai) and restart the
-/// sidecar so the adapter is rebuilt. Empty `key` leaves the stored key
+/// Persist one provider's key + model (+ baseUrl for openai). Empty `key` leaves the stored key
 /// unchanged (matches the "blank = no change" Settings convention).
 #[tauri::command]
 async fn set_provider_key(
@@ -985,7 +736,7 @@ async fn set_provider_key(
             }
         }
     }
-    restart_sidecar_apply(&app).await?;
+    refresh_stt_health(&app);
     let (stt_provider, _) = derive_active(&dir);
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
@@ -999,23 +750,23 @@ async fn set_stt_provider(app: AppHandle, provider: String) -> Result<Value, Str
     }
     let dir = app.state::<ShellState>().config.config_dir.clone();
     patch_config(&dir, "sttProvider", json!(provider))?;
-    restart_sidecar_apply(&app).await?;
+    refresh_stt_health(&app);
     let (stt_provider, _) = derive_active(&dir);
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
 
-/// Clear one provider's stored key, then restart the sidecar.
+/// Clear one provider's stored key.
 #[tauri::command]
 async fn clear_provider_key(app: AppHandle, provider: String) -> Result<Value, String> {
     let dir = app.state::<ShellState>().config.config_dir.clone();
     let field = provider_key_field(&provider).ok_or_else(|| "bad provider".to_string())?;
     patch_config(&dir, field, json!(""))?;
-    restart_sidecar_apply(&app).await?;
+    refresh_stt_health(&app);
     let (stt_provider, _) = derive_active(&dir);
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
 
-/// inputMode persist (no sidecar restart — only the shell shortcut cares).
+/// inputMode persist (only the shell shortcut cares).
 #[tauri::command]
 fn save_input_mode(app: AppHandle, mode: String) -> Result<(), String> {
     if mode != "toggle" && mode != "ptt" {
@@ -1032,7 +783,7 @@ fn save_vad_trim(app: AppHandle, enabled: bool) -> Result<(), String> {
     patch_config(&dir, "vadTrim", json!(enabled))
 }
 
-/// UI language persist (no sidecar restart — only the shell tray/health
+/// UI language persist (only the shell tray/health
 /// strings care). After persisting, rebuild the tray so the menu and health
 /// panel re-localize immediately. Normalized so only "en" is English.
 #[tauri::command]
@@ -1056,7 +807,7 @@ fn save_mic_device(app: AppHandle, device_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Persist AI-polish settings. No sidecar restart (polish is live-read,
+/// Persist AI-polish settings (polish is live-read,
 /// mirrors save_vad_trim/save_zh_mode). Empty key fields = unchanged.
 #[tauri::command]
 fn save_polish(
@@ -1121,10 +872,9 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_http::init())
         .manage(ShellState {
-            client: Mutex::new(None),
             hotkey_ok: Mutex::new(false),
             shortcut: Mutex::new(None),
             hk_item: Mutex::new(None),
@@ -1154,12 +904,11 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            toggle,
-            cancel,
-            get_state,
+            inject_text,
             probe_inject,
-            submit_audio,
-            audio_error,
+            report_state,
+            read_config_raw,
+            log_line,
             get_config,
             save_offset_x,
             save_drag_locked,
@@ -1167,7 +916,6 @@ pub fn run() {
             quit_app,
             set_hotkey,
             set_hotkey_enabled,
-            set_groq_key,
             set_provider_key,
             set_stt_provider,
             clear_provider_key,
@@ -1183,41 +931,21 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
 
-            // 1. Spawn sidecar + MCP client.
-            match spawn_sidecar(&handle, log_setup.clone(), &logs_dir) {
-                Ok(client) => {
-                    log_setup("[boot] sidecar connected");
-                    *handle.state::<ShellState>().client.lock().unwrap() = Some(client);
-                    #[cfg(target_os = "macos")]
-                    {
-                        let app_for_probe = handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            match invoke_tool(app_for_probe.clone(), "probe_inject", json!({})).await {
-                                Ok(v) => {
-                                    // Sidecar's `ok(...)` returns { content: [{ type:'text', text: JSON({ok, message?}) }] }
-                                    let ok = v
-                                        .get("content")
-                                        .and_then(|c| c.get(0))
-                                        .and_then(|c| c.get("text"))
-                                        .and_then(|t| t.as_str())
-                                        .and_then(|s| serde_json::from_str::<Value>(s).ok())
-                                        .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
-                                        .unwrap_or(false);
-                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
-                                    rebuild_tray_menu(&app_for_probe);
-                                }
-                                Err(_) => {
-                                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(false);
-                                    rebuild_tray_menu(&app_for_probe);
-                                }
-                            }
-                        });
-                    }
-                }
-                Err(e) => {
-                    log_setup(&format!("[boot] sidecar NOT connected: {e}"));
-                }
+            // 1. macOS: probe the Accessibility grant up front so the tray
+            //    health panel is correct from the first render.
+            #[cfg(target_os = "macos")]
+            {
+                let app_for_probe = handle.clone();
+                let dir = cfg.config_dir.clone();
+                tauri::async_runtime::spawn(async move {
+                    let lang = current_lang(&dir);
+                    let r = tauri::async_runtime::spawn_blocking(move || inject::probe(&lang)).await;
+                    let ok = r.map(|r| r.ok).unwrap_or(false);
+                    *app_for_probe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
+                    rebuild_tray_menu(&app_for_probe);
+                });
             }
+            let _ = &logs_dir;
 
             // 2. Surface the effective STT provider to the webview so it can
             //    show a correct transcribing subtitle (shell-config-derived).
@@ -1323,16 +1051,11 @@ fn build_tray(
             #[cfg(target_os = "macos")]
             {
                 let app_for_reprobe = app.clone();
+                let dir = app.state::<ShellState>().config.config_dir.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Ok(v) = invoke_tool(app_for_reprobe.clone(), "probe_inject", json!({})).await {
-                        let ok = v
-                            .get("content")
-                            .and_then(|c| c.get(0))
-                            .and_then(|c| c.get("text"))
-                            .and_then(|t| t.as_str())
-                            .and_then(|s| serde_json::from_str::<Value>(s).ok())
-                            .and_then(|inner| inner.get("ok").and_then(|b| b.as_bool()))
-                            .unwrap_or(false);
+                    let lang = current_lang(&dir);
+                    if let Ok(r) = tauri::async_runtime::spawn_blocking(move || inject::probe(&lang)).await {
+                        let ok = r.ok;
                         let cur = *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap();
                         if cur != Some(ok) {
                             *app_for_reprobe.state::<ShellState>().health_mac_a11y_ok.lock().unwrap() = Some(ok);
@@ -1365,7 +1088,6 @@ fn build_tray(
                     .open_path(cfg_dir.to_string_lossy().to_string(), None::<&str>);
             }
             "quit" => {
-                shutdown_sidecar(app);
                 app.exit(0);
             }
             "mic_perm" => {
@@ -1833,82 +1555,5 @@ mod health_tests {
         let a11y = mac_denied.items.iter().find(|i| i.id == "mac_a11y").unwrap();
         assert_eq!(a11y.status, HealthStatus::Warn);
         assert_eq!(a11y.action, Some("open_a11y_settings"));
-    }
-}
-
-#[cfg(test)]
-mod sidecar_resolver_tests {
-    use super::{resolve_sidecar_in, SidecarLaunch};
-    use std::path::PathBuf;
-
-    #[test]
-    fn picks_binary_when_present() {
-        let dir = std::env::temp_dir().join(format!("vocium_t1_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let bin = dir.join("vocium-sidecar-x86_64-pc-windows-msvc.exe");
-        std::fs::write(&bin, b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
-        std::fs::remove_dir_all(&dir).ok();
-        match got {
-            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
-            _ => panic!("expected Binary, got NodeScript"),
-        }
-    }
-
-    #[test]
-    fn falls_back_to_node_script_when_no_binary() {
-        let dir = std::env::temp_dir().join(format!("vocium_t1b_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
-        std::fs::remove_dir_all(&dir).ok();
-        match got {
-            SidecarLaunch::NodeScript(s) => assert_eq!(s, PathBuf::from("dist/sidecar/main.js")),
-            _ => panic!("expected NodeScript fallback"),
-        }
-    }
-
-    #[test]
-    fn ignores_non_matching_files() {
-        let dir = std::env::temp_dir().join(format!("vocium_t1c_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("not-it.txt"), b"x").unwrap();
-        std::fs::write(dir.join("vocium-sidecar-aarch64-apple-darwin"), b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("d.js"), "");
-        std::fs::remove_dir_all(&dir).ok();
-        assert!(matches!(got, SidecarLaunch::Binary(_)));
-    }
-
-    // Tauri externalBin strips the rustc host-tuple at bundle time: the
-    // file next to the main exe in an installed app is the BARE name
-    // `vocium-sidecar(.exe)`, NOT the triple-suffixed pre-bundle name.
-    // Empirically observed on Windows packaging 2026-05-21 — the resolver
-    // missing this case caused the dev fallback to fire in production.
-
-    #[test]
-    fn picks_bare_binary_post_bundle_windows() {
-        let dir = std::env::temp_dir().join(format!("vocium_t1d_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let bin = dir.join("vocium-sidecar.exe");
-        std::fs::write(&bin, b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("dist/sidecar/main.js"), ".exe");
-        std::fs::remove_dir_all(&dir).ok();
-        match got {
-            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
-            _ => panic!("expected Binary(vocium-sidecar.exe), got NodeScript"),
-        }
-    }
-
-    #[test]
-    fn picks_bare_binary_post_bundle_unix() {
-        let dir = std::env::temp_dir().join(format!("vocium_t1e_{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let bin = dir.join("vocium-sidecar");
-        std::fs::write(&bin, b"x").unwrap();
-        let got = resolve_sidecar_in(&[dir.clone()], PathBuf::from("d.js"), "");
-        std::fs::remove_dir_all(&dir).ok();
-        match got {
-            SidecarLaunch::Binary(p) => assert_eq!(p, bin),
-            _ => panic!("expected Binary(vocium-sidecar), got NodeScript"),
-        }
     }
 }

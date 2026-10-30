@@ -3,12 +3,6 @@ node_modules/
 dist/
 app-tauri/src-tauri/target/
 app-tauri/src-tauri/gen/
-app-tauri/src-tauri/binaries/
-
-# Bun build cache: `bun build --compile` drops `.<hash>-<seq>.bun-build`
-# files next to wherever it was invoked (root + app-tauri/src-tauri/).
-.*.bun-build
-*.bun-build
 
 # Local Claude Code workspace state (per-machine settings; never upstream).
 .claude/
@@ -40,6 +34,9 @@ Thumbs.db
 
 # brainstorming visual-companion artifacts (internal AI process)
 .superpowers/
+
+# esbuild output for the two webviews (reproducible via npm run build:ui)
+app-tauri/ui/build/
 
 # vad-web + onnxruntime-web vendored browser assets (large/binary; reproducible via npm run vad:assets)
 app-tauri/ui/vad/

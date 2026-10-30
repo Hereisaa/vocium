@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **Single-process architecture.** The Node sidecar (Bun-compiled binary) and the MCP
+  server/client layer are gone. The voice core now runs inside the floating icon's
+  webview; the Rust shell only does OS work (window, tray, hotkey, config file,
+  native text injection). Smaller installers, no sidecar restarts on settings change.
+- **`@vocium/voice-core` package** (`packages/voice-core/`): the former `src/core`
+  as a pure-TypeScript, fetch-only library reusable outside Vocium. Model lists are
+  imported by the Settings UI instead of being mirrored by hand.
+- **Windows injection is native** (Win32 clipboard + `SendInput` Ctrl+V) — no
+  PowerShell cold start. All platforms restore the user's previous clipboard text
+  after pasting.
+- Network requests go through `@tauri-apps/plugin-http` (issued by Rust).
+- Cancelling while a transcription is in flight now drops the late result instead
+  of pasting it.
+
+### Removed
+
+- MCP tools (`transcribe_clip`, `inject_text`, `polish_text`, state-machine tools),
+  `dist/sidecar/main.js` entry point, Bun build requirement.
 
 ## [0.1.0] - 2026-05-22
 
