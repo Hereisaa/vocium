@@ -49,4 +49,6 @@ Polish categories:
 
 Polish keys follow the same BYOK model: `groq`/`openai`/`gemini` automatically reuse the matching STT key unless you configure a polish-specific override; `claude` uses its own dedicated `claudeApiKey`. Any failure (no key, network error, timeout) falls back gracefully to the unpolished transcript — the transcription pipeline is never blocked by a polish failure.
 
+> An empty transcript (e.g. silence) pastes nothing and simply returns to idle; STT failures and the "no API key" hint are shown on the floating icon only — never pasted into your document.
+
 Post-processing pipeline order: **STT → AI Polish → Traditional/Simplified conversion → text injection** (each step is optional).

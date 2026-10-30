@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Vocium 系統架構（單一行程）",
+    "locale": "zh-TW",
+    "output": "docs/archify/vocium-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Hereisaa/vocium.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "55c3c24714c1ce991f11321a56518165d22f0a6f"
+    }
+  },
+  "components": [
+    {
+      "id": "user", "type": "external", "label": "使用者", "sublabel": "快捷鍵 / 點 ICON",
+      "pos": [40, 220], "size": [120, 60]
+    },
+    {
+      "id": "shell", "type": "backend", "label": "Rust 殼層", "sublabel": "lib.rs · Tray · 快捷鍵",
+      "tag": "Tauri 2",
+      "pos": [240, 220], "size": [140, 64],
+      "sources": [
+        { "path": "app-tauri/src-tauri/src/lib.rs", "line": 211, "end_line": 242, "label": "全域快捷鍵 → hotkey 事件" },
+        { "path": "app-tauri/src-tauri/src/lib.rs", "line": 864, "end_line": 992, "label": "run(): 視窗、Tray、指令" }
+      ]
+    },
+    {
+      "id": "config", "type": "database", "label": "vocium-config.json", "sublabel": "%APPDATA%/vocium · 含金鑰",
+      "pos": [240, 380], "size": [140, 60],
+      "sources": [
+        { "path": "app-tauri/src-tauri/src/lib.rs", "line": 536, "end_line": 552, "label": "patch_config 讀-改-寫" },
+        { "path": "app-tauri/src-tauri/src/lib.rs", "line": 446, "end_line": 452, "label": "read_config_raw" }
+      ]
+    },
+    {
+      "id": "webview", "type": "frontend", "label": "icon webview", "sublabel": "app.js · 錄音 · 狀態機",
+      "pos": [500, 220], "size": [150, 64],
+      "sources": [
+        { "path": "app-tauri/ui/src/app.js", "line": 102, "end_line": 114, "label": "voice-core 狀態機" },
+        { "path": "app-tauri/ui/src/app.js", "line": 322, "end_line": 438, "label": "MediaRecorder 錄音與送出" },
+        { "path": "app-tauri/ui/src/app.js", "line": 466, "end_line": 498, "label": "toggle / hotkey 處理" }
+      ]
+    },
+    {
+      "id": "mic", "type": "external", "label": "麥克風", "sublabel": "getUserMedia · VAD 裁剪",
+      "pos": [500, 60], "size": [150, 60],
+      "sources": [
+        { "path": "app-tauri/ui/src/app.js", "line": 275, "end_line": 319, "label": "trimBlobSilence（Silero）" }
+      ]
+    },
+    {
+      "id": "core", "type": "backend", "label": "voice-core pipeline", "sublabel": "STT → 潤稿 → 繁簡",
+      "tag": "@vocium/voice-core",
+      "pos": [770, 220], "size": [150, 64],
+      "sources": [
+        { "path": "packages/voice-core/src/pipeline.ts", "line": 49, "end_line": 140, "label": "submitAudio 管線" },
+        { "path": "packages/voice-core/src/stt/stt-adapter.ts", "line": 15, "end_line": 26, "label": "依設定挑選 adapter" },
+        { "path": "app-tauri/ui/src/app.js", "line": 119, "end_line": 142, "label": "buildPipeline（fetch = plugin-http）" }
+      ]
+    },
+    {
+      "id": "stt", "type": "cloud", "label": "雲端 STT", "sublabel": "Groq / OpenAI 相容 / Gemini",
+      "tag": "BYOK",
+      "pos": [1000, 220], "size": [150, 64],
+      "sources": [
+        { "path": "packages/voice-core/src/stt/groq-stt.ts", "line": 12, "end_line": 32, "label": "Groq multipart" },
+        { "path": "packages/voice-core/src/stt/openai-stt.ts", "line": 10, "end_line": 30, "label": "OpenAI 相容 Base URL" },
+        { "path": "packages/voice-core/src/stt/gemini-stt.ts", "line": 15, "end_line": 49, "label": "Gemini generateContent" }
+      ]
+    },
+    {
+      "id": "polish", "type": "cloud", "label": "LLM 潤稿（選用）", "sublabel": "Groq / OpenAI / Gemini / Claude",
+      "pos": [770, 60], "size": [150, 60],
+      "sources": [
+        { "path": "packages/voice-core/src/polish/polish.ts", "line": 53, "end_line": 117, "label": "polishText：失敗退回原文" }
+      ]
+    },
+    {
+      "id": "inject", "type": "backend", "label": "原生注入", "sublabel": "inject.rs · 剪貼簿 + 貼上鍵",
+      "pos": [770, 380], "size": [150, 64],
+      "sources": [
+        { "path": "app-tauri/src-tauri/src/inject.rs", "line": 189, "end_line": 215, "label": "Windows：Win32 + SendInput" },
+        { "path": "app-tauri/src-tauri/src/inject.rs", "line": 267, "end_line": 291, "label": "macOS：pbcopy + osascript" },
+        { "path": "app-tauri/src-tauri/src/lib.rs", "line": 403, "end_line": 412, "label": "inject_text 指令" }
+      ]
+    },
+    {
+      "id": "target", "type": "external", "label": "焦點視窗", "sublabel": "任何 App 的輸入框",
+      "pos": [1000, 380], "size": [150, 60]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Vocium.exe（唯一行程）", "wraps": ["shell", "config", "webview", "core", "inject"] }
+  ],
+  "connections": [
+    { "id": "user-hotkey", "from": "user", "to": "shell", "label": "快捷鍵", "variant": "emphasis" },
+    { "id": "shell-event", "from": "shell", "to": "webview", "label": "hotkey 事件", "variant": "emphasis" },
+    { "id": "webview-config", "from": "webview", "to": "shell", "label": "invoke 指令" },
+    { "id": "shell-config", "from": "shell", "to": "config", "label": "讀寫設定" },
+    { "id": "mic-webview", "from": "mic", "to": "webview", "label": "音訊" },
+    { "id": "webview-core", "from": "webview", "to": "core", "label": "submitAudio", "variant": "emphasis" },
+    { "id": "core-stt", "from": "core", "to": "stt", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "core-polish", "from": "core", "to": "polish", "label": "潤稿", "variant": "dashed" },
+    { "id": "core-inject", "from": "core", "to": "inject", "label": "inject_text", "variant": "emphasis" },
+    { "id": "inject-target", "from": "inject", "to": "target", "label": "貼上", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "分工", "items": ["Rust 只做 OS 層：視窗、Tray、快捷鍵、設定檔、注入", "voice-core 是純 TypeScript，跑在 icon webview，可被其他專案重用"] },
+    { "dot": "emerald", "title": "網路", "items": ["所有 HTTPS 請求由 Rust 的 tauri-plugin-http 發出", "金鑰只在本機設定檔與本行程記憶體中"] },
+    { "dot": "rose", "title": "不變量", "items": ["只有真正的轉錄文字會被貼上；錯誤與提示只顯示在 ICON", "注入後還原使用者原本的剪貼簿文字"] }
+  ]
+}

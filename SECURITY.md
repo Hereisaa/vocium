@@ -16,11 +16,11 @@ Vocium is **local-first and BYOK** (bring-your-own-key):
 - API keys live only in your local `vocium-config.json` and are never committed,
   logged, or transmitted anywhere except the STT/LLM provider **you** configure.
 - Audio you record is sent only to your configured provider for transcription.
-- The bundled MCP server reads keys from the host machine's config; callers never
-  pass or see them.
+- Keys are read inside the app process only (the voice core runs in the app's own
+  webview); there is no external server or IPC surface that exposes them.
 
 API 金鑰僅存於本機 `vocium-config.json`，除了你設定的 STT/LLM 供應商外不會外傳；
-錄音僅送往你設定的供應商。MCP server 從本機 config 讀金鑰，呼叫端看不到也不需傳。
+錄音僅送往你設定的供應商。金鑰只在 App 自己的行程內讀取（語音核心跑在 App 的 webview 裡），沒有對外的伺服器或 IPC 介面會暴露它。
 
 ## Reporting a Vulnerability / 回報漏洞
 

@@ -15,7 +15,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555" alt="Platform: Windows and macOS" />
-  <img src="https://img.shields.io/badge/MCP-native-8A2BE2" alt="MCP-native" />
 </p>
 
 <p align="center">
@@ -26,11 +25,17 @@
 
 Press a hotkey, speak, and AI transcribes your voice and pastes it straight into the focused field — no focus stolen, no server, no bundled credentials. Supports Windows and macOS.
 
-It's also **MCP‑native**: any AI assistant or script can reuse its speech‑to‑text and text‑injection as tools.
-
 ## Architecture
 
-A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic over a single MCP protocol — the shell is just one client of that server. The sidecar daemon owns the state machine, STT, AI polish, and text injection; the shell handles only the window, tray, global shortcut, and microphone capture.
+One process. The Tauri 2 (Rust) shell does only OS work: window, tray, global shortcut, config file, native text injection. All voice logic — state machine, recording, STT, AI polish, Chinese script conversion — is **`@vocium/voice-core`**, a pure‑TypeScript package that runs inside the floating icon's webview. Network requests go out through Tauri's http plugin (issued by Rust).
+
+```
+Vocium.exe (the only process)
+  ├ Rust shell    window · tray · hotkey · config · clipboard + paste keystroke
+  └ webview       UI + voice-core (state machine · STT · polish · zh conversion)
+```
+
+`packages/voice-core/` has no platform dependency (it only needs a `fetch`), so it can be reused in a browser, Node or Bun.
 
 ## Features
 
@@ -39,7 +44,7 @@ A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic ov
 - **Multi‑provider STT** — Groq, OpenAI Whisper, Gemini; bring‑your‑own‑key, stored only on your device
 - **AI polish** — optional LLM cleanup pass before injection (punctuation, fillers, fluency)
 - **Chinese output** — force Traditional or Simplified; opt‑in VAD silence trimming
-- **MCP‑native** — a standalone MCP server any MCP host can call
+- **Clipboard restore** — your previous clipboard text is put back after injection
 
 ---
 
@@ -47,9 +52,8 @@ A thin Tauri 2 (Rust) shell drives a Node sidecar that exposes the core logic ov
 
 | Tool | Why | Notes |
 |---|---|---|
-| **Node.js ≥ 20** | runs the sidecar in dev | includes `npm` |
+| **Node.js ≥ 20** | builds voice-core + the webview bundles | includes `npm` |
 | **Rust toolchain** | builds the Tauri shell | — |
-| **Bun** | only for `npm run package` | build‑time; not needed for `npm run dev` |
 
 Platform extras:
 **Windows** — WebView2 Runtime (pre‑installed on Win 10 2020+/11) + MSVC Build Tools (*"Desktop development with C++"* workload).
@@ -67,7 +71,6 @@ No published binaries yet — build from source.
 ```powershell
 winget install --id OpenJS.NodeJS.LTS          # Node.js (LTS, ≥ 20)
 winget install --id Rustlang.Rustup            # Rust
-powershell -c "irm bun.sh/install.ps1 | iex"   # Bun — build-time only
 winget install --id Microsoft.VisualStudio.2022.BuildTools  # select "Desktop development with C++"
 ```
 
@@ -76,10 +79,9 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools  # select "Desktop de
 xcode-select --install                                          # Xcode CLT (system dialog)
 brew install node                                               # Node.js (≥ 20), or use nvm
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Rust
-curl -fsSL https://bun.sh/install | bash                        # Bun — build-time only
 ```
 
-After installing Rust / Bun, open a new shell so the updated `PATH` is picked up.
+After installing Rust, open a new shell so the updated `PATH` is picked up.
 
 ### Verify your toolchain
 
@@ -89,18 +91,14 @@ npm -v    # should print cleanly — no version-compatibility error
 cargo -V
 ```
 
-If `npm` reports a Node/npm mismatch (e.g. `npm vX is known not to run on Node.js vY`), reinstall Node — its bundled npm matches the Node version.
-
 ### Run from source
 
 ```bash
 git clone https://github.com/Hereisaa/vocium.git
 cd vocium
 npm install
-npm run dev   # builds the sidecar + launches the app via `tauri dev`
+npm run dev   # builds voice-core + the webview bundles, then launches via `tauri dev`
 ```
-
-In dev the sidecar runs via Node — Bun is not required.
 
 ### Package the app
 
@@ -140,7 +138,7 @@ Vocium needs OS‑level permissions on first run. The list and recovery flow dif
 |---|---|---|
 | **Microphone** | Recording your voice | A standard Windows prompt appears the first time Vocium records — click *Allow* |
 
-No paste permission is required — Vocium uses `Set-Clipboard` + `SendKeys`, neither of which needs elevated rights.
+No paste permission is required — Vocium uses the Win32 clipboard API and `SendInput` for Ctrl+V, neither of which needs elevated rights.
 
 **🍎 macOS**
 
@@ -178,39 +176,17 @@ First run needs an STT API key — see [CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ---
 
-## Use as an MCP tool
+## Reusing voice-core in your own project
 
-The Node sidecar is a **standalone MCP server** — any MCP host (Claude Desktop, Cursor, an Agent SDK, scripts) can reuse Vocium's speech‑to‑text and text injection without the desktop app.
+```ts
+import { createSttAdapter, normalizeConfig, polishText } from '@vocium/voice-core';
 
-Three headless tools:
-
-| Tool | Input → Output | Does |
-|---|---|---|
-| `transcribe_clip` | `{ audioBase64, mimeType, language? }` → `{ text }` | Transcribe audio with your configured provider; applies your Traditional/Simplified preference. Read‑only. |
-| `inject_text` | `{ text }` → `{ ok }` | Type text into the OS‑focused window (clipboard + paste). The caller owns focus. |
-| `polish_text` | `{ text, style? }` → `{ text }` | LLM cleanup. `style`: `light` (punctuation + obvious fixes, fillers kept), `full` (also removes fillers, smooths flow), `custom` (your prompt). |
-
-- API keys are read from the local Vocium config on the machine running the sidecar — **callers never pass or see a key**.
-- The caller supplies the audio (Vocium does not open the microphone headlessly).
-- On macOS, `inject_text` needs the standard Accessibility permission (see [Permissions](#permissions)).
-- Register in an MCP host (after `npm run build`). The entry point is **`dist/sidecar/main.js`**:
-
-```json
-{
-  "mcpServers": {
-    "vocium": { "command": "node", "args": ["<path>/vocium/dist/sidecar/main.js"] }
-  }
-}
+const cfg = normalizeConfig({ sttProvider: 'groq', groqApiKey: process.env.GROQ_KEY });
+const stt = createSttAdapter(cfg, { fetch });
+const { text } = await stt.transcribe({ audio: bytes, mimeType: 'audio/webm' });
 ```
 
-> The MCP server also exposes six **state‑machine tools** (`toggle`, `start_listening`, `stop_listening`, `cancel`, `get_state`, `submit_audio`) that drive the desktop shell's live recording flow, plus `probe_inject` for diagnostics.
->
-> **External integrations normally need only the three headless tools above.**
-
-**Embedding in your own host?**
-Import the factory instead of spawning a process: `import { buildServer } from '<path>/vocium/dist/sidecar/index.js'`, then `buildServer().connect(yourTransport)`.
-(`index.js` only exports the factory; running it directly starts nothing — `main.js` is the stdio entry point.)
-The sidecar and the Tauri shell build independently — the shell is just one MCP client of this same server.
+The package depends only on `fetch` — no Node or DOM APIs. It currently lives as an npm workspace in `packages/voice-core/`.
 
 ---
 
@@ -218,6 +194,8 @@ The sidecar and the Tauri shell build independently — the shell is just one MC
 
 | Doc | What |
 |---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **Architecture SSOT** (zh-TW): process boundaries, source map, state machine, IPC contract, decision log |
+| [docs/archify/vocium-architecture.html](docs/archify/vocium-architecture.html), [voice-input-workflow.html](docs/archify/voice-input-workflow.html) | Interactive architecture + workflow diagrams (Archify, rendered from the JSON next to them, with source citations) |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `vocium-config.json`, BYOK key setup, AI polish |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What's shipped, planned, and deferred |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, build gates, adding providers |

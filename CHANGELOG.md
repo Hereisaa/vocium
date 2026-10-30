@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **Single-process architecture.** The Node sidecar (Bun-compiled binary) and the MCP
+  server/client layer are gone. The voice core now runs inside the floating icon's
+  webview; the Rust shell only does OS work (window, tray, hotkey, config file,
+  native text injection). Smaller installers, no sidecar restarts on settings change.
+- **`@vocium/voice-core` package** (`packages/voice-core/`): the former `src/core`
+  as a pure-TypeScript, fetch-only library reusable outside Vocium. Model lists are
+  imported by the Settings UI instead of being mirrored by hand.
+- **Windows injection is native** (Win32 clipboard + `SendInput` Ctrl+V) — no
+  PowerShell cold start. All platforms restore the user's previous clipboard text
+  after pasting.
+- Network requests go through `@tauri-apps/plugin-http` (issued by Rust).
+- Cancelling while a transcription is in flight now drops the late result instead
+  of pasting it.
+
+### Added
+
+- `docs/ARCHITECTURE.md` — the architecture single source of truth (process
+  boundaries, source map, state machine, IPC contract, decision log).
+- `docs/archify/` — Archify architecture + voice-input workflow diagrams with
+  source citations, rendered from the JSON candidates next to them.
+
+### Fixed (review follow-ups)
+
+- A late STT result (or failure) from a cancelled round is dropped even when a
+  newer round is already transcribing (session epoch check), instead of being
+  pasted or flashing an error over the new round.
+- Cancelling during the config-read / VAD-trim gap before submit now discards
+  the audio quietly instead of showing a bogus "send failed" error.
+- Overlapping `startRecording` calls (slow mic prompt + rapid toggling) no
+  longer leak a live recorder/stream; each capture has a generation number.
+- Windows injection: the clipboard `HGLOBAL` is freed when `GlobalLock` or
+  `SetClipboardData` fails; the previous-text scan is bounded by `GlobalSize`.
+- A `plugin-http` "Request canceled" rejection is classified as a timeout.
+
+### Removed
+
+- MCP tools (`transcribe_clip`, `inject_text`, `polish_text`, state-machine tools),
+  `dist/sidecar/main.js` entry point, Bun build requirement.
+- Dead config field `cancelKey`, unused i18n key `lbl.apiKey`, the one-off
+  `scripts/gen-sample-audio.ps1`, `@types/node`, and leftover sidecar/MCP/spec
+  references in comments.
 
 ## [0.1.0] - 2026-05-22
 

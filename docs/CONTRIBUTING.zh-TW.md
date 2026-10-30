@@ -2,110 +2,81 @@
 
 感謝你對 Vocium 的貢獻！本文件說明主要開發流程與注意事項。
 
+## 專案結構
+
+```
+packages/voice-core/   純 TypeScript 核心（STT adapters、潤稿、繁簡、狀態機、pipeline）+ 測試
+app-tauri/ui/src/      webview 原始碼（app.js 懸浮 ICON、settings.js 設定、i18n.js）
+app-tauri/ui/build/    esbuild 產物（gitignored）
+app-tauri/src-tauri/   Rust 殼層（視窗、Tray、快捷鍵、設定檔、原生注入 inject.rs）
+scripts/               建置輔助（build-ui.mjs、copy-vad-assets.mjs、圖示產生）
+```
+
+單一行程：voice-core 在懸浮 ICON 的 webview 內執行，透過 Tauri 的 `invoke`／event 與 Rust 溝通，網路請求走 `@tauri-apps/plugin-http` 的 `fetch`。
+
 ## 環境前置需求
 
 - **Node.js ≥ 20**
 - **Rust toolchain** + Tauri 2 prerequisites
-- **Windows** 或 **macOS**（兩平台皆支援文字注入：Windows = PowerShell `Set-Clipboard`+`SendKeys`，macOS = `pbcopy`+`osascript` Cmd+V）
+- **Windows** 或 **macOS**（文字注入：Windows = Win32 剪貼簿 + `SendInput` Ctrl+V，macOS = `pbcopy` + `osascript` Cmd+V；Linux 為 best-effort，需 `wl-copy`/`xclip` 與 `wtype`/`xdotool`）
 
 ## Build & Test Gates
 
 每次提交前請確保以下全綠（PR 不應使任何一項變紅）：
 
 ```bash
-# 1. TypeScript 型別檢查 + sidecar 編譯
+# 1. voice-core 型別檢查 + webview 打包
 npm run build
 
-# 2. 單元測試 + MCP 整合測試
-npx vitest run
+# 2. voice-core 單元測試
+npm test
 
 # 3. Rust 殼測試
 cargo test --manifest-path app-tauri/src-tauri/Cargo.toml
 
-# 4. webview JS 語法檢查（app-tauri/ui/*.js 為純 JS，不在 tsconfig 範圍）
-node --check app-tauri/ui/app.js
-node --check app-tauri/ui/settings.js
-
-# 5. 推遠端前：確認 diff 未混入真實金鑰
+# 4. 推遠端前：確認 diff 未混入真實金鑰
 git diff origin/main..HEAD -U0 | grep -nE "gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_-]{30,}" || echo "no secrets"
 ```
 
-基準：**tsc clean、vitest 全綠、cargo 0 errors / 0 warnings、node --check 無輸出、no secrets**。
+基準：**tsc clean、vitest 全綠、cargo 0 errors / 0 warnings、no secrets**。
 
-> **Gate 3 注意**：`cargo test` 會先跑 tauri-build 的 `externalBin` 預檢，要求 `app-tauri/src-tauri/binaries/vocium-sidecar-<target-triple>` 存在。先跑過 `npm run dev` 或 `npm run build:sidecar-bin`（需 Bun）即可；若僅要測試而不想裝 Bun，可暫放一個 1-byte 同名 stub 檔讓預檢通過（測完移除，勿提交）。
+## 新增／更新 STT 模型
 
-## Adding / Updating an STT Model
-
-STT 模型清單有**兩個地方**必須同步維護：
-
-### 1. `src/core/stt/models.ts`（唯一常數來源）
-
-這是 Node sidecar 與 TypeScript 核心使用的 **single source of truth**。每個 provider 對應一個 `{ id, label }` 物件陣列；`DEFAULT_MODEL` 為**獨立的頂層常數**（非巢狀在清單內）。
+模型清單只有**一個**來源：`packages/voice-core/src/stt/models.ts`。`settings.js` 直接 `import { STT_MODELS, POLISH_MODELS }`，不再有鏡像副本。
 
 ```typescript
 export const STT_MODELS: Record<CloudProvider, ModelOption[]> = {
   groq: [
-    { id: 'whisper-large-v3-turbo', label: 'whisper-large-v3-turbo（預設）' },
-    { id: 'whisper-large-v3', label: 'whisper-large-v3' },
+    { id: 'whisper-large-v3-turbo', label: 'whisper-large-v3-turbo（預設・快）', labelEn: '…' },
   ],
-  openai: [{ id: 'whisper-1', label: 'whisper-1（預設）' }],
-  gemini: [{ id: 'gemini-3.5-flash', label: 'gemini-3.5-flash（預設）' }],
+  // …
 };
-
-export const DEFAULT_MODEL: Record<CloudProvider, string> = {
-  groq: 'whisper-large-v3-turbo', openai: 'whisper-1', gemini: 'gemini-3.5-flash',
-};
+export const DEFAULT_MODEL: Record<CloudProvider, string> = { /* … */ };
 ```
 
-### 2. `app-tauri/ui/settings.js`（webview 的刻意鏡像副本）
-
-webview 沒有 bundler，**無法** `import` Node 模組，因此 `STT_MODELS` 在 `settings.js` 中以相同結構**手動複製**一份。這是設計決策取捨，非疏忽。
-
-> **更新模型清單時，兩處必須同步修改，缺一不可。**
-> 若兩者不一致，webview Settings 下拉清單與 sidecar 實際使用的模型可能不符。
-
-### 為何不做 runtime model-list fetch？
-
-- 各家 `/models` 端點無可靠的 STT 旗標可過濾
-- 需要 API 金鑰，增加失敗面
-- 增加首次開啟 Settings 的延遲與網路依賴
-
-見設計決策 D7（`docs/superpowers/specs/2026-05-18-vocium-multi-stt-ptt-vad-design.md`，gitignored 內部文件）。
-
-### 模型「自訂…」逃生口
-
-模型選單下拉末項為「自訂…」，允許使用者輸入任意且正確的模型名稱，適用於精選清單尚未列入的最新模型。這是刻意的設計，讓清單落後不會卡住使用者。
-
-### AI 潤稿模型（POLISH_MODELS）
-
-`POLISH_MODELS` / `DEFAULT_POLISH_MODEL` 的維護規則與上面的 `STT_MODELS` **完全相同**——同樣兩處同步（`src/core/stt/models.ts` + `app-tauri/ui/settings.js` 鏡像）、同樣「自訂…」逃生口、同樣無 runtime fetch。差異只有：常數名為 `POLISH_MODELS` / `DEFAULT_POLISH_MODEL`，且涵蓋**四家** provider（groq / openai / gemini / claude）。
-※ claude 無 STT 但可用於潤稿
+- 不做 runtime model-list fetch：各家 `/models` 端點無可靠的 STT 旗標可過濾、需要金鑰、增加首次開啟延遲。
+- 模型選單末項「自訂…」允許輸入任意模型 id，清單落後不會卡住使用者。
+- `POLISH_MODELS` / `DEFAULT_POLISH_MODEL` 規則相同，涵蓋四家 provider（groq / openai / gemini / claude；claude 無 STT 但可潤稿）。
 
 ## 新增 STT Provider
 
-1. 在 `src/core/stt/` 新增 `<provider>-stt.ts`，實作 `SttAdapter` 介面
-   （參考 `groq-stt.ts` / `openai-stt.ts` / `gemini-stt.ts`）。
-2. 在 `src/core/stt/models.ts` 增加該 provider 的模型清單與 `DEFAULT_MODEL`。
-3. 在 `app-tauri/ui/settings.js` 的 `STT_MODELS` 同步新增（見上節）。
-4. 在 `src/core/stt/stt-adapter.ts` 的 `createSttAdapter` 工廠新增分支；
-   同時確認 `resolveActive(cfg)`（`src/core/stt/resolve-active.ts`）的正規化邏輯涵蓋新 provider。
-5. 在 `src/core/config.ts` 新增 config 欄位（`<provider>ApiKey`、`<provider>Model`，選填 `baseUrl`）。
-6. 在 Rust 側 `app-tauri/src-tauri/src/lib.rs` 新增
-   `set_provider_key` / `clear_provider_key` 的 provider 分支，更新 `get_config` 的
-   `providers` 結構。
-7. 在 `app-tauri/ui/settings.js` 加入 Settings UI（參考 Groq/OpenAI/Gemini 現有結構）。
-8. 新增對應測試（`tests/<provider>-stt.test.ts`），涵蓋 200 解析、金鑰缺失 noKey、錯誤分類。
+1. 在 `packages/voice-core/src/stt/` 新增 `<provider>-stt.ts`，實作 `SttAdapter`（參考既有三家）。只能用 `deps.fetch`，不可用 Node API。
+2. 在 `models.ts` 增加該 provider 的模型清單與 `DEFAULT_MODEL`。
+3. 在 `stt-adapter.ts` 的 `createSttAdapter` 工廠新增分支；確認 `resolve-active.ts` 涵蓋新 provider。
+4. 在 `config.ts` 新增 config 欄位（`<provider>ApiKey`、`<provider>Model`，選填 `baseUrl`）。
+5. 在 Rust `lib.rs` 的 `set_provider_key` / `clear_provider_key` / `derive_active` / `get_config` 新增分支。
+6. 在 `app-tauri/ui/src/settings.js` 加入 Settings UI（參考既有結構）。
+7. 新增對應測試（`packages/voice-core/tests/<provider>-stt.test.ts`），涵蓋 200 解析、金鑰缺失、錯誤分類。
 
 ## 設定檔安全
 
 - **切勿將真實 API 金鑰提交進版控**。`vocium-config.json` 已在 `.gitignore` 中排除。
-- 所有金鑰欄位（`groqApiKey`、`openaiApiKey`、`geminiApiKey`）僅存本機。
-- `get_config` Rust 命令回傳 `keySet:bool` + `mask:string`，**永不**回傳原始金鑰給前端。
+- 金鑰僅存本機。`get_config` 回傳 `keySet` + `mask` 給設定視窗；`read_config_raw` 回傳完整設定（含金鑰）給同一行程內的 voice-core 使用，不會離開本機。
 
 ## 程式碼風格
 
-- TypeScript：遵循現有 `tsconfig.json` 嚴格模式；pure modules（DI，無 global state）。
-- Rust：保持 `cargo clippy` 乾淨（無專案專屬設定，採標準 lint）；新 helper 請仿照 `derive_active` / `mask_key` 風格。
+- TypeScript：遵循 `packages/voice-core/tsconfig.json` 嚴格模式；pure modules（DI，無 global state）。
+- Rust：保持 `cargo clippy` 乾淨；新 helper 請仿照 `derive_active` / `mask_key` 風格。
 
 ## 提交訊息 (Commit Message)
 
@@ -113,5 +84,5 @@ webview 沒有 bundler，**無法** `import` Node 模組，因此 `STT_MODELS` �
 
 ```
 add GeminiSttAdapter with gemini-1.5-flash default
-fix: sync STT_MODELS in settings.js after adding gemini-2.0
+fix(settings): default polish model when switching provider
 ```

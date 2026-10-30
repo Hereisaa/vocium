@@ -1,12 +1,12 @@
 # Vocium Roadmap
 
-**Desktop voice typing for Windows and macOS — MCP-native.**
+**Desktop voice typing for Windows and macOS.**
 
 ---
 
 ## Status
 
-Vocium is fully functional on Windows 11 and macOS. It supports three cloud STT providers (Groq, OpenAI, Gemini), optional AI polish, Traditional/Simplified Chinese conversion, Toggle and Push-to-Talk (PTT) modes, VAD silence trimming, a tray health panel, and a standalone MCP server. Packaged builds require no Node.js on the end user's machine.
+Vocium is fully functional on Windows 11 and macOS. It supports three cloud STT providers (Groq, OpenAI, Gemini), optional AI polish, Traditional/Simplified Chinese conversion, Toggle and Push-to-Talk (PTT) modes, VAD silence trimming, and a tray health panel. Single process: the Rust shell owns the OS layer and the voice core (`@vocium/voice-core`) runs inside the webview, reusable in other projects.
 
 ---
 
@@ -20,9 +20,9 @@ Vocium is fully functional on Windows 11 and macOS. It supports three cloud STT 
 - **VAD silence trimming** — opt-in; strips leading/trailing silence before sending to STT
 - **Tray health panel** — five probes (microphone device, microphone permission, macOS Accessibility, STT API key, global hotkey); failures link directly to OS settings; pre-flight check before recording starts
 - **STT timeout + cancel** — 30-second hard timeout; clicking the icon during transcription cancels immediately
-- **MCP-native** — standalone MCP server (`transcribe_clip`, `inject_text`, `polish_text`); any MCP host (Claude Desktop, Cursor, scripts) can call STT and text injection headlessly
-- **Packaged builds** — `npm run package` produces a self-contained installer (Windows: `.msi`/`.nsis`; macOS: `.app`/`.dmg`); sidecar compiled to a single binary, no Node.js required for end users
+- **Packaged builds** — `npm run package` produces a self-contained installer (Windows: `.msi`/`.nsis`; macOS: `.app`/`.dmg`)
 - **macOS parity** — Accessibility-based injection (`pbcopy` + `osascript Cmd+V`), in-app guidance when permission is missing, graceful degradation
+- **Single-process architecture** (2026-10) — Node sidecar and MCP removed; core extracted to `packages/voice-core` (pure TS, fetch-only); Windows injection is now native Win32; clipboard restored after injection
 
 ---
 
@@ -37,4 +37,3 @@ Vocium is fully functional on Windows 11 and macOS. It supports three cloud STT 
 - **UI language (i18n)** *(planned)* — Chinese / English interface toggle
 - **Code signing** *(deferred)* — Windows SmartScreen + macOS Developer ID / notarization; currently unsigned builds require a manual Gatekeeper workaround on macOS after each new build
 - **Cross-platform CI + public Releases** *(deferred)* — automated builds for both platforms on push/tag, Homebrew Cask / Scoop / winget manifests
-- **BrainMesh integration** *(deferred)* — register the Vocium sidecar as a callable MCP tool inside BrainMesh
