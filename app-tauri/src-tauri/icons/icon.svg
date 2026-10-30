@@ -1,34 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Vocium app icon: master, vector source of truth.
-     Concept "V-Mic": the letter V whose right arm ends in a microphone capsule. One solid black silhouette (no
-     gradient, no outline, no second colour): a plain round-capped stroke for the left arm, and a right arm that
-     swells into an upright capsule (a stadium), like the head of a studio microphone. It reads as the letter V
-     and as a microphone at the same time.
+     Concept "Swash": a solid black disc (the "o" of Vocium) cut once by a hand-lettered V. One solid black mark (no gradient, no outline, no second colour)
+     on a flat white 256 tile. The cut is the whole idea: a V is what an open mouth looks like from the front, the
+     disc is the "o" of Vocium (and the round shape of a bubble), and the wedge that the V frees from the disc is the
+     word leaving it. It reads as the letter V and as a speech form at once, and it is one gesture, not a letter
+     plus an object.
 
-     Construction: 256 canvas, every stroke 40 units wide (2.5 px at 16 px).
-       left arm    centreline A (60,88) -> V (126,192), round cap r = 20 at A.
-       vertex      V = (126,192); both arms meet in a round join of r = 20 (outer bottom y = 212).
-       right arm   centreline V -> H1 (176,112); it leans 32 degrees off the vertical like the left arm (32.4),
-                   so the V opens about 64 degrees.
-       capsule     stadium of radius R = 32 (width 64 = 1.6 x the stroke) and straight length 36 (height 100),
-                   vertical axis x = 176, H1 = (176,112) and H2 = (176,76) are the centres of its two semicircles.
-                   Its flanks sit on x = 144 and x = 208, both multiples of 16, so they land on whole pixel columns
-                   at 16 px (a crisp 4 px wide pill). Top y = 44, lowest point of its lower arc y = 144.
-       fillets     every concave corner has r = 16: the V crotch (the notch bottom) and the two shoulders where
-                   the right arm runs into the capsule. Every convex terminal is larger: r = 20 (left cap, vertex)
-                   and r = 32 (capsule); nothing is sharp.
-       paths       one closed subpath of 15 segments (8 circular arcs, 7 lines), tangent-continuous at every joint.
-                   Exact geometry, not a traced polygon; it equals the union of the three round strokes closed
-                   with a disc of r = 16 (checked against an independent raster, max deviation under 1 unit).
-     Mark box x 40..208, y 44..212 (168 x 168 = 65.6 % of the tile). The bounding-box centre is (124,128) and the ink
-     centroid (134.4,123.5), so their mean (129.2,125.7) is within 2.3 units of the tile centre: optically
-     centred, with the heavy capsule balanced by the long left arm.
-     Legibility at 16 px: arms 2.5 px, capsule 4 x 6.25 px, margins 2.5 to 3 px, and the notch between the left
-     arm and the capsule stays at least 2 px (32 units) wide for 3.5 px of its height.
-     Colour: one ink (#000000) on a flat tile (#ffffff); contrast 21:1, no gradient banding. Full-bleed square
-     (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; the companion tray glyph is tray.svg;
-     rationale, construction diagram and the variants that were rejected: docs/ICON_DESIGN.html. -->
+     Construction (256 canvas; the mark is moved by 0.1, -1.7 for optical centring, so every number below
+     is the pre-shift value; the path data is final):
+       disc      circle r = 104 centred (128,128), so the mark box is 24..232 (208 = 81 % of the tile, 9.4 % margin
+                 on every side before the nudge)
+       gap       ONE V-shaped channel of constant width 28 (1.75 px at 16 px), vertex centreline at (124,176).
+                 Left arm leaves the vertex 26 deg off the vertical and relaxes to 40 deg; right arm leaves at 34 deg and relaxes to 56 deg,
+                 so the V's axis leans 4 deg (at the vertex) to 8 deg (at the rim) to the right, like a hand-lettered V.
+                 Each arm is one cubic Bezier whose handles are 0.42 of the arm length, so the flanks flare very slightly
+                 (radius of curvature about 400 to 800); the vertex is a sharp V softened by a radius of 7.
+       pieces    the channel splits the disc into two shapes: the fin (the wedge above the V, with the disc's arc as
+                 its top) and the bowl (everything below and beside it). Both are one closed contour each.
+       corners   every convex corner (horn tips, fin shoulders, fin tip) is rounded to r = 6, the concave vertex to
+                 r = 7, and the transitions are blended with a Gaussian of sigma 1.5 so the curvature changes
+                 continuously instead of jumping at the tangent points (no elbow bumps).
+       curves    the two contours are fitted to 12 and 14 cubic Beziers (G1 at every node, maximum
+                 deviation from the constructed outline 0.05 units); the long edges are true arcs or near-straight cubics.
+       centring  mean of the bounding-box centre and the ink centroid is the tile centre (the bowl is the heavy part).
+     Legibility at 16 px: gap 1.75 px, chin below the V 2.2 px, fin 7.3 px tall, ink 39.8 % of the tile,
+     margin to the tile edge at least 8.7 %; no black feature is thinner than 2 px except the last 2 px of the two
+     horn tips (acute corners, not strokes). Colour: one ink (#000000) on #ffffff, contrast 21:1.
+     Full-bleed square (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; companion tray glyph: tray.svg;
+     rationale, construction diagram, the other finalists and why the five earlier marks were retired:
+     docs/ICON_DESIGN.html. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <rect width="256" height="256" fill="#ffffff"/>
-  <path fill="#000000" d="M43.11 98.72A20 20 0 0 1 76.89 77.28L112.26 133.02A16 16 0 0 0 139.34 132.93L142.21 128.32A16 16 0 0 0 144.43 117.23A32 32 0 0 1 144 112L144 76A32 32 0 0 1 208 76L208 112A32 32 0 0 1 185.13 142.67A16 16 0 0 0 176.13 149.52L142.96 202.6A20 20 0 0 1 109.11 202.72L43.11 98.72Z"/>
+  <path fill="#000000" d="M158.55 26.91C172.01 31.03 184.6 37.91 195.33 47.01C197.55 48.9 200.03 51.01 199.81 54.21C199.64 56.72 197.83 58.46 196.16 60.14C183.55 72.76 171.71 86.11 160.55 100.03C151.21 111.67 142.34 123.67 133.68 135.82C131.59 138.74 129.31 141.8 125.19 140.52C122.77 139.77 121.55 137.62 120.46 135.5C113.04 121.04 105.58 106.6 97.65 92.41C89.47 77.79 80.8 63.46 71.67 49.4C70.47 47.55 69.2 45.61 69.41 43.3C69.68 40.38 72.03 38.72 74.34 37.32C99.47 22.06 130.47 18.31 158.55 26.91ZM69.27 99.12C85.95 128.28 100.7 158.46 115.48 188.61C116.98 191.66 118.52 194.61 122.26 195.08C126.84 195.66 128.97 192.15 131.18 188.87C155.28 153.12 179.84 117.36 209.81 86.2C211.79 84.14 214.01 81.26 217.03 80.91C220.39 80.51 222.44 82.71 223.72 85.52C226.05 90.66 227.76 96.15 229.1 101.61C240.75 149.25 217.37 198.79 173.17 220.05C115.03 248.01 45.56 216.71 28.02 154.62C21.6 131.88 23.18 107.24 32.45 85.51C34.6 80.47 37.13 75.54 40.1 70.93C41.76 68.36 43.9 66.23 47.22 66.84C49.9 67.34 51.38 69.58 52.75 71.72C58.5 80.7 63.97 89.86 69.27 99.12Z"/>
 </svg>
