@@ -195,7 +195,7 @@ const { text } = await stt.transcribe({ audio: bytes, mimeType: 'audio/webm' });
 | 文件 | 內容 |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **架構 SSOT**：行程邊界、原始碼地圖、狀態機、IPC 契約、決策紀錄 |
-| [docs/archify/](docs/archify/) | 互動式架構圖（Archify，由 JSON 渲染） |
+| [docs/archify/vocium-architecture.html](docs/archify/vocium-architecture.html)、[voice-input-workflow.html](docs/archify/voice-input-workflow.html) | 互動式架構圖與流程圖（Archify，從同目錄的 JSON 渲染，含原始碼溯源） |
 | [docs/CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md) | `vocium-config.json`、各家 BYOK 金鑰設定、AI 潤稿 |
 | [docs/ROADMAP.zh-TW.md](docs/ROADMAP.zh-TW.md) | 已完成／規劃中／延後的項目 |
 | [docs/CONTRIBUTING.zh-TW.md](docs/CONTRIBUTING.zh-TW.md) | 開發流程、build gates、新增 provider |

@@ -195,7 +195,7 @@ The package depends only on `fetch` — no Node or DOM APIs. It currently lives 
 | Doc | What |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **Architecture SSOT** (zh-TW): process boundaries, source map, state machine, IPC contract, decision log |
-| [docs/archify/](docs/archify/) | Interactive architecture diagrams (Archify, rendered from JSON) |
+| [docs/archify/vocium-architecture.html](docs/archify/vocium-architecture.html), [voice-input-workflow.html](docs/archify/voice-input-workflow.html) | Interactive architecture + workflow diagrams (Archify, rendered from the JSON next to them, with source citations) |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `vocium-config.json`, BYOK key setup, AI polish |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What's shipped, planned, and deferred |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, build gates, adding providers |

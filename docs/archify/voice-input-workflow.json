@@ -1,0 +1,338 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Vocium 一次語音輸入的流程",
+    "locale": "zh-TW",
+    "output": "docs/archify/voice-input-workflow.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Hereisaa/vocium.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "55c3c24714c1ce991f11321a56518165d22f0a6f"
+    }
+  },
+  "lanes": [
+    {
+      "id": "user",
+      "label": "使用者 / OS"
+    },
+    {
+      "id": "shell",
+      "label": "Rust 殼層"
+    },
+    {
+      "id": "webview",
+      "label": "icon webview"
+    },
+    {
+      "id": "core",
+      "label": "voice-core",
+      "variant": "normal"
+    },
+    {
+      "id": "cloud",
+      "label": "雲端供應商"
+    }
+  ],
+  "phases": [
+    {
+      "id": "capture",
+      "label": "錄音",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "transcribe",
+      "label": "轉錄與整理",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "deliver",
+      "label": "落地",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "press",
+    "hotkey",
+    "preflight",
+    "listen",
+    "record",
+    "submit",
+    "stt",
+    "polish",
+    "inject",
+    "paste"
+  ],
+  "nodes": [
+    {
+      "id": "press",
+      "lane": "user",
+      "col": 0,
+      "type": "external",
+      "label": "按快捷鍵",
+      "sublabel": "切換 / 按住說"
+    },
+    {
+      "id": "hotkey",
+      "lane": "shell",
+      "col": 0,
+      "type": "backend",
+      "label": "發 hotkey 事件",
+      "sublabel": "toggle / start / stop",
+      "sources": [
+        {
+          "path": "app-tauri/src-tauri/src/lib.rs",
+          "line": 211,
+          "end_line": 242
+        }
+      ]
+    },
+    {
+      "id": "preflight",
+      "lane": "webview",
+      "col": 0,
+      "type": "security",
+      "label": "Pre-flight",
+      "sublabel": "有麥克風？權限？",
+      "sources": [
+        {
+          "path": "app-tauri/ui/src/app.js",
+          "line": 466,
+          "end_line": 488
+        }
+      ]
+    },
+    {
+      "id": "listen",
+      "lane": "webview",
+      "col": 1,
+      "type": "frontend",
+      "label": "listening",
+      "sublabel": "getUserMedia",
+      "sources": [
+        {
+          "path": "app-tauri/ui/src/app.js",
+          "line": 322,
+          "end_line": 383
+        }
+      ]
+    },
+    {
+      "id": "record",
+      "lane": "webview",
+      "col": 2,
+      "type": "frontend",
+      "label": "錄音結束",
+      "sublabel": "VAD 裁剪（選用）",
+      "sources": [
+        {
+          "path": "app-tauri/ui/src/app.js",
+          "line": 384,
+          "end_line": 438
+        }
+      ]
+    },
+    {
+      "id": "submit",
+      "lane": "core",
+      "col": 3,
+      "type": "backend",
+      "label": "submitAudio",
+      "sublabel": "本次專用 pipeline",
+      "sources": [
+        {
+          "path": "packages/voice-core/src/pipeline.ts",
+          "line": 82,
+          "end_line": 118
+        }
+      ]
+    },
+    {
+      "id": "stt",
+      "lane": "cloud",
+      "col": 4,
+      "type": "cloud",
+      "label": "STT 轉錄",
+      "sublabel": "30 秒逾時",
+      "sources": [
+        {
+          "path": "packages/voice-core/src/stt/with-timeout.ts",
+          "line": 1,
+          "end_line": 28
+        }
+      ]
+    },
+    {
+      "id": "polish",
+      "lane": "cloud",
+      "col": 5,
+      "type": "cloud",
+      "label": "LLM 潤稿",
+      "sublabel": "選用；失敗退回原文",
+      "sources": [
+        {
+          "path": "packages/voice-core/src/polish/polish.ts",
+          "line": 53,
+          "end_line": 117
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "lane": "webview",
+      "col": 3,
+      "type": "messagebus",
+      "label": "空結果 / 已取消",
+      "sublabel": "不貼，回 idle",
+      "sources": [
+        {
+          "path": "packages/voice-core/src/pipeline.ts",
+          "line": 82,
+          "end_line": 118
+        }
+      ]
+    },
+    {
+      "id": "notice",
+      "lane": "webview",
+      "col": 4,
+      "type": "security",
+      "label": "提示在 ICON",
+      "sublabel": "無金鑰 / STT 失敗",
+      "sources": [
+        {
+          "path": "app-tauri/ui/src/app.js",
+          "line": 384,
+          "end_line": 438
+        }
+      ]
+    },
+    {
+      "id": "inject",
+      "lane": "shell",
+      "col": 5,
+      "type": "backend",
+      "label": "inject_text",
+      "sublabel": "剪貼簿 → 貼上鍵 → 還原",
+      "sources": [
+        {
+          "path": "app-tauri/src-tauri/src/inject.rs",
+          "line": 189,
+          "end_line": 215
+        }
+      ]
+    },
+    {
+      "id": "paste",
+      "lane": "user",
+      "col": 5,
+      "type": "external",
+      "label": "文字落在焦點視窗",
+      "sublabel": "回到 idle"
+    }
+  ],
+  "edges": [
+    {
+      "id": "press-hotkey",
+      "from": "press",
+      "to": "hotkey",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hotkey-preflight",
+      "from": "hotkey",
+      "to": "preflight",
+      "label": "事件",
+      "variant": "emphasis"
+    },
+    {
+      "id": "preflight-listen",
+      "from": "preflight",
+      "to": "listen",
+      "label": "通過",
+      "variant": "emphasis"
+    },
+    {
+      "id": "listen-record",
+      "from": "listen",
+      "to": "record",
+      "label": "再按一次 / 放開",
+      "variant": "emphasis"
+    },
+    {
+      "id": "record-submit",
+      "from": "record",
+      "to": "submit",
+      "label": "Uint8Array",
+      "variant": "emphasis"
+    },
+    {
+      "id": "submit-stt",
+      "from": "submit",
+      "to": "stt",
+      "label": "fetch（plugin-http）",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stt-polish",
+      "from": "stt",
+      "to": "polish",
+      "label": "文字",
+      "variant": "dashed"
+    },
+    {
+      "id": "polish-inject",
+      "from": "polish",
+      "to": "inject",
+      "label": "繁簡轉換後",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stt-notice",
+      "from": "stt",
+      "to": "notice",
+      "label": "失敗",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "submit-empty",
+      "from": "submit",
+      "to": "empty",
+      "label": "空白 / 取消",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "inject-paste",
+      "from": "inject",
+      "to": "paste",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "狀態機",
+      "items": [
+        "idle → listening → transcribing → injecting → idle",
+        "error 在 1.5 秒後自動回 idle"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "不貼上的情況",
+      "items": [
+        "未設金鑰、STT 失敗：提示只顯示在 ICON",
+        "空白結果或轉錄中取消：靜靜回到待命"
+      ]
+    }
+  ]
+}
