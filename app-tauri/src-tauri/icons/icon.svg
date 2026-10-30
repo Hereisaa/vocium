@@ -1,29 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Vocium app icon: master, vector source of truth.
-     Concept "Cut-V Bubble": a V cut through a speech bubble. One solid black silhouette (no gradient, no
-     outline, no second colour); the V is the slit that splits the bubble into a body and a droplet, the
-     two soft pieces of a single mark. It reads as a speech bubble and as the letter V at the same time.
+     Concept "V-Mic": the letter V whose right arm ends in a microphone capsule. One solid black silhouette (no
+     gradient, no outline, no second colour): a plain round-capped stroke for the left arm, and a right arm that
+     swells into an upright capsule (a stadium), like the head of a studio microphone. It reads as the letter V
+     and as a microphone at the same time.
 
-     Construction: 256 canvas, module u = 16 (1 u = 1 px at 16 px).
-       bubble   circle r = 6u (96) centred on the canvas (128,128); its box is 12u x 12u (32..224), a 2u margin
-                on every side, so the straight bottom and left edges fall on whole pixels at 16 px. The
-                lower-left quadrant is squared off into the speech-tail corner at (32,224).
-       slit     the V: two parallel-sided arms 2.5u (40) wide, each 30 degrees off the vertical (a 60-degree
-                V, so the wedge between the arms is an equilateral triangle), meeting in a round vertex
-                centred at (128,160) = 10u. The arms run out through the rim, so the bubble falls into two
-                pieces: the body and the wedge (the droplet between the arms). The wedge's sharp crotch
-                would sit at (128,120) = 7.5u.
-       corners  one radius for every corner: r = 20 = 1.25u = half the slit width. It rounds the slit
-                vertex, the two rim terminals of the body, the wedge tip and its two rim corners, and the
-                tail corner, so every terminal is a 40-unit (2.5 px) round cap.
-       paths    two closed subpaths in one path: the body (clockwise) and the wedge (counter-clockwise);
-                they never overlap, so the fill rule is irrelevant.
-     Legibility at 16 px: slit 2.5 px, every round cap 2.5 px, the black chin under the V 2.75 px, margin to
-     the tile edge 2 px. No stroke is thinner than the 2 px (2/16) rule.
-     Colour: one ink (#000000) on a flat tile (#ffffff); contrast 21:1 on white, no gradient banding.
-     Full-bleed square (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; the companion tray
-     glyph is tray.svg; rationale and construction diagram: docs/ICON_DESIGN.html. -->
+     Construction: 256 canvas, every stroke 40 units wide (2.5 px at 16 px).
+       left arm    centreline A (60,88) -> V (126,192), round cap r = 20 at A.
+       vertex      V = (126,192); both arms meet in a round join of r = 20 (outer bottom y = 212).
+       right arm   centreline V -> H1 (176,112); it leans 32 degrees off the vertical like the left arm (32.4),
+                   so the V opens about 64 degrees.
+       capsule     stadium of radius R = 32 (width 64 = 1.6 x the stroke) and straight length 36 (height 100),
+                   vertical axis x = 176, H1 = (176,112) and H2 = (176,76) are the centres of its two semicircles.
+                   Its flanks sit on x = 144 and x = 208, both multiples of 16, so they land on whole pixel columns
+                   at 16 px (a crisp 4 px wide pill). Top y = 44, lowest point of its lower arc y = 144.
+       fillets     every concave corner has r = 16: the V crotch (the notch bottom) and the two shoulders where
+                   the right arm runs into the capsule. Every convex terminal is larger: r = 20 (left cap, vertex)
+                   and r = 32 (capsule); nothing is sharp.
+       paths       one closed subpath of 15 segments (8 circular arcs, 7 lines), tangent-continuous at every joint.
+                   Exact geometry, not a traced polygon; it equals the union of the three round strokes closed
+                   with a disc of r = 16 (checked against an independent raster, max deviation under 1 unit).
+     Mark box x 40..208, y 44..212 (168 x 168 = 65.6 % of the tile). The bounding-box centre is (124,128) and the ink
+     centroid (134.4,123.5), so their mean (129.2,125.7) is within 2.3 units of the tile centre: optically
+     centred, with the heavy capsule balanced by the long left arm.
+     Legibility at 16 px: arms 2.5 px, capsule 4 x 6.25 px, margins 2.5 to 3 px, and the notch between the left
+     arm and the capsule stays at least 2 px (32 units) wide for 3.5 px of its height.
+     Colour: one ink (#000000) on a flat tile (#ffffff); contrast 21:1, no gradient banding. Full-bleed square
+     (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; the companion tray glyph is tray.svg;
+     rationale, construction diagram and the variants that were rejected: docs/ICON_DESIGN.html. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <rect width="256" height="256" fill="#ffffff"/>
-  <path fill="#000000" d="M221.71 107.16A96 96 0 0 1 128 224L52 224A20 20 0 0 1 32 204L32 128A96 96 0 0 1 34.29 107.16A20 20 0 0 1 71.13 101.5L110.68 170A20 20 0 0 0 145.32 170L184.87 101.5A20 20 0 0 1 221.71 107.16ZM145.32 90L160.59 63.55A20 20 0 0 0 147.29 33.96A96 96 0 0 0 108.71 33.96A20 20 0 0 0 95.41 63.55L110.68 90A20 20 0 0 0 145.32 90Z"/>
+  <path fill="#000000" d="M43.11 98.72A20 20 0 0 1 76.89 77.28L112.26 133.02A16 16 0 0 0 139.34 132.93L142.21 128.32A16 16 0 0 0 144.43 117.23A32 32 0 0 1 144 112L144 76A32 32 0 0 1 208 76L208 112A32 32 0 0 1 185.13 142.67A16 16 0 0 0 176.13 149.52L142.96 202.6A20 20 0 0 1 109.11 202.72L43.11 98.72Z"/>
 </svg>

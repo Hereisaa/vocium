@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Vocium tray / menu-bar glyph (vector source of truth for tray-dark-* and tray-light-*.png).
-     The app icon's "Cut-V Bubble" without the tile: the identical mark, scaled uniformly by 28/192 and moved
-     so that its 192-unit box lands on 2..30 of a 32 canvas (1 unit = 1/2 px at 16 px, so the box edges
-     fall on whole pixels at 16 px; 14 px of the 16 are inked).
-       slit 5.83 (2.9 px at 16 px), round caps r = 2.92 (2.9 px), chin 6.42 (3.2 px): all above the 2 px rule.
-     This file is the black variant (#000000; the fill is the only colour in it). scripts/gen-icons.mjs renders
-     it as tray-dark-{16,22,32,44}.png (black mark, for light taskbars / menu bars) and, with that fill swapped
-     to #ffffff, as tray-light-{16,22,32,44}.png (white mark, for dark taskbars). macOS loads the black one as a
-     template image (alpha only, the system tints it). The body and the wedge are separate subpaths of one
-     path, so the V stays transparent and shows whatever is under the tray.
+     The app icon's "V-Mic" without the tile: the identical mark, scaled uniformly by 10/64 and moved so that
+     its capsule's right edge lands on x = 28 and its box (26.25 x 26.25) on x 1.75..28, y 3..29.25 of a 32
+     canvas. 1 unit is 1 px at 32 px and 1/2 px at 16 px; the capsule is 10 units wide with its edges on the
+     even units x = 18 and x = 28, so it is a crisp pill on whole pixel columns at both 16 px (5 px wide)
+     and 32 px (10 px wide). The box sits slightly left of centre because the heavy capsule pulls the ink
+     centroid to the right: the mean of box centre and centroid is within 0.3 units of the canvas centre.
+       stroke 6.25 (3.1 px at 16 px), convex terminals r = 3.1 (cap, vertex) and r = 5 (capsule), concave
+       fillets r = 2.5: all above the 2 px rule at 16 px. The notch between the left arm and the capsule is
+       at least 5 units (2.5 px at 16 px) wide over the upper 8.75 units of its depth.
+     This file is the black variant (#000000; the fill is the only colour in it). scripts/gen-icons.mjs renders it
+     as tray-dark-{16,22,32,44}.png (black mark, for light taskbars / menu bars) and, with that fill swapped to
+     #ffffff, as tray-light-{16,22,32,44}.png (white mark, for dark taskbars). macOS loads the black one as a
+     template image (alpha only, the system tints it). A single closed subpath, so everything outside the
+     silhouette, including the V notch, stays transparent and shows whatever is under the tray.
      No filters, masks, text or <use>. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <path fill="#000000" d="M29.67 12.96A14 14 0 0 1 16 30L4.92 30A2.92 2.92 0 0 1 2 27.08L2 16A14 14 0 0 1 2.33 12.96A2.92 2.92 0 0 1 7.71 12.14L13.47 22.13A2.92 2.92 0 0 0 18.53 22.13L24.29 12.14A2.92 2.92 0 0 1 29.67 12.96ZM18.53 10.46L20.75 6.6A2.92 2.92 0 0 0 18.81 2.29A14 14 0 0 0 13.19 2.29A2.92 2.92 0 0 0 11.25 6.6L13.47 10.46A2.92 2.92 0 0 0 18.53 10.46Z"/>
+  <path fill="#000000" d="M2.24 11.55A3.13 3.13 0 0 1 7.51 8.2L13.04 16.91A2.5 2.5 0 0 0 17.27 16.89L17.72 16.18A2.5 2.5 0 0 0 18.07 14.44A5 5 0 0 1 18 13.63L18 8A5 5 0 0 1 28 8L28 13.63A5 5 0 0 1 24.43 18.42A2.5 2.5 0 0 0 23.02 19.49L17.84 27.78A3.13 3.13 0 0 1 12.55 27.8L2.24 11.55Z"/>
 </svg>
