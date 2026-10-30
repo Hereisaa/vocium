@@ -66,6 +66,7 @@ app-tauri/
   src-tauri/capabilities/       webview 權限（含 http 允許 https://**）
 scripts/build-ui.mjs            esbuild 打包
 scripts/copy-vad-assets.mjs     複製 VAD 資產
+scripts/gen-showcase.mjs        由 docs/assets/showcase.svg（動畫 SVG，README 直接嵌入）產生 GIF 備援
 ```
 
 ## 4. 執行期流程

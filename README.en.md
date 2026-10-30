@@ -4,189 +4,156 @@
 
 <h1 align="center">Vocium</h1>
 
-<p align="center">
-  <b>AI‑powered voice typing for the desktop.</b>
-</p>
+<p align="center"><b>Press a key, speak, and the words land where you were typing.</b></p>
 
 <p align="center">
   <a href="README.md">繁體中文</a> · <b>English</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555" alt="Platform: Windows and macOS" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555" alt="Windows · macOS" />
+  <img src="https://img.shields.io/badge/keys-BYOK%20%C2%B7%20local%20only-6ad0c8" alt="BYOK" />
+  <img src="https://img.shields.io/badge/process-single-8a6cff" alt="single process" />
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.gif" width="940" alt="Vocium — AI voice input demo (hotkey → speak → text inserted)" />
+  <img src="docs/assets/showcase.svg" width="940" alt="Vocium demo: hotkey → speak → AI transcription → text lands in the original field" />
 </p>
 
 ---
 
-Press a hotkey, speak, and AI transcribes your voice and pastes it straight into the focused field — no focus stolen, no server, no bundled credentials. Supports Windows and macOS.
+## What it is
 
-## Architecture
+Vocium is AI voice typing for the desktop.
 
-One process. The Tauri 2 (Rust) shell does only OS work: window, tray, global shortcut, config file, native text injection. All voice logic — state machine, recording, STT, AI polish, Chinese script conversion — is **`@vocium/voice-core`**, a pure‑TypeScript package that runs inside the floating icon's webview. Network requests go out through Tauri's http plugin (issued by Rust).
+- Put the cursor in **any** app's text field.
+- Press the hotkey. Speak.
+- The text is pasted in. No focus stolen, no extra window.
 
-```
-Vocium.exe (the only process)
-  ├ Rust shell    window · tray · hotkey · config · clipboard + paste keystroke
-  └ webview       UI + voice-core (state machine · STT · polish · zh conversion)
-```
+Recognition runs on a cloud service with **your own** key (Groq, OpenAI, Gemini). No server, no account, keys never leave your machine.
 
-`packages/voice-core/` has no platform dependency (it only needs a `fetch`), so it can be reused in a browser, Node or Bun.
+---
 
 ## Features
 
-- **Floating icon** — lock/unlock drag, minimize to tray, never steals focus
-- **Toggle or push‑to‑talk** — with a custom global hotkey
-- **Multi‑provider STT** — Groq, OpenAI Whisper, Gemini; bring‑your‑own‑key, stored only on your device
-- **AI polish** — optional LLM cleanup pass before injection (punctuation, fillers, fluency)
-- **Chinese output** — force Traditional or Simplified; opt‑in VAD silence trimming
-- **Clipboard restore** — your previous clipboard text is put back after injection
+| | |
+|---|---|
+| 🎙️ **Two ways to talk** | Toggle: press to start, press to stop. Push-to-talk: hold to record, release to send. Hotkey is yours to choose. |
+| 🔑 **Bring your own key** | Groq, OpenAI Whisper or Gemini. The OpenAI-compatible base URL works with self-hosted services. |
+| ✨ **AI polish (optional)** | Let an LLM add punctuation, drop fillers and smooth the sentence before pasting. Three styles, custom prompt. |
+| 🀄 **Chinese script control** | Force Traditional (Taiwan) or Simplified output, whatever the model returned. Offline. |
+| 📋 **Clipboard-friendly** | Your previous clipboard text is put back after the paste. |
+| 🩺 **Tray health panel** | Microphone, permissions, key and hotkey status at a glance; a failing row opens the right settings page. |
+| 🧩 **Single process** | One executable, no background service. The core is a pure-TypeScript package you can reuse elsewhere. |
 
 ---
 
-### Prerequisites
+## Three steps
 
-| Tool | Why | Notes |
-|---|---|---|
-| **Node.js ≥ 20** | builds voice-core + the webview bundles | includes `npm` |
-| **Rust toolchain** | builds the Tauri shell | — |
+### 1. Install
 
-Platform extras:
-**Windows** — WebView2 Runtime (pre‑installed on Win 10 2020+/11) + MSVC Build Tools (*"Desktop development with C++"* workload).
-**macOS** — Xcode Command Line Tools (`xcode-select --install`).
+No published installers yet — build from source. You need **Node.js ≥ 20** and the **Rust toolchain**.
 
----
+<details>
+<summary>🪟 Windows toolchain (PowerShell)</summary>
 
-## Setup
-
-No published binaries yet — build from source.
-
-### Install the toolchain
-
-**🪟 Windows (PowerShell):**
 ```powershell
-winget install --id OpenJS.NodeJS.LTS          # Node.js (LTS, ≥ 20)
-winget install --id Rustlang.Rustup            # Rust
-winget install --id Microsoft.VisualStudio.2022.BuildTools  # select "Desktop development with C++"
+winget install --id OpenJS.NodeJS.LTS
+winget install --id Rustlang.Rustup
+winget install --id Microsoft.VisualStudio.2022.BuildTools   # select "Desktop development with C++"
 ```
 
-**🍎 macOS (Terminal):**
-```bash
-xcode-select --install                                          # Xcode CLT (system dialog)
-brew install node                                               # Node.js (≥ 20), or use nvm
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Rust
-```
+WebView2 Runtime ships with Windows 10 2020+ / 11. Open a new shell afterwards so `PATH` is updated.
+</details>
 
-After installing Rust, open a new shell so the updated `PATH` is picked up.
-
-### Verify your toolchain
+<details>
+<summary>🍎 macOS toolchain (Terminal)</summary>
 
 ```bash
-node -v   # ≥ 20 (LTS recommended)
-npm -v    # should print cleanly — no version-compatibility error
-cargo -V
+xcode-select --install
+brew install node
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
-
-### Run from source
+</details>
 
 ```bash
 git clone https://github.com/Hereisaa/vocium.git
 cd vocium
 npm install
-npm run dev   # builds voice-core + the webview bundles, then launches via `tauri dev`
+npm run dev
 ```
 
-### Package the app
+To build installers: `npm run package` → `app-tauri/src-tauri/target/release/bundle/`.
 
-```bash
-npm run package # builds a standalone installer
-# output in `app-tauri/src-tauri/target/release/bundle/`
-```
+### 2. Add a key
 
-**🪟 Windows**
+System tray → **Vocium → Settings… → Speech-to-text**. Pick a provider, paste the key, save.
 
-| Format | Path | Notes |
+| Provider | Get a key | Notes |
 |---|---|---|
-| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | Group‑Policy / silent‑install |
-| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | smaller; common for OSS |
+| **Groq** (recommended) | [console.groq.com](https://console.groq.com) | Free tier; fast and accurate for Chinese |
+| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | Custom base URL for compatible services |
+| **Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | — |
 
-First launch (unsigned): SmartScreen → **More info → Run anyway**.
+### 3. Speak
 
-**🍎 macOS**
-
-| Format | Path | Notes |
-|---|---|---|
-| `.app` | `bundle/macos/Vocium.app` | runnable application bundle |
-| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | disk image for distribution |
-
-First launch (unsigned): Gatekeeper → **right‑click → Open → Open anyway** (once).
-> Unsigned builds require re‑granting Accessibility on every rebuild — see [Permissions](#permissions).
+1. Click into any text field.
+2. Press **Ctrl+Shift+Space** (default).
+3. Speak, then press again.
+4. The text appears.
 
 ---
 
 ## Permissions
 
-Vocium needs OS‑level permissions on first run. The list and recovery flow differ by platform.
-
-**🪟 Windows**
-
-| Permission | Why | How |
+| Platform | Needs | How |
 |---|---|---|
-| **Microphone** | Recording your voice | A standard Windows prompt appears the first time Vocium records — click *Allow* |
+| Windows | Microphone | The OS asks on first recording; click Allow. |
+| macOS | Microphone | The OS asks on first recording. |
+| macOS | Accessibility | **System Settings → Privacy & Security → Accessibility**, add Vocium and enable it. Without it the text is still copied to the clipboard — press Cmd+V yourself. |
 
-No paste permission is required — Vocium uses the Win32 clipboard API and `SendInput` for Ctrl+V, neither of which needs elevated rights.
-
-**🍎 macOS**
-
-| Permission | Why | How |
-|---|---|---|
-| **Microphone** | Recording your voice | A standard macOS prompt appears the first time Vocium records; grant it to the app (or to the terminal running `npm run dev`) |
-| **Accessibility** | Sending the paste keystroke (Cmd+V) into the focused app | **System Settings ▸ Privacy & Security ▸ Accessibility** — add Vocium and enable the toggle |
-
-If Accessibility is not granted, the transcribed text is still copied to the clipboard and the floating icon shows guidance text — you can paste manually with Cmd+V.
-
-> **If auto-paste stops working after `npm run package` — how to fix it:**
-> Every `npm run package` produces a new ad-hoc signature, and macOS treats each rebuild as a different app — the old Accessibility checkbox still shows green but points at a stale binary. If transcription works but paste doesn't fire after a rebuild:
-> **System Settings ▸ Privacy & Security ▸ Accessibility → remove the old Vocium row → add the new `Vocium.app` and enable it**.
-> The dev loop (`npm run dev`) reuses the granted entry, so this only affects packaged builds.
+> **Paste stopped working after repackaging on macOS?** Every `npm run package` is a new signature, which macOS treats as a different app. Remove the old Vocium row from the Accessibility list and add the new one.
 
 ---
 
-## Tray health panel
+## Settings
 
-The tray menu shows live status for microphone device, microphone permission, STT key, global shortcut, and (on macOS) Accessibility. Failing items are marked ⚠ and clickable — they jump straight to the relevant OS settings page or the in‑app Settings window. If a blocking check fails (no microphone, or permission denied), pressing the hotkey won't enter listening; the UI surfaces the reason instead.
+Everything lives in the tray's **Settings…** window, three tabs:
 
----
+- **General**: UI language, hotkey, microphone, input mode, silence trimming, Chinese script.
+- **Speech-to-text**: provider, key, model.
+- **AI polish**: on/off, provider, model, style.
 
-## Usage
-
-1. Focus any text field. (If nothing is focused, the result is copied to the clipboard.)
-2. Press the hotkey or click Vocium → Vocium shows **listening**.
-3. **Speak.**
-4. Press again → transcribed and inserted.
-
-**Toggle** — press to start, press again to stop and transcribe.
-**Push‑to‑talk** — hold to record, release to transcribe.
-
-First run needs an STT API key — see [CONFIGURATION.md](docs/CONFIGURATION.md).
+File location and every field: [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ---
 
-## Reusing voice-core in your own project
+## How it works
+
+```
+hotkey → record → cloud STT → AI polish (optional) → zh conversion → paste into the focused window
+```
+
+- The **Rust shell** does only OS work: window, tray, hotkey, config file, paste.
+- **voice-core** is a pure-TypeScript package: state machine, recognition, polish, script conversion. It runs inside the app's webview.
+- Only real transcripts are pasted. Silence, a failed request or a missing key only show a notice on the floating icon — your document stays clean.
+
+Architecture, IPC contract and decision log: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (the single source of truth, zh-TW). Interactive diagrams: [docs/archify/](docs/archify/).
+
+---
+
+## Reuse the core in your own project
 
 ```ts
-import { createSttAdapter, normalizeConfig, polishText } from '@vocium/voice-core';
+import { createSttAdapter, normalizeConfig } from '@vocium/voice-core';
 
 const cfg = normalizeConfig({ sttProvider: 'groq', groqApiKey: process.env.GROQ_KEY });
 const stt = createSttAdapter(cfg, { fetch });
 const { text } = await stt.transcribe({ audio: bytes, mimeType: 'audio/webm' });
 ```
 
-The package depends only on `fetch` — no Node or DOM APIs. It currently lives as an npm workspace in `packages/voice-core/`.
+The package depends only on `fetch` — browser, Node and Bun all work. It lives in `packages/voice-core/`.
 
 ---
 
@@ -194,12 +161,12 @@ The package depends only on `fetch` — no Node or DOM APIs. It currently lives 
 
 | Doc | What |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **Architecture SSOT** (zh-TW): process boundaries, source map, state machine, IPC contract, decision log |
-| [docs/archify/vocium-architecture.html](docs/archify/vocium-architecture.html), [voice-input-workflow.html](docs/archify/voice-input-workflow.html) | Interactive architecture + workflow diagrams (Archify, rendered from the JSON next to them, with source citations) |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | `vocium-config.json`, BYOK key setup, AI polish |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What's shipped, planned, and deferred |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, build gates, adding providers |
-| [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html), [ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) | Design mockups (live preview) |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture SSOT: boundaries, state machine, IPC, decisions (zh-TW) |
+| [CONFIGURATION.md](docs/CONFIGURATION.md) | Config fields, provider keys, polish |
+| [ROADMAP.md](docs/ROADMAP.md) | Shipped, planned, deferred |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev workflow, test gates, adding providers |
+| [archify/](docs/archify/) | Interactive architecture + workflow diagrams |
+| [ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) · [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html) | Icon and UI design |
 
 ---
 

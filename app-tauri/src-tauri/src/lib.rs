@@ -1030,13 +1030,17 @@ fn build_tray(
     let cfg_dir = cfg.config_dir.clone();
     let _tray = TrayIconBuilder::with_id("vocium-tray")
         .tooltip(&tr(lang, "Vocium — 待命", "Vocium — idle"))
-        // Embed the generated B+ icon at COMPILE TIME so the tray is always the
-        // current art, independent of bundle-icon embedding/dev caching (the
-        // old default_window_icon() path showed a stale icon under tauri dev).
+        // Embed the dedicated tray glyph (icons/tray.svg → tray-32.png) at COMPILE
+        // TIME so the tray is always the current art, independent of bundle-icon
+        // embedding/dev caching (the old default_window_icon() path showed a
+        // stale icon under tauri dev).
         .icon(
-            tauri::image::Image::from_bytes(include_bytes!("../icons/128x128.png"))
+            tauri::image::Image::from_bytes(include_bytes!("../icons/tray-32.png"))
                 .unwrap_or_else(|_| app.default_window_icon().cloned().unwrap()),
         )
+        // macOS: treat the glyph as a template image (alpha mask only) so the
+        // system tints it for light/dark menu bars. No-op on other platforms.
+        .icon_as_template(cfg!(target_os = "macos"))
         .menu(&menu)
         .on_menu_event(move |app, event| {
             #[cfg(target_os = "macos")]

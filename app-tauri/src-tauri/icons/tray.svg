@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vocium tray / menu-bar glyph (vector source of truth for tray-16/22/32/44.png).
+     Single colour, no tile: the silhouette alone carries the identity (mic +
+     AI sparkle). Designed on a 32 grid so 16 px is an exact 2x reduction:
+     every edge sits on an even coordinate, and the cradle is a squared "U"
+     (flats + small corner radius), so 16 px stays crisp. Every stroke is
+     4 units (2 px at 16 px) and every gap is 2 units (1 px) — no hairlines.
+       - Windows: shown as-is. #7c5cff is the one static colour with balanced
+         contrast on both shells (3.8:1 on #1f1f1f, 3.9:1 on #f3f3f3).
+       - macOS: loaded with icon_as_template(true) — only the alpha channel is
+         used and the system tints it for light/dark menu bars, so the colour
+         here is irrelevant there.
+     Shapes: capsule, cradle+stem+base, sparkle. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="#7c5cff">
+  <!-- Mic capsule (12 x 16). -->
+  <rect x="10" y="2" width="12" height="16" rx="6"/>
+  <!-- Squared-U cradle, then stem + 2 px base (one connected piece). -->
+  <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="#7c5cff" stroke-width="4"/>
+  <rect x="14" y="24" width="4" height="3"/>
+  <rect x="10" y="26" width="12" height="4" rx="2"/>
+  <!-- AI sparkle (4-point concave star in an 8x8 box at 23,1; baked transform). -->
+  <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+           C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+        transform="translate(23 1) scale(.25)"/>
+</svg>

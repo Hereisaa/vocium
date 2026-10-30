@@ -10,7 +10,9 @@
     --stroke:rgba(255,255,255,.08); --text:#e6edf3; --text-dim:#8b949e;
     --accent:#6ad0c8; --listen:#3ddc97; --transcribe:#f5a623;
     --inject:#7c5cff; --error:#ff5d5d;
+    --shell-dark:#1f1f1f; --shell-light:#f3f3f3;
     --font:'Segoe UI',system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Consolas,'Courier New',monospace;
     --shadow:0 8px 30px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -28,6 +30,7 @@
     letter-spacing:1.5px;margin:46px 0 6px;border-left:3px solid var(--accent);padding-left:10px}
   .sub{color:var(--text-dim);font-size:12px;line-height:1.7;margin:0 0 18px 13px}
   .sub b{color:var(--text)}
+  code{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
 
   .concept{background:var(--panel);border:1px solid var(--stroke);border-radius:16px;
     padding:26px 24px;margin-bottom:22px}
@@ -35,28 +38,58 @@
   .concept .title .tag{font-size:11px;font-weight:600;color:var(--accent);
     border:1px solid var(--accent);border-radius:999px;padding:3px 10px;margin-left:10px;
     vertical-align:middle}
+  .concept .title .tag.old{color:var(--error);border-color:var(--error)}
   .concept .desc{font-size:12.5px;color:var(--text-dim);line-height:1.7;margin:6px 0 20px}
+  .concept .desc b{color:var(--text)}
   .row{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap}
   .spec{display:flex;flex-direction:column;align-items:center;gap:8px}
-  .spec .cap{font-size:11px;color:var(--text-dim)}
+  .spec .cap{font-size:11px;color:var(--text-dim);text-align:center;line-height:1.5}
   .tile{border-radius:22%;box-shadow:var(--shadow);overflow:hidden;display:block}
+  .tile.sq{border-radius:0}              /* raw full-bleed master, before the OS rounds it */
   .s256{width:160px;height:160px}        /* shown smaller; master is vector */
   .s128{width:96px;height:96px}
   .s64{width:64px;height:64px}
   .s32{width:32px;height:32px;border-radius:22%}
+  .s24{width:24px;height:24px;border-radius:22%}
   .s16{width:16px;height:16px;border-radius:20%}
 
-  .ctx{display:flex;gap:30px;flex-wrap:wrap;align-items:center;margin-top:8px}
-  .taskbar{display:flex;align-items:center;gap:14px;background:rgba(0,0,0,.5);
-    border:1px solid var(--stroke);border-radius:10px;padding:8px 16px}
-  .taskbar .ico{width:28px;height:28px;border-radius:24%}
-  .taskbar .dotline{width:18px;height:3px;border-radius:2px;background:var(--accent);
-    opacity:.8;margin-top:4px}
-  .tcell{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;color:var(--text-dim)}
-  .tray{display:flex;align-items:center;gap:10px;background:#c9cdd3;border-radius:8px;
-    padding:7px 12px}            /* light system tray to test mono legibility */
-  .tray svg{display:block}
-  .tray .lbl{font-size:11px;color:#222}
+  /* ---- shells: the two surfaces every icon must survive ---- */
+  .shells{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .shell{border-radius:12px;padding:14px 16px;border:1px solid var(--stroke)}
+  .shell.dark{background:var(--shell-dark);color:#f2f2f2}
+  .shell.light{background:var(--shell-light);color:#202020}
+  .shell .tile{box-shadow:none}               /* no glow: it would fake contrast against the shell */
+  .shell .lbl{font-size:11px;opacity:.7;margin-bottom:10px;display:block}
+  .shell .line{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .shell .item{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:10px;opacity:.95}
+  .shell .item small{opacity:.65}
+  .sys{width:16px;height:16px;display:block}   /* neutral stand-in for system tray glyphs */
+
+  .menubar{display:flex;align-items:center;gap:16px;border-radius:8px;padding:8px 14px;border:1px solid var(--stroke)}
+  .menubar.mdark{background:#2b2b2e;color:#fff}
+  .menubar.mlight{background:#e9e9ec;color:#000}
+  .menubar svg{display:block}
+
+  .pixrow{display:flex;gap:18px;flex-wrap:wrap}
+  .pix{display:block;width:128px;height:128px;image-rendering:pixelated;border-radius:6px}
+  .pixbox{padding:14px;border-radius:10px;border:1px solid var(--stroke);display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px}
+  .pixbox.dark{background:var(--shell-dark);color:#f2f2f2}
+  .pixbox.light{background:var(--shell-light);color:#202020}
+
+  .anat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;margin-top:22px}
+  .anat .spec .cap b{color:var(--text)}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.6}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--stroke);vertical-align:top}
+  th{color:var(--text-dim);font-weight:600;font-size:11px;letter-spacing:.8px}
+  td b{color:var(--text)}
+  td .bad{color:var(--error)} td .good{color:var(--listen)}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.2)}
+  ol.rules{margin:0 0 0 30px;font-size:12.5px;line-height:1.8;color:var(--text-dim)}
+  ol.rules b{color:var(--text)}
+  pre{background:var(--panel-2);border:1px solid var(--stroke);border-radius:10px;padding:14px 16px;
+    font-family:var(--mono);font-size:11.5px;line-height:1.7;overflow:auto;color:var(--text)}
 
   footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:54px}
 </style>
@@ -64,265 +97,305 @@
 <body>
 
 <!-- ========================= ICON MASTERS (vector) =========================
-  Each concept is a 256-viewBox <symbol>. The chosen one becomes the master
-  SVG rasterized to 32 / 128 / 256(@2x) PNG + .ico after approval. -->
+  These <symbol>s are inline copies of the two masters under
+  app-tauri/src-tauri/icons/ (icon.svg, tray.svg); the SVG files remain the
+  single source of truth and scripts/gen-icons.mjs rasterizes them.
+  ic-old is the retired equalizer-V icon, kept ONLY for the before/after panel. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <linearGradient id="tileBG" x1="0" y1="0" x2="0" y2="1">
+    <!-- New icon -->
+    <linearGradient id="n-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8466ff"/><stop offset="1" stop-color="#6c4ef6"/>
+    </linearGradient>
+    <linearGradient id="n-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="32" x2="0" y2="224">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#8cefe3"/>
+    </linearGradient>
+    <!-- Retired icon (ids prefixed o- so they cannot collide) -->
+    <linearGradient id="o-tile" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#1b2330"/><stop offset="1" stop-color="#0c0f15"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="44%" r="60%">
-      <stop offset="0" stop-color="#6ad0c8" stop-opacity=".34"/>
-      <stop offset="55%" stop-color="#6ad0c8" stop-opacity=".06"/>
-      <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7fe6dd"/><stop offset="1" stop-color="#4fb8b0"/>
-    </linearGradient>
-    <linearGradient id="tealV" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8ff0e6"/><stop offset="1" stop-color="#3ea99f"/>
-    </linearGradient>
-    <!-- AI cue: teal -> brand inject-violet (#7c5cff). Same palette as the
-         app's "injecting/AI" state, so it reads as intelligence, not a new color. -->
-    <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7fe6dd"/>
-      <stop offset="55%" stop-color="#6ad0c8"/>
-      <stop offset="100%" stop-color="#7c5cff"/>
-    </linearGradient>
-    <linearGradient id="aiGradV" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8ff0e6"/>
-      <stop offset="55%" stop-color="#5cc7be"/>
-      <stop offset="100%" stop-color="#8a6cff"/>
-    </linearGradient>
-    <radialGradient id="glowAI" cx="50%" cy="44%" r="62%">
+    <radialGradient id="o-glow" cx="50%" cy="44%" r="62%">
       <stop offset="0" stop-color="#8f7cff" stop-opacity=".30"/>
       <stop offset="50%" stop-color="#6ad0c8" stop-opacity=".10"/>
       <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
     </radialGradient>
-    <!-- 4-point AI sparkle (concave star). -->
-    <path id="spark" d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
-      C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"/>
+    <linearGradient id="o-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ff0e6"/><stop offset="55%" stop-color="#5cc7be"/><stop offset="100%" stop-color="#8a6cff"/>
+    </linearGradient>
   </defs>
 
-  <!-- Concept A — Orb Pulse: glowing core + two expanding rings (echoes the
-       in-app listening pulsering). Calmest, most "brand-default". -->
-  <symbol id="ic-A" viewBox="0 0 256 256">
-    <rect width="256" height="256" rx="0" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glow)"/>
-    <circle cx="128" cy="128" r="78" fill="none" stroke="#6ad0c8" stroke-opacity=".18" stroke-width="6"/>
-    <circle cx="128" cy="128" r="56" fill="none" stroke="#6ad0c8" stroke-opacity=".34" stroke-width="7"/>
-    <circle cx="128" cy="128" r="30" fill="url(#teal)"/>
-    <circle cx="128" cy="128" r="30" fill="none" stroke="#bff3ee" stroke-opacity=".5" stroke-width="2"/>
+  <!-- NEW app icon: capsule + cradle/stem/base + sparkle on a violet tile. -->
+  <symbol id="ic-app" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#n-tile)"/>
+    <g fill="url(#n-glyph)">
+      <rect x="96" y="32" width="64" height="96" rx="32"/>
+      <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
+            fill="none" stroke="url(#n-glyph)" stroke-width="32" stroke-linecap="round"/>
+      <rect x="112" y="176" width="32" height="32"/>
+      <rect x="80" y="192" width="96" height="32" rx="16"/>
+    </g>
+    <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+             C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+          fill="#c9fff7" transform="translate(176 32) scale(1.5)"/>
   </symbol>
 
-  <!-- Concept B — Voice "V" Bars: 5 rounded equalizer bars whose tops trace a
-       V (= Vocium + voice). Most distinctive as a monogram; best small-size. -->
-  <symbol id="ic-B" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glow)"/>
-    <g fill="url(#tealV)">
-      <rect x="50"  y="78"  width="22" height="78"  rx="11"/>
-      <rect x="86"  y="100" width="22" height="100" rx="11"/>
-      <rect x="117" y="124" width="22" height="80"  rx="11"/>
-      <rect x="148" y="100" width="22" height="100" rx="11"/>
-      <rect x="184" y="78"  width="22" height="78"  rx="11"/>
+  <!-- Anatomy: each of the three shapes alone on the tile. -->
+  <symbol id="an-1" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#n-tile)"/>
+    <rect x="96" y="32" width="64" height="96" rx="32" fill="url(#n-glyph)"/>
+  </symbol>
+  <symbol id="an-2" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#n-tile)"/>
+    <g fill="url(#n-glyph)">
+      <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
+            fill="none" stroke="url(#n-glyph)" stroke-width="32" stroke-linecap="round"/>
+      <rect x="112" y="176" width="32" height="32"/>
+      <rect x="80" y="192" width="96" height="32" rx="16"/>
     </g>
   </symbol>
-
-  <!-- Concept C — Orb + Bars (literal app glyph): the pill's orb core beside
-       ascending bars — a tile-framed version of the actual listening icon. -->
-  <symbol id="ic-C" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glow)"/>
-    <circle cx="96" cy="128" r="30" fill="url(#teal)"/>
-    <circle cx="96" cy="128" r="46" fill="none" stroke="#6ad0c8" stroke-opacity=".30" stroke-width="6"/>
-    <g fill="url(#tealV)">
-      <rect x="150" y="120" width="16" height="38" rx="8"/>
-      <rect x="174" y="100" width="16" height="78" rx="8"/>
-      <rect x="198" y="112" width="16" height="54" rx="8"/>
-    </g>
+  <symbol id="an-3" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#n-tile)"/>
+    <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+             C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+          fill="#c9fff7" transform="translate(176 32) scale(1.5)"/>
   </symbol>
 
-  <!-- Mono tray glyphs (single-color, no tile — Windows tray is ~16px on a
-       variable background; must read as a silhouette). -->
-  <symbol id="trayA" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/>
-    <circle cx="12" cy="12" r="3.4" fill="currentColor"/>
-  </symbol>
-  <symbol id="trayB" viewBox="0 0 24 24">
-    <g fill="currentColor">
-      <rect x="3"  y="8"  width="3" height="8"  rx="1.5"/>
-      <rect x="7.5" y="9.5" width="3" height="11" rx="1.5"/>
-      <rect x="12" y="12" width="3" height="8" rx="1.5"/>
-      <rect x="16.5" y="9.5" width="3" height="11" rx="1.5"/>
-      <rect x="21" y="8" width="0" height="0"/>
-    </g>
-  </symbol>
-  <symbol id="trayC" viewBox="0 0 24 24">
-    <circle cx="8" cy="12" r="3.2" fill="currentColor"/>
-    <g fill="currentColor">
-      <rect x="14" y="10.5" width="2.4" height="6"  rx="1.2"/>
-      <rect x="17.6" y="7.5" width="2.4" height="12" rx="1.2"/>
-    </g>
-  </symbol>
-
-  <!-- ===== AI-infused variants (sparkle + teal→violet gradient) ===== -->
-  <symbol id="ic-A2" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glowAI)"/>
-    <circle cx="128" cy="128" r="78" fill="none" stroke="#6ad0c8" stroke-opacity=".16" stroke-width="6"/>
-    <circle cx="128" cy="128" r="56" fill="none" stroke="#8a6cff" stroke-opacity=".30" stroke-width="7"/>
-    <circle cx="128" cy="128" r="30" fill="url(#aiGrad)"/>
-    <circle cx="128" cy="128" r="30" fill="none" stroke="#d8ccff" stroke-opacity=".5" stroke-width="2"/>
-    <use href="#spark" x="160" y="44" width="56" height="56" fill="#bff3ee"/>
-    <use href="#spark" x="196" y="150" width="26" height="26" fill="#8a6cff"/>
-  </symbol>
-
-  <symbol id="ic-B2" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glowAI)"/>
-    <g fill="url(#aiGradV)">
+  <!-- RETIRED app icon (equalizer V + sparkle on a navy tile) — comparison only. -->
+  <symbol id="ic-old" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="url(#o-tile)"/>
+    <rect width="256" height="256" fill="url(#o-glow)"/>
+    <g fill="url(#o-grad)">
       <rect x="50"  y="86"  width="22" height="78"  rx="11"/>
       <rect x="86"  y="108" width="22" height="100" rx="11"/>
       <rect x="117" y="132" width="22" height="80"  rx="11"/>
       <rect x="148" y="108" width="22" height="100" rx="11"/>
       <rect x="184" y="86"  width="22" height="78"  rx="11"/>
     </g>
-    <use href="#spark" x="112" y="46" width="56" height="56" fill="#bff3ee"/>
+    <path d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
+             C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"
+          fill="#cfeee9" transform="translate(97 41) scale(1.93)"/>
   </symbol>
 
-  <symbol id="ic-C2" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#tileBG)"/>
-    <rect width="256" height="256" fill="url(#glowAI)"/>
-    <circle cx="96" cy="132" r="30" fill="url(#aiGrad)"/>
-    <circle cx="96" cy="132" r="46" fill="none" stroke="#8a6cff" stroke-opacity=".28" stroke-width="6"/>
-    <g fill="url(#aiGradV)">
-      <rect x="150" y="124" width="16" height="38" rx="8"/>
-      <rect x="174" y="104" width="16" height="78" rx="8"/>
-      <rect x="198" y="116" width="16" height="54" rx="8"/>
+  <!-- Tray glyph, coloured (Windows shows tray-32.png as-is). 32 grid. -->
+  <symbol id="tray-c" viewBox="0 0 32 32">
+    <g fill="#7c5cff">
+      <rect x="10" y="2" width="12" height="16" rx="6"/>
+      <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="#7c5cff" stroke-width="4"/>
+      <rect x="14" y="24" width="4" height="3"/>
+      <rect x="10" y="26" width="12" height="4" rx="2"/>
+      <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+               C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+            transform="translate(23 1) scale(.25)"/>
     </g>
-    <use href="#spark" x="150" y="48" width="44" height="44" fill="#bff3ee"/>
   </symbol>
-
-  <!-- mono tray + tiny spark (still reads as a silhouette at 16px) -->
-  <symbol id="trayA2" viewBox="0 0 24 24">
-    <circle cx="11" cy="13" r="6.6" fill="none" stroke="currentColor" stroke-width="2"/>
-    <circle cx="11" cy="13" r="3" fill="currentColor"/>
-    <path d="M19 3 C19.6 5.6 21.4 7.4 24 8 C21.4 8.6 19.6 10.4 19 13
-      C18.4 10.4 16.6 8.6 14 8 C16.6 7.4 18.4 5.6 19 3 Z"
-      fill="currentColor" transform="scale(.78) translate(5 0)"/>
-  </symbol>
-  <symbol id="trayB2" viewBox="0 0 24 24">
+  <!-- Same glyph in currentColor: what a macOS template image looks like once
+       the system has tinted its alpha mask for the menu bar. -->
+  <symbol id="tray-m" viewBox="0 0 32 32">
     <g fill="currentColor">
-      <rect x="2.5" y="9"  width="2.8" height="8"  rx="1.4"/>
-      <rect x="6.6" y="10.5" width="2.8" height="11" rx="1.4"/>
-      <rect x="10.6" y="12.5" width="2.8" height="8" rx="1.4"/>
-      <rect x="14.6" y="10.5" width="2.8" height="11" rx="1.4"/>
-      <rect x="18.7" y="9" width="2.8" height="8" rx="1.4"/>
+      <rect x="10" y="2" width="12" height="16" rx="6"/>
+      <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="currentColor" stroke-width="4"/>
+      <rect x="14" y="24" width="4" height="3"/>
+      <rect x="10" y="26" width="12" height="4" rx="2"/>
+      <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+               C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+            transform="translate(23 1) scale(.25)"/>
     </g>
-    <path d="M12 1 C12.5 3.2 14 4.7 16 5 C14 5.3 12.5 6.8 12 9
-      C11.5 6.8 10 5.3 8 5 C10 4.7 11.5 3.2 12 1 Z" fill="currentColor"/>
+  </symbol>
+
+  <!-- Neutral stand-ins for Windows system tray glyphs (Wi-Fi, volume, battery). -->
+  <symbol id="sys-wifi" viewBox="0 0 16 16">
+    <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M2 6.5 A9 9 0 0 1 14 6.5 M4.5 9 A5.5 5.5 0 0 1 11.5 9"/>
+    </g><circle cx="8" cy="12" r=".7" fill="currentColor"/>
+  </symbol>
+  <symbol id="sys-vol" viewBox="0 0 16 16">
+    <g fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M2 6 H5 L9 3 V13 L5 10 H2 Z"/><path d="M11.5 5.5 A3.5 3.5 0 0 1 11.5 10.5" fill="none"/>
+    </g>
+  </symbol>
+  <symbol id="sys-bat" viewBox="0 0 16 16">
+    <g stroke="currentColor" stroke-width="1.3" fill="none">
+      <rect x="1.5" y="4.5" width="11" height="7" rx="1.5"/><path d="M14.5 7 V9" stroke-linecap="round"/>
+      <rect x="3.5" y="6.5" width="5" height="3" fill="currentColor" stroke="none"/>
+    </g>
   </symbol>
 </svg>
 
 <div class="wrap">
   <header>
     <h1>Voc<span class="k">ium</span> · App Icon</h1>
-    <p>3 個方案 — 沿用品牌 teal #6ad0c8 / 暗底 / orb-聲波語彙；全為向量母版</p>
-    <span class="badge">2026-05-17 修訂 2 · 原案 A/B/C + AI 融合 A+/B+/C+ · 待確認才進 app</span>
+    <p>AI Mic — 一支麥克風加一枚 AI 火花；為 16 px 與深／淺工作列而設計。向量母版：<code>icon.svg</code>（App）＋ <code>tray.svg</code>（系統匣／選單列）</p>
+    <span class="badge">2026-10-30 修訂 3 · AI Mic 定案 · 取代舊版「等化器 V」</span>
   </header>
 
-  <h2>方案 A — Orb Pulse</h2>
-  <div class="sub"><b>發光核心 + 兩圈擴散環</b>，直接對應 App 內 listening 的 pulsering 動畫。最沉穩、最「品牌預設」，與懸浮 ICON 一脈相承。小尺寸時外環淡出、核心仍清楚。</div>
-  <div class="concept">
-    <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-A"/></svg><span class="cap">256（@2x 母版）</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-A"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-A"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-A"/></svg><span class="cap">32（工作列）</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-A"/></svg><span class="cap">16</span></div>
-    </div>
-    <div class="ctx">
-      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-A"/></svg><svg class="ico"><use href="#ic-A"/></svg></div><span>工作列情境</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayA"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
-    </div>
-  </div>
-
-  <h2>方案 B — Voice “V” Bars</h2>
-  <div class="sub"><b>5 根圓角等化器聲波，頂端勾勒出 V</b>（Vocium + voice）。最具辨識度的 monogram，小尺寸（16/32）依然清楚，與 listening 聲波呼應。</div>
-  <div class="concept">
-    <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-B"/></svg><span class="cap">256（@2x 母版）</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-B"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-B"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-B"/></svg><span class="cap">32（工作列）</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-B"/></svg><span class="cap">16</span></div>
-    </div>
-    <div class="ctx">
-      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-B"/></svg><svg class="ico"><use href="#ic-B"/></svg></div><span>工作列情境</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
-    </div>
-  </div>
-
-  <h2>方案 C — Orb + Bars（App 本體字符）</h2>
-  <div class="sub"><b>orb 核心 + 上升聲波</b>，等於把 App 內 pill 的 listening 字符裝進方磚——與產品本體視覺最直白的連結。</div>
-  <div class="concept">
-    <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-C"/></svg><span class="cap">256（@2x 母版）</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-C"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-C"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-C"/></svg><span class="cap">32（工作列）</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-C"/></svg><span class="cap">16</span></div>
-    </div>
-    <div class="ctx">
-      <div class="tcell"><div class="taskbar"><svg class="ico"><use href="#ic-C"/></svg><svg class="ico"><use href="#ic-C"/></svg></div><span>工作列情境</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayC"/></svg><span class="lbl">Vocium</span></div><span>系統匣（單色 16）</span></div>
-    </div>
-  </div>
-
-  <h2>＋ AI 元素融合（修訂 2）</h2>
-  <div class="sub">在上方三案各加入<b>克制</b>的 AI 訊號：① <b>Sparkle 火花</b>（四角星，生成式 AI 通用符號）② <b>teal→violet 漸層</b>（violet＝App 既有 <i>inject/AI 處理</i> 狀態色，不引入新色）。火花大小／漸層深淺皆可再微調，這裡為中等強度。</div>
+  <!-- ====================== 1. CONCEPT ====================== -->
+  <h2>設計概念 — AI Mic</h2>
+  <div class="sub"><b>白→薄荷漸層的麥克風，加一枚 AI 火花，坐在中亮度紫磚上。</b>麥克風是「語音輸入」最通用、不必解釋的符號；火花是生成式 AI 的通用訊號；紫色沿用品牌 violet（即 App 的 <i>inject／AI 處理</i> 狀態色），字符底部的薄荷漸層保留品牌 teal。整個圖示只有 <b>3 個形狀</b>，縮到 16 px 仍是同一個剪影。</div>
 
   <div class="concept">
-    <div class="title">A+ · Orb Pulse ＋ Spark<span class="tag">AI</span></div>
-    <div class="desc">核心改 teal→violet 漸層、外環帶 violet；右上一枚主火花＋右下一枚小火花作 AI 徽印。沉穩且明確「智慧」。</div>
+    <div class="title">AI Mic<span class="tag">定案</span></div>
+    <div class="desc">滿版方形母版（Windows／Tauri 會自行套圓角）；下列由左至右為母版、OS 圓角預覽，以及各常見尺寸。<b>所有筆劃 32 單位（16 px 時 = 2 px）、所有間隙 16 單位（= 1 px）、所有邊緣落在 16 單位格線上</b>，所以縮小後依然銳利。</div>
     <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-A2"/></svg><span class="cap">256</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-A2"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-A2"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-A2"/></svg><span class="cap">32</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-A2"/></svg><span class="cap">16</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayA2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+      <div class="spec"><svg class="tile sq s256"><use href="#ic-app"/></svg><span class="cap">256 母版（滿版方形）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#ic-app"/></svg><span class="cap">128（開始功能表／安裝程式）</span></div>
+      <div class="spec"><svg class="tile s64"><use href="#ic-app"/></svg><span class="cap">64</span></div>
+      <div class="spec"><svg class="tile s32"><use href="#ic-app"/></svg><span class="cap">32（工作列 200%）</span></div>
+      <div class="spec"><svg class="tile s24"><use href="#ic-app"/></svg><span class="cap">24（150%）</span></div>
+      <div class="spec"><svg class="tile s16"><use href="#ic-app"/></svg><span class="cap">16（100%）</span></div>
+    </div>
+
+    <div class="anat">
+      <div class="spec"><svg class="tile s128"><use href="#an-1"/></svg><span class="cap"><b>① 膠囊</b><br>64 × 96，麥克風本體（16 px 時 4 × 6 px）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#an-2"/></svg><span class="cap"><b>② 托架＋底座</b><br>方正 U 形托架 + 短柱 + 底座，連成一體</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#an-3"/></svg><span class="cap"><b>③ AI 火花</b><br>4 角凹星 48 × 48，放在膠囊右上的空位</span></div>
     </div>
   </div>
 
   <div class="concept">
-    <div class="title">B+ · Voice “V” Bars ＋ Spark<span class="tag">AI · 推薦</span></div>
-    <div class="desc">聲波 V 改 teal→violet 直向漸層；V 的開口正中嵌一枚火花——聲音×AI 一眼可讀，小尺寸最穩。推薦此案。</div>
-    <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-B2"/></svg><span class="cap">256</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-B2"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-B2"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-B2"/></svg><span class="cap">32</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-B2"/></svg><span class="cap">16</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+    <div class="title">色彩與角色</div>
+    <div class="desc">紫色定位在<b>中亮度帶</b>（相對亮度 L 0.15–0.22），讓同一塊磚對深色與淺色表面都有邊界；對比由<b>明度</b>承擔，不靠色相，因此轉成灰階也成立。</div>
+    <table>
+      <tr><th>角色</th><th>色票</th><th>用途</th></tr>
+      <tr><td>磚面（起）</td><td><span class="sw" style="background:#8466ff"></span><code>#8466ff</code></td><td>左上；品牌 violet 微調，對 #f3f3f3 為 3.55 : 1</td></tr>
+      <tr><td>磚面（止）</td><td><span class="sw" style="background:#6c4ef6"></span><code>#6c4ef6</code></td><td>右下；對 #1f1f1f 為 3.19 : 1</td></tr>
+      <tr><td>字符（上）</td><td><span class="sw" style="background:#ffffff"></span><code>#ffffff</code></td><td>膠囊頂端，對磚面 3.9–5.2 : 1</td></tr>
+      <tr><td>字符（下）</td><td><span class="sw" style="background:#8cefe3"></span><code>#8cefe3</code></td><td>底座端的薄荷（品牌 teal 提亮），對磚面 3.8 : 1</td></tr>
+      <tr><td>火花</td><td><span class="sw" style="background:#c9fff7"></span><code>#c9fff7</code></td><td>淡薄荷白，對磚面 3.6 : 1</td></tr>
+      <tr><td>系統匣單色</td><td><span class="sw" style="background:#7c5cff"></span><code>#7c5cff</code></td><td>tray.svg 唯一顏色，與 App 的 inject 狀態色同一個</td></tr>
+    </table>
+  </div>
+
+  <!-- ====================== 2. WHY THE OLD ONE FAILED ====================== -->
+  <h2>為什麼要換 — 舊版在 16 px 消失</h2>
+  <div class="sub">舊版是<b>深藍磚＋五條漸層等化器（排成 V）＋火花</b>，已停用。它在 Windows 系統匣會消失，原因不是品味，而是四個可量測的問題。下方並排同一個 16 px／32 px 在兩種工作列上的實際樣子。</div>
+
+  <div class="concept">
+    <div class="title">Before / After<span class="tag old">舊版已停用</span></div>
+    <div class="desc">左：舊版（深藍磚）；右：新版。1:1 實際尺寸。</div>
+    <div class="shells">
+      <div class="shell dark"><span class="lbl">深色工作列 #1f1f1f</span>
+        <div class="line">
+          <div class="item"><svg class="tile s16"><use href="#ic-old"/></svg><small>舊 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-old"/></svg><small>舊 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>新 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>新 32</small></div>
+        </div>
+      </div>
+      <div class="shell light"><span class="lbl">淺色工作列 #f3f3f3</span>
+        <div class="line">
+          <div class="item"><svg class="tile s16"><use href="#ic-old"/></svg><small>舊 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-old"/></svg><small>舊 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>新 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>新 32</small></div>
+        </div>
+      </div>
+    </div>
+    <table style="margin-top:18px">
+      <tr><th>問題</th><th>舊版</th><th>新版</th></tr>
+      <tr><td><b>磚面對比</b></td><td><span class="bad">深藍磚 #0c0f15–#1b2330 對深色工作列僅 1.04–1.16 : 1</span>，整塊融進背景</td><td><span class="good">中亮度紫磚，對 #1f1f1f ≥ 3.1 : 1、對 #f3f3f3 ≥ 3.5 : 1</span></td></tr>
+      <tr><td><b>筆劃粗細</b></td><td><span class="bad">五條 22 單位的細條，16 px 時僅 1.4 px，條與條的間隙不到 1 px（0.6–0.9 px），糊成一片</span></td><td><span class="good">所有筆劃 32 單位（2 px）、間隙 16 單位（1 px）</span></td></tr>
+      <tr><td><b>形狀數量</b></td><td><span class="bad">5 條 + 火花 = 6 個</span>，縮小後剪影不穩</td><td><span class="good">3 個：膠囊、托架＋底座、火花</span></td></tr>
+      <tr><td><b>系統匣用圖</b></td><td><span class="bad">把 128×128 彩色 App 圖示直接縮成 16 px</span></td><td><span class="good">專用單色剪影 tray.svg，另有 16／22／32／44 px 輸出</span></td></tr>
+    </table>
+  </div>
+
+  <!-- ====================== 3. 16 PX LEGIBILITY ====================== -->
+  <h2>16 px 可讀性推理</h2>
+  <div class="sub">設計時以 16 px 為第一檢驗尺寸：先看縮到 16 px 還剩什麼，再回頭決定 256 px 的細節。五條規則：</div>
+
+  <div class="concept">
+    <ol class="rules">
+      <li><b>剪影先於細節。</b>只留 3 個形狀；把圖示糊掉（squint test）仍能認出「麥克風」。大尺寸才多出來的細節（漸層、火花）都不承擔辨識。</li>
+      <li><b>筆劃 ≥ 2 px、間隙 ≥ 1 px。</b>256 母版上筆劃 32、間隙 16，正好是 16 px 的 2 px 與 1 px；沒有任何低於 2/16 畫布的細線。</li>
+      <li><b>對齊像素格。</b>邊緣都落在 16 單位格線上（16 px 時 = 整像素，32 px 時 = 2 px），膠囊寬 4 px 而非 4.5 px；托架用方正 U 形（直邊＋小圓角），直邊在縮圖時不會變成半透明的灰邊。</li>
+      <li><b>明度承擔對比。</b>磚面落在中亮度帶，白色字符與它的對比 3.9–5.2 : 1；邊界對深／淺工作列都 ≥ 3 : 1（見下表）。</li>
+      <li><b>顏色只加分。</b>薄荷漸層與火花的色相是品牌感；就算只看灰階，磚與字符的明暗差仍在。</li>
+    </ol>
+  </div>
+
+  <div class="concept">
+    <div class="title">實測對比（WCAG 相對亮度）</div>
+    <table>
+      <tr><th>元件</th><th>顏色</th><th>對 #1f1f1f（深）</th><th>對 #f3f3f3（淺）</th></tr>
+      <tr><td>磚面（起）</td><td><code>#8466ff</code></td><td>4.18 : 1</td><td>3.55 : 1</td></tr>
+      <tr><td>磚面（止）</td><td><code>#6c4ef6</code></td><td>3.19 : 1</td><td>4.66 : 1</td></tr>
+      <tr><td>系統匣單色</td><td><code>#7c5cff</code></td><td>3.79 : 1</td><td>3.92 : 1</td></tr>
+      <tr><td>（舊）深藍磚</td><td><code>#0c0f15</code> / <code>#1b2330</code></td><td><span class="bad">1.16 : 1 / 1.04 : 1</span></td><td>17.3 : 1 / 14.2 : 1</td></tr>
+    </table>
+    <div class="desc" style="margin:14px 0 0">單一顏色要同時面對 #1f1f1f 與 #f3f3f3 時，兩邊對比相等的亮度約為 L 0.195；<code>#7c5cff</code>（L 0.192）幾乎正中，所以系統匣單色字符挑它。</div>
+  </div>
+
+  <div class="concept">
+    <div class="title">16 px 像素檢視（實際輸出檔，放大 8 倍）</div>
+    <div class="desc">下面是 <code>icons/16x16.png</code> 與 <code>icons/tray-16.png</code> 的內嵌副本（最近鄰放大，不做平滑），也就是系統真正拿到的像素。圖示改版後需重新嵌入。</div>
+    <div class="pixrow">
+      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfElEQVR42qWSuU/CUBzH+Q+9DzzxYPS+RRElMRASFI2J0cUYBzSG1eigYXDBY5HVrVIQMJSjpdD2a/uw5RWoC8Nnaj6f3+/1PZvXCXidCvamFexOKfBMasjYmZDhdsjYHpcIW2MSXKMSNkeqhI3hKtaHqrC1I6/ZK7BZyZdBGdmsgmxGwUVANuTDQMWQScBq8ldaAifXYL4lQ34uCzjwi0ReHVQDVmuzkmhCXzvoq8srA6IWaH3mz4pggl5bl5f71QAtP8V5gvbDYkkecbFEiLE8ER8/eIIukwA9OVbOE7TzhvxlRNkCookCgvsCCejfdXmpTw3Qaz+wHKJ8DgGPaLoqDZ9bIN/uE5whL/aWawH9ns8jRdyVfv7l9KZgyAs9aoB+JC5HFSe3eYSZLCLFtIkwk8HxtTrdXpdJwOqFaVzlUwT6zLQ83y3A1ko+ek/jjGNNhF4zTfJc11+gcXLgLYVQjjHhf0k2ybOdaqBRph+J1dq6TALtyDMdPH4BEn0B+IoNMeEAAAAASUVORK5CYII=" alt="App icon 16 px on dark" /><span>App 16 · 深</span></div>
+      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfElEQVR42qWSuU/CUBzH+Q+9DzzxYPS+RRElMRASFI2J0cUYBzSG1eigYXDBY5HVrVIQMJSjpdD2a/uw5RWoC8Nnaj6f3+/1PZvXCXidCvamFexOKfBMasjYmZDhdsjYHpcIW2MSXKMSNkeqhI3hKtaHqrC1I6/ZK7BZyZdBGdmsgmxGwUVANuTDQMWQScBq8ldaAifXYL4lQ34uCzjwi0ReHVQDVmuzkmhCXzvoq8srA6IWaH3mz4pggl5bl5f71QAtP8V5gvbDYkkecbFEiLE8ER8/eIIukwA9OVbOE7TzhvxlRNkCookCgvsCCejfdXmpTw3Qaz+wHKJ8DgGPaLoqDZ9bIN/uE5whL/aWawH9ns8jRdyVfv7l9KZgyAs9aoB+JC5HFSe3eYSZLCLFtIkwk8HxtTrdXpdJwOqFaVzlUwT6zLQ83y3A1ko+ek/jjGNNhF4zTfJc11+gcXLgLYVQjjHhf0k2ybOdaqBRph+J1dq6TALtyDMdPH4BEn0B+IoNMeEAAAAASUVORK5CYII=" alt="App icon 16 px on light" /><span>App 16 · 淺</span></div>
+      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA0ElEQVR42rWSSwoCMQyGi4JbH4fQE3VjKx7DgRnoUr2Dr7M4eBMfC73Db1JGkE5aq2AhizbNl8cfpX44C41+8oPT6FUG68riWlpcSoMVv7FPa3TJt3MOnSiAAygY7+Yhcww42N8ttnwXAZxZANx8dZSZIJtkBWHwy7Jn8AmQDPIzoMG1AAbn8F8cIAyRbJkNYMkY4iUMZIwDDB7sKGYYR9s0mDQS3qUKDrHhCZLupe0beUhTiWjso0Uqphhm7XyWfJFeT0L2+htA3erb4qj+cZ6RKzPt2JDxlAAAAABJRU5ErkJggg==" alt="Tray glyph 16 px on dark" /><span>Tray 16 · 深</span></div>
+      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA0ElEQVR42rWSSwoCMQyGi4JbH4fQE3VjKx7DgRnoUr2Dr7M4eBMfC73Db1JGkE5aq2AhizbNl8cfpX44C41+8oPT6FUG68riWlpcSoMVv7FPa3TJt3MOnSiAAygY7+Yhcww42N8ttnwXAZxZANx8dZSZIJtkBWHwy7Jn8AmQDPIzoMG1AAbn8F8cIAyRbJkNYMkY4iUMZIwDDB7sKGYYR9s0mDQS3qUKDrHhCZLupe0beUhTiWjso0Uqphhm7XyWfJFeT0L2+htA3erb4qj+cZ6RKzPt2JDxlAAAAABJRU5ErkJggg==" alt="Tray glyph 16 px on light" /><span>Tray 16 · 淺</span></div>
+    </div>
+  </div>
+
+  <!-- ====================== 4. TRAY GLYPH ====================== -->
+  <h2>系統匣／選單列字符 — tray.svg</h2>
+  <div class="sub">系統匣沒有磚，字符直接站在使用者的工作列上，所以另外畫一個<b>單色剪影</b>：同樣的麥克風＋火花，砍掉磚面與漸層。32 格線設計，16 px 是精確的 2 倍縮小；筆劃 4 單位（2 px）、間隙 2 單位（1 px）。</div>
+
+  <div class="concept">
+    <div class="title">Windows — 原樣顯示（單色 #7c5cff）</div>
+    <div class="desc">單一顏色無法同時對深淺兩種工作列最佳，所以取兩邊對比相等的中亮度紫；在灰白色的系統圖示之間，飽和的紫本身就是辨識線索。</div>
+    <div class="shells">
+      <div class="shell dark"><span class="lbl">深色工作列 · 系統匣 1:1</span>
+        <div class="line">
+          <svg class="sys"><use href="#sys-wifi"/></svg><svg class="sys"><use href="#sys-vol"/></svg><svg class="sys"><use href="#sys-bat"/></svg>
+          <div class="item"><svg width="16" height="16"><use href="#tray-c"/></svg><small>16</small></div>
+          <div class="item"><svg width="22" height="22"><use href="#tray-c"/></svg><small>22</small></div>
+          <div class="item"><svg width="32" height="32"><use href="#tray-c"/></svg><small>32</small></div>
+        </div>
+      </div>
+      <div class="shell light"><span class="lbl">淺色工作列 · 系統匣 1:1</span>
+        <div class="line">
+          <svg class="sys"><use href="#sys-wifi"/></svg><svg class="sys"><use href="#sys-vol"/></svg><svg class="sys"><use href="#sys-bat"/></svg>
+          <div class="item"><svg width="16" height="16"><use href="#tray-c"/></svg><small>16</small></div>
+          <div class="item"><svg width="22" height="22"><use href="#tray-c"/></svg><small>22</small></div>
+          <div class="item"><svg width="32" height="32"><use href="#tray-c"/></svg><small>32</small></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="concept">
-    <div class="title">C+ · Orb + Bars ＋ Spark<span class="tag">AI</span></div>
-    <div class="desc">orb 與聲波皆 teal→violet；聲波上方一枚火花。與 App 本體字符連結最直白，再點上 AI。</div>
+    <div class="title">macOS — 樣板圖（template image）</div>
+    <div class="desc"><code>icon_as_template(true)</code> 讓 macOS <b>只讀 alpha 通道</b>，由系統依選單列明暗自動染成黑或白；PNG 裡的紫色在 macOS 上被忽略，形狀本身就是全部資訊。下面用 currentColor 模擬染色後的結果。</div>
     <div class="row">
-      <div class="spec"><svg class="tile s256"><use href="#ic-C2"/></svg><span class="cap">256</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#ic-C2"/></svg><span class="cap">128</span></div>
-      <div class="spec"><svg class="tile s64"><use href="#ic-C2"/></svg><span class="cap">64</span></div>
-      <div class="spec"><svg class="tile s32"><use href="#ic-C2"/></svg><span class="cap">32</span></div>
-      <div class="spec"><svg class="tile s16"><use href="#ic-C2"/></svg><span class="cap">16</span></div>
-      <div class="tcell"><div class="tray"><svg width="16" height="16" style="color:#222"><use href="#trayB2"/></svg><span class="lbl">Vocium</span></div><span>系統匣</span></div>
+      <div class="menubar mdark"><svg width="16" height="16"><use href="#tray-m"/></svg><svg width="22" height="22"><use href="#tray-m"/></svg><svg width="32" height="32"><use href="#tray-m"/></svg><span style="font-size:11px;opacity:.7">深色選單列 → 白</span></div>
+      <div class="menubar mlight"><svg width="16" height="16"><use href="#tray-m"/></svg><svg width="22" height="22"><use href="#tray-m"/></svg><svg width="32" height="32"><use href="#tray-m"/></svg><span style="font-size:11px;opacity:.7">淺色選單列 → 黑</span></div>
     </div>
+    <table style="margin-top:18px">
+      <tr><th>輸出檔</th><th>用途</th></tr>
+      <tr><td><code>tray-16.png</code></td><td>Windows 100% 縮放的原生尺寸；亦用於 16 px 像素檢視</td></tr>
+      <tr><td><code>tray-22.png</code></td><td>Linux 系統匣常見尺寸</td></tr>
+      <tr><td><code>tray-32.png</code></td><td><b>目前嵌入 <code>build_tray</code> 的檔案</b>（<code>include_bytes!</code>）；Windows 再縮到 16／20／24 px</td></tr>
+      <tr><td><code>tray-44.png</code></td><td>Retina 選單列（22 pt @2x）備用；macOS 會把圖縮成 18 pt 高，必要時可改嵌這張</td></tr>
+    </table>
   </div>
 
-  <footer>Vocium · App Icon 修訂 2（A/B/C 原案 + A+/B+/C+ AI 融合）· 選定後 rasterize 32/128/256(@2x)/icon.ico</footer>
+  <!-- ====================== 5. HANDOFF ====================== -->
+  <h2>交付與產生流程</h2>
+  <div class="sub">SVG 是單一事實來源；PNG／ICO／ICNS 皆由它衍生，不手改。</div>
+  <div class="concept">
+<pre>app-tauri/src-tauri/icons/icon.svg     # App 圖示母版（256，滿版方形）
+app-tauri/src-tauri/icons/tray.svg     # 系統匣／選單列字符母版（32 格線，單色）
+scripts/gen-icons.mjs                  # 把兩個母版轉成 PNG／ICO（sharp + png-to-ico）
+
+npm run icons                          # gen-icons.mjs → tauri icon（icns / ico / 各尺寸）
+  ├─ 32x32 / 128x128 / 128x128@2x / 16·24·48·64·512 .png, icon.ico, icon.icns   (from icon.svg)
+  └─ tray-16 / tray-22 / tray-32 / tray-44 .png                                  (from tray.svg)
+
+app-tauri/src-tauri/src/lib.rs         # build_tray：include_bytes!("../icons/tray-32.png")
+                                       #   + .icon_as_template(cfg!(target_os = "macos"))</pre>
+  </div>
+
+  <footer>Vocium · App Icon 修訂 3（AI Mic）· <code>icon.svg</code> + <code>tray.svg</code> 為單一事實來源 · 舊版「等化器 V」已停用</footer>
 </div>
 </body>
 </html>

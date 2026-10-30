@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/archify/` — Archify architecture + voice-input workflow diagrams with
   source citations, rendered from the JSON candidates next to them.
 
+### Changed (icon + README)
+
+- **New app icon** ("AI Mic"): white→mint microphone + spark on a violet tile,
+  drawn on a 16-unit grid so it stays legible at 16 px on dark and light
+  taskbars. A dedicated single-colour `tray.svg` glyph is used for the system
+  tray (macOS template image). Rationale in `docs/ICON_DESIGN.html`.
+- **README rewritten** (zh-TW + en): short sections, feature table, three-step
+  setup, permissions table. The hero is now an animated SVG
+  (`docs/assets/showcase.svg`); `npm run showcase` renders the GIF fallback.
+- Removed the old `showcase.html` + `gen-banner.mjs` banner pipeline.
+
 ### Fixed (review follow-ups)
 
 - A late STT result (or failure) from a cancelled round is dropped even when a
