@@ -1,48 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Vocium app icon: master, vector source of truth.
-     Concept "Voice Ribbon": one sine ribbon cut through one speech bubble, so the sound wave and the
-     text box read as a single object. The ribbon is point-symmetric, so it reads the same left to right
-     (speech to text) and right to left (text to speech).
+     Concept "Cut-V Bubble": a V cut through a speech bubble. One solid black silhouette (no gradient, no
+     outline, no second colour); the V is the slit that splits the bubble into a body and a droplet, the
+     two soft pieces of a single mark. It reads as a speech bubble and as the letter V at the same time.
 
-     Construction: 256 canvas, module u = 16; every size is a Fibonacci multiple of u (1 2 3 5 8 13; 13 + 3 = 16).
-       bubble    rounded rect 13u x 8u (208 x 128) at (24,64): a golden rectangle (13:8 = 1.625, 0.4 % off phi),
-                 centred on the tile centre (128,128); corner radius 3u (48 = 8u / phi^2); the bottom-left
-                 corner is square and continues into a 45-degree tail with legs 2u (32)
-       ribbon    sine centred on (128,128), point-symmetric about it; wavelength 8u (128), peak-to-peak 3u (48),
-                 stroke 2u (32), so its envelope is 8u x 5u (128 x 80), a second golden rectangle (8:5) nested
-                 in the first; the two ribbon edges are parallel offset curves 32 apart
-       booleans  bubble INTERSECT ribbon = ink band (the wave is clipped flush by the bubble outline);
-                 bubble MINUS ribbon = two slabs split along the sine centre line: white (speech) above,
-                 mint (text) below
-     Grid: every horizontal edge (y = 64, 192, 224) and the ribbon stroke sit on the 16-unit grid. The
-     bubble's vertical edges (x = 24, 56, 232) sit on the same grid shifted by 8 units, because 13u cannot
-     be centred in 16u; at 16 px they land on half pixels, softened by the r = 48 arcs and the diagonal
-     tail. The ribbon stroke is 32 (2 px at 16 px), so the wave stays legible at 16 px.
-     Depth is kept subtle: a 2-stop violet tile (both stops keep >= 3:1 against #1f1f1f and #f3f3f3) and a
-     flat shadow of the bubble offset 8 units. clipPath only: no filters, text or <use>.
+     Construction: 256 canvas, module u = 16 (1 u = 1 px at 16 px).
+       bubble   circle r = 6u (96) centred on the canvas (128,128); its box is 12u x 12u (32..224), a 2u margin
+                on every side, so the straight bottom and left edges fall on whole pixels at 16 px. The
+                lower-left quadrant is squared off into the speech-tail corner at (32,224).
+       slit     the V: two parallel-sided arms 2.5u (40) wide, each 30 degrees off the vertical (a 60-degree
+                V, so the wedge between the arms is an equilateral triangle), meeting in a round vertex
+                centred at (128,160) = 10u. The arms run out through the rim, so the bubble falls into two
+                pieces: the body and the wedge (the droplet between the arms). The wedge's sharp crotch
+                would sit at (128,120) = 7.5u.
+       corners  one radius for every corner: r = 20 = 1.25u = half the slit width. It rounds the slit
+                vertex, the two rim terminals of the body, the wedge tip and its two rim corners, and the
+                tail corner, so every terminal is a 40-unit (2.5 px) round cap.
+       paths    two closed subpaths in one path: the body (clockwise) and the wedge (counter-clockwise);
+                they never overlap, so the fill rule is irrelevant.
+     Legibility at 16 px: slit 2.5 px, every round cap 2.5 px, the black chin under the V 2.75 px, margin to
+     the tile edge 2 px. No stroke is thinner than the 2 px (2/16) rule.
+     Colour: one ink (#000000) on a flat tile (#ffffff); contrast 21:1 on white, no gradient banding.
      Full-bleed square (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; the companion tray
      glyph is tray.svg; rationale and construction diagram: docs/ICON_DESIGN.html. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8a6cff"/>
-      <stop offset="1" stop-color="#6e4ff5"/>
-    </linearGradient>
-    <!-- boolean operands -->
-    <clipPath id="bubble"><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z"/></clipPath>
-    <clipPath id="above"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V-16H0Z"/></clipPath>
-    <clipPath id="below"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V272H0Z"/></clipPath>
-  </defs>
-
-  <rect width="256" height="256" fill="url(#tile)"/>
-
-  <!-- depth: flat shadow of the bubble, 8 units down -->
-  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/>
-
-  <!-- bubble minus ribbon: lower slab (mint = text) and upper slab (white = speech) -->
-  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#below)"/>
-  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#ffffff" clip-path="url(#above)"/>
-
-  <!-- bubble intersect ribbon: the sound wave, clipped by the bubble -->
-  <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#bubble)"/>
+  <rect width="256" height="256" fill="#ffffff"/>
+  <path fill="#000000" d="M221.71 107.16A96 96 0 0 1 128 224L52 224A20 20 0 0 1 32 204L32 128A96 96 0 0 1 34.29 107.16A20 20 0 0 1 71.13 101.5L110.68 170A20 20 0 0 0 145.32 170L184.87 101.5A20 20 0 0 1 221.71 107.16ZM145.32 90L160.59 63.55A20 20 0 0 0 147.29 33.96A96 96 0 0 0 108.71 33.96A20 20 0 0 0 95.41 63.55L110.68 90A20 20 0 0 0 145.32 90Z"/>
 </svg>

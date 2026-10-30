@@ -1,29 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Vocium tray / menu-bar glyph (vector source of truth for tray-16/22/32/44.png).
-     Single-colour silhouette of the app icon's "Voice Ribbon": the same bubble with the same sine
-     ribbon cut out of it (bubble minus ribbon). Drawn on a 32 grid (1 unit = 1/8 of the 256 master,
-     2 units = 1 px at 16 px), so the construction is the app icon at 1/8 scale:
-       bubble = 26 x 16 (13u x 8u golden rectangle, 13:8 = 1.625) at (2,6), corner radius 6 (3u),
-                square bottom-left corner + 45-degree tail with legs 4 (2u);
-       ribbon = sine, wavelength 16 (8u), peak-to-peak 4 (2u), stroke 4 (2u = 2 px at 16 px).
-     Differences from the app icon, all forced by having no tile:
-       - peak-to-peak is 2u instead of 3u, so the ring above and below the ribbon stays 4 units = 2 px
-         at 16 px (3u leaves 1.5 px rings that smear into grey);
-       - the ribbon stops 3 units (1.5 px) short of the flanks (round caps), so the silhouette keeps a closed bubble
-         outline (a ribbon running flank to flank splits the glyph into two wavy bars that read as "~~");
-       - the bubble sits at x = 2 (not centred at 3) so that every edge is on an even coordinate, i.e.
-         on a whole pixel at 16 px (and on the 16-unit grid scaled to 32).
-     Windows shows the PNG as-is: #7c5cff is the one static colour with balanced contrast on both shells
-     (3.79:1 on #1f1f1f, 3.92:1 on #f3f3f3). macOS loads it with icon_as_template(true): only the alpha
-     channel is used and the system tints it, so the colour is irrelevant there (the glyph is a solid
-     shape with a transparent ribbon, which is exactly what a template image wants).
-     Shapes: bubble (with the ribbon cut out by a mask). No filters, text or <use>. -->
+<!-- Vocium tray / menu-bar glyph (vector source of truth for tray-dark-* and tray-light-*.png).
+     The app icon's "Cut-V Bubble" without the tile: the identical mark, scaled uniformly by 28/192 and moved
+     so that its 192-unit box lands on 2..30 of a 32 canvas (1 unit = 1/2 px at 16 px, so the box edges
+     fall on whole pixels at 16 px; 14 px of the 16 are inked).
+       slit 5.83 (2.9 px at 16 px), round caps r = 2.92 (2.9 px), chin 6.42 (3.2 px): all above the 2 px rule.
+     This file is the black variant (#000000; the fill is the only colour in it). scripts/gen-icons.mjs renders
+     it as tray-dark-{16,22,32,44}.png (black mark, for light taskbars / menu bars) and, with that fill swapped
+     to #ffffff, as tray-light-{16,22,32,44}.png (white mark, for dark taskbars). macOS loads the black one as a
+     template image (alpha only, the system tints it). The body and the wedge are separate subpaths of one
+     path, so the V stays transparent and shows whatever is under the tray.
+     No filters, masks, text or <use>. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <defs>
-    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
-      <rect width="32" height="32" fill="#fff"/>
-      <path d="M7 14C8.3 12.98 9.55 12 11 12C12.45 12 13.7 12.98 15 14C16.3 15.02 17.55 16 19 16C20.45 16 21.7 15.02 23 14" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-    </mask>
-  </defs>
-  <path d="M8 6H22A6 6 0 0 1 28 12V16A6 6 0 0 1 22 22H6L2 26V12A6 6 0 0 1 8 6Z" fill="#7c5cff" mask="url(#cut)"/>
+  <path fill="#000000" d="M29.67 12.96A14 14 0 0 1 16 30L4.92 30A2.92 2.92 0 0 1 2 27.08L2 16A14 14 0 0 1 2.33 12.96A2.92 2.92 0 0 1 7.71 12.14L13.47 22.13A2.92 2.92 0 0 0 18.53 22.13L24.29 12.14A2.92 2.92 0 0 1 29.67 12.96ZM18.53 10.46L20.75 6.6A2.92 2.92 0 0 0 18.81 2.29A14 14 0 0 0 13.19 2.29A2.92 2.92 0 0 0 11.25 6.6L13.47 10.46A2.92 2.92 0 0 0 18.53 10.46Z"/>
 </svg>

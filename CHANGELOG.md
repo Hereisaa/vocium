@@ -32,12 +32,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (icon + README)
 
-- **New app icon** ("Voice Ribbon"): one sine sound-wave ribbon cut through a
-  golden-rectangle speech bubble (boolean intersect / difference), built on a
-  16-unit Fibonacci grid (13:8 bubble, 8:5 ribbon envelope) on a violet tile, so
-  it stays legible at 16 px on dark and light taskbars. A dedicated
-  single-colour `tray.svg` glyph (the same bubble with the ribbon cut out) is
-  used for the system tray (macOS template image). Construction and rationale in
+- **New app icon** ("Cut-V Bubble"): one solid black speech bubble (a circle with a
+  squared lower-left tail corner) cut by a V-shaped slit that runs out through its
+  rim, so the V is the gap between the two soft pieces of a single silhouette (the
+  body and a droplet). One ink (`#000000`), one corner radius, no gradient and no
+  second colour, on a flat white tile; it replaces the rejected "Voice Ribbon". Built
+  on a 16-unit grid (12u bubble, 2.5u slit, 60° V), so the slit stays 2.5 px wide and
+  the straight edges land on whole pixels at 16 px.
+- **Tray glyph in two colours.** `tray.svg` is the same mark without the tile;
+  `npm run icons` now renders `tray-dark-*.png` (black, for light taskbars and the
+  macOS template image) and `tray-light-*.png` (white, for dark taskbars). On Windows
+  `build_tray` reads `HKCU\...\Themes\Personalize\SystemUsesLightTheme` at startup
+  (new `Win32_System_Registry` feature of the `windows` crate) and embeds the matching
+  one; elsewhere it embeds the white one. A taskbar theme change takes effect on the
+  next launch. The old `tray-{16,22,32,44}.png` are no longer generated or used.
+  Construction, the contrast with the reference mark and the explorations are in
   `docs/ICON_DESIGN.html`.
 - **README rewritten** (zh-TW + en): short sections, feature table, three-step
   setup, permissions table. The hero is now an animated SVG

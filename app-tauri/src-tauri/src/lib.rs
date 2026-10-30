@@ -982,6 +982,57 @@ pub fn run() {
         .expect("error while running Vocium shell");
 }
 
+/// Which tray glyph to embed. The tray is a flat one-colour mark, so it must contrast with the
+/// bar behind it: black on light bars, white on dark ones. PNGs come from icons/tray.svg via
+/// `npm run icons`; they are embedded at compile time so the tray is always the current art.
+///  - Windows: follows the taskbar theme (HKCU\...\Themes\Personalize\SystemUsesLightTheme, 1 = light).
+///    The choice is made once at startup; a theme switch while Vocium runs shows after a restart.
+///  - macOS: the black glyph as a template image (alpha only); the system tints it for the menu bar.
+///  - elsewhere (Linux trays are almost always dark): the white glyph.
+fn tray_icon_png() -> &'static [u8] {
+    #[cfg(target_os = "macos")]
+    {
+        &include_bytes!("../icons/tray-dark-32.png")[..]
+    }
+    #[cfg(windows)]
+    {
+        if windows_taskbar_is_light() {
+            &include_bytes!("../icons/tray-dark-32.png")[..]
+        } else {
+            &include_bytes!("../icons/tray-light-32.png")[..]
+        }
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
+        &include_bytes!("../icons/tray-light-32.png")[..]
+    }
+}
+
+/// Windows: true when the taskbar uses the light theme. A missing value (Windows 10 before 1903,
+/// which has no light taskbar) or any registry error counts as dark.
+#[cfg(windows)]
+fn windows_taskbar_is_light() -> bool {
+    use windows::core::w;
+    use windows::Win32::Foundation::ERROR_SUCCESS;
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+
+    let mut data: u32 = 0;
+    let mut size = std::mem::size_of::<u32>() as u32;
+    // SAFETY: `data` and `size` outlive the call and `size` is the byte length of `data`.
+    let rc = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"),
+            w!("SystemUsesLightTheme"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some(&mut data as *mut u32 as *mut core::ffi::c_void),
+            Some(&mut size),
+        )
+    };
+    rc == ERROR_SUCCESS && data == 1
+}
+
 fn build_tray(
     app: &AppHandle,
     cfg: &VociumConfig,
@@ -1030,12 +1081,12 @@ fn build_tray(
     let cfg_dir = cfg.config_dir.clone();
     let _tray = TrayIconBuilder::with_id("vocium-tray")
         .tooltip(&tr(lang, "Vocium — 待命", "Vocium — idle"))
-        // Embed the dedicated tray glyph (icons/tray.svg → tray-32.png) at COMPILE
-        // TIME so the tray is always the current art, independent of bundle-icon
-        // embedding/dev caching (the old default_window_icon() path showed a
-        // stale icon under tauri dev).
+        // Embed the dedicated tray glyph (icons/tray.svg → tray-dark-32.png or
+        // tray-light-32.png, see tray_icon_png) at COMPILE TIME so the tray is always
+        // the current art, independent of bundle-icon embedding/dev caching (the old
+        // default_window_icon() path showed a stale icon under tauri dev).
         .icon(
-            tauri::image::Image::from_bytes(include_bytes!("../icons/tray-32.png"))
+            tauri::image::Image::from_bytes(tray_icon_png())
                 .unwrap_or_else(|_| app.default_window_icon().cloned().unwrap()),
         )
         // macOS: treat the glyph as a template image (alpha mask only) so the
