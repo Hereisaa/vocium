@@ -1,48 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Vocium app icon — master (vector source of truth). Concept "AI mic":
-     a bold white-to-mint microphone (capsule + cradle with stem/base) plus one
-     AI sparkle, on a mid-tone violet tile. Built to survive 16 px on BOTH dark
-     (#1f1f1f) and light (#f3f3f3) shells:
-       - the tile sits in the violet luminance band (L 0.15-0.22), so its edge
-         keeps >= 3.1:1 against #1f1f1f AND >= 3.5:1 against #f3f3f3 (the old
-         navy tile was ~1.1:1 against a dark taskbar and vanished);
-       - the glyph is 3 shapes (capsule, cradle+stem+base, sparkle); every
-         stroke is 32 units (= 2 px at 16 px) and every gap is 16 units (= 1 px);
-       - all edges sit on the 16-unit grid (1 px at 16 px, 2 px at 32 px), and
-         the cradle is a squared "U", so the 16/32 px renders stay crisp
-         instead of turning into anti-aliased mush.
-     Full-bleed 256 square (the OS rounds corners where it wants). No <use>,
-     filters or text, so every rasterizer renders it identically.
-     Rasterize via scripts/gen-icons.mjs. Companion tray glyph: tray.svg. -->
+<!-- Vocium app icon: master, vector source of truth.
+     Concept "Voice Ribbon": one sine ribbon cut through one speech bubble, so the sound wave and the
+     text box read as a single object. The ribbon is point-symmetric, so it reads the same left to right
+     (speech to text) and right to left (text to speech).
+
+     Construction: 256 canvas, module u = 16; every size is a Fibonacci multiple of u (1 2 3 5 8 13; 13 + 3 = 16).
+       bubble    rounded rect 13u x 8u (208 x 128) at (24,64): a golden rectangle (13:8 = 1.625, 0.4 % off phi),
+                 centred on the tile centre (128,128); corner radius 3u (48 = 8u / phi^2); the bottom-left
+                 corner is square and continues into a 45-degree tail with legs 2u (32)
+       ribbon    sine centred on (128,128), point-symmetric about it; wavelength 8u (128), peak-to-peak 3u (48),
+                 stroke 2u (32), so its envelope is 8u x 5u (128 x 80), a second golden rectangle (8:5) nested
+                 in the first; the two ribbon edges are parallel offset curves 32 apart
+       booleans  bubble INTERSECT ribbon = ink band (the wave is clipped flush by the bubble outline);
+                 bubble MINUS ribbon = two slabs split along the sine centre line: white (speech) above,
+                 mint (text) below
+     Grid: every horizontal edge (y = 64, 192, 224) and the ribbon stroke sit on the 16-unit grid. The
+     bubble's vertical edges (x = 24, 56, 232) sit on the same grid shifted by 8 units, because 13u cannot
+     be centred in 16u; at 16 px they land on half pixels, softened by the r = 48 arcs and the diagonal
+     tail. The ribbon stroke is 32 (2 px at 16 px), so the wave stays legible at 16 px.
+     Depth is kept subtle: a 2-stop violet tile (both stops keep >= 3:1 against #1f1f1f and #f3f3f3) and a
+     flat shadow of the bubble offset 8 units. clipPath only: no filters, text or <use>.
+     Full-bleed square (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; the companion tray
+     glyph is tray.svg; rationale and construction diagram: docs/ICON_DESIGN.html. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <defs>
-    <!-- Tile: brand violet, kept inside a mid luminance band for dual-theme contrast. -->
-    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8466ff"/>
-      <stop offset="1" stop-color="#6c4ef6"/>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6cff"/>
+      <stop offset="1" stop-color="#6e4ff5"/>
     </linearGradient>
-    <!-- Glyph: white (max contrast on the tile) fading to brand-teal mint. -->
-    <linearGradient id="glyph" gradientUnits="userSpaceOnUse" x1="0" y1="32" x2="0" y2="224">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#8cefe3"/>
-    </linearGradient>
+    <!-- boolean operands -->
+    <clipPath id="bubble"><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z"/></clipPath>
+    <clipPath id="above"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V-16H0Z"/></clipPath>
+    <clipPath id="below"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V272H0Z"/></clipPath>
   </defs>
 
   <rect width="256" height="256" fill="url(#tile)"/>
 
-  <g fill="url(#glyph)">
-    <!-- Shape 1: mic capsule. -->
-    <rect x="96" y="32" width="64" height="96" rx="32"/>
-    <!-- Shape 2: squared-U cradle (stroke 32) + stem + base, one connected piece. -->
-    <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
-          fill="none" stroke="url(#glyph)" stroke-width="32" stroke-linecap="round"/>
-    <rect x="112" y="176" width="32" height="32"/>
-    <rect x="80" y="192" width="96" height="32" rx="16"/>
-  </g>
+  <!-- depth: flat shadow of the bubble, 8 units down -->
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/>
 
-  <!-- Shape 3: AI sparkle (4-point concave star in a 48x48 box at 176,32; baked
-       transform so it rasterizes identically everywhere). -->
-  <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-           C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-        fill="#c9fff7" transform="translate(176 32) scale(1.5)"/>
+  <!-- bubble minus ribbon: lower slab (mint = text) and upper slab (white = speech) -->
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#below)"/>
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#ffffff" clip-path="url(#above)"/>
+
+  <!-- bubble intersect ribbon: the sound wave, clipped by the bubble -->
+  <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#bubble)"/>
 </svg>

@@ -32,10 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (icon + README)
 
-- **New app icon** ("AI Mic"): white→mint microphone + spark on a violet tile,
-  drawn on a 16-unit grid so it stays legible at 16 px on dark and light
-  taskbars. A dedicated single-colour `tray.svg` glyph is used for the system
-  tray (macOS template image). Rationale in `docs/ICON_DESIGN.html`.
+- **New app icon** ("Voice Ribbon"): one sine sound-wave ribbon cut through a
+  golden-rectangle speech bubble (boolean intersect / difference), built on a
+  16-unit Fibonacci grid (13:8 bubble, 8:5 ribbon envelope) on a violet tile, so
+  it stays legible at 16 px on dark and light taskbars. A dedicated
+  single-colour `tray.svg` glyph (the same bubble with the ribbon cut out) is
+  used for the system tray (macOS template image). Construction and rationale in
+  `docs/ICON_DESIGN.html`.
 - **README rewritten** (zh-TW + en): short sections, feature table, three-step
   setup, permissions table. The hero is now an animated SVG
   (`docs/assets/showcase.svg`); `npm run showcase` renders the GIF fallback.

@@ -32,7 +32,7 @@
   .sub b{color:var(--text)}
   code{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
 
-  .concept{background:var(--panel);border:1px solid var(--stroke);border-radius:16px;
+  .concept{overflow-x:auto;background:var(--panel);border:1px solid var(--stroke);border-radius:16px;
     padding:26px 24px;margin-bottom:22px}
   .concept .title{font-size:16px;font-weight:700;letter-spacing:.4px;margin-bottom:4px}
   .concept .title .tag{font-size:11px;font-weight:600;color:var(--accent);
@@ -79,17 +79,27 @@
   .anat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;margin-top:22px}
   .anat .spec .cap b{color:var(--text)}
 
+  .figure{background:var(--bg-desktop);border:1px solid var(--stroke);border-radius:12px;overflow:hidden}
+  .figure svg{display:block;width:100%;height:auto}
+
   table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.6}
   th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--stroke);vertical-align:top}
   th{color:var(--text-dim);font-weight:600;font-size:11px;letter-spacing:.8px}
   td b{color:var(--text)}
-  td .bad{color:var(--error)} td .good{color:var(--listen)}
+  td .bad{color:var(--error)} td .good{color:var(--listen)} td .warn{color:var(--transcribe)}
+  td.mono, .mono{font-family:var(--mono);font-size:11.5px}
   .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;
     box-shadow:0 0 0 1px rgba(255,255,255,.2)}
-  ol.rules{margin:0 0 0 30px;font-size:12.5px;line-height:1.8;color:var(--text-dim)}
-  ol.rules b{color:var(--text)}
+  ol.rules,ul.rules{margin:0 0 0 30px;font-size:12.5px;line-height:1.8;color:var(--text-dim)}
+  ol.rules b,ul.rules b{color:var(--text)}
   pre{background:var(--panel-2);border:1px solid var(--stroke);border-radius:10px;padding:14px 16px;
     font-family:var(--mono);font-size:11.5px;line-height:1.7;overflow:auto;color:var(--text)}
+
+  .cand td.pv{white-space:nowrap;width:260px}
+  .cand .pvbox{display:inline-flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px}
+  .cand .pvbox.dark{background:var(--shell-dark)} .cand .pvbox.light{background:var(--shell-light)}
+  .cand .pvbox .tile{box-shadow:none}
+  .cand .win td:first-child{color:var(--listen)}
 
   footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:54px}
 </style>
@@ -97,110 +107,129 @@
 <body>
 
 <!-- ========================= ICON MASTERS (vector) =========================
-  These <symbol>s are inline copies of the two masters under
-  app-tauri/src-tauri/icons/ (icon.svg, tray.svg); the SVG files remain the
-  single source of truth and scripts/gen-icons.mjs rasterizes them.
-  ic-old is the retired equalizer-V icon, kept ONLY for the before/after panel. -->
+  Everything below is generated from the two masters under app-tauri/src-tauri/icons/ (icon.svg, tray.svg),
+  which remain the single source of truth; scripts/gen-icons.mjs rasterizes them. Ids are prefixed per
+  design (ia- new app, tc-/tm- new tray, im-/ie-/to- retired designs, c1..c7 explorations, dc- diagram) so
+  the inline copies cannot collide. The retired designs are kept ONLY for the before/after and exploration
+  panels; none of them is current. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <!-- New icon -->
-    <linearGradient id="n-tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8466ff"/><stop offset="1" stop-color="#6c4ef6"/>
+
+    <linearGradient id="ia-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6cff"/>
+      <stop offset="1" stop-color="#6e4ff5"/>
     </linearGradient>
-    <linearGradient id="n-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="32" x2="0" y2="224">
-      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#8cefe3"/>
+    
+    <clipPath id="ia-bubble"><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z"/></clipPath>
+    <clipPath id="ia-above"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V-16H0Z"/></clipPath>
+    <clipPath id="ia-below"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V272H0Z"/></clipPath>
+  
+    
+    <linearGradient id="im-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8466ff"/>
+      <stop offset="1" stop-color="#6c4ef6"/>
     </linearGradient>
-    <!-- Retired icon (ids prefixed o- so they cannot collide) -->
-    <linearGradient id="o-tile" x1="0" y1="0" x2="0" y2="1">
+    
+    <linearGradient id="im-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="32" x2="0" y2="224">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#8cefe3"/>
+    </linearGradient>
+  
+    <linearGradient id="ie-tileBG" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#1b2330"/><stop offset="1" stop-color="#0c0f15"/>
     </linearGradient>
-    <radialGradient id="o-glow" cx="50%" cy="44%" r="62%">
+    <radialGradient id="ie-glowAI" cx="50%" cy="44%" r="62%">
       <stop offset="0" stop-color="#8f7cff" stop-opacity=".30"/>
       <stop offset="50%" stop-color="#6ad0c8" stop-opacity=".10"/>
       <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="o-grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8ff0e6"/><stop offset="55%" stop-color="#5cc7be"/><stop offset="100%" stop-color="#8a6cff"/>
+    <linearGradient id="ie-aiGradV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ff0e6"/>
+      <stop offset="55%" stop-color="#5cc7be"/>
+      <stop offset="100%" stop-color="#8a6cff"/>
     </linearGradient>
+  
+    <mask id="tc-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+      <rect width="32" height="32" fill="#fff"/>
+      <path d="M7 14C8.3 12.98 9.55 12 11 12C12.45 12 13.7 12.98 15 14C16.3 15.02 17.55 16 19 16C20.45 16 21.7 15.02 23 14" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    </mask>
+  
+    <mask id="tm-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+      <rect width="32" height="32" fill="#fff"/>
+      <path d="M7 14C8.3 12.98 9.55 12 11 12C12.45 12 13.7 12.98 15 14C16.3 15.02 17.55 16 19 16C20.45 16 21.7 15.02 23 14" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    </mask>
+  <linearGradient id="c1-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><clipPath id="c1-b"><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z"/></clipPath><clipPath id="c1-up"><path d="M-128 112C-117.6 124.252 -107.6 136 -96 136C-84.4 136 -74.4 124.252 -64 112C-53.6 99.748 -43.6 88 -32 88C-20.4 88 -10.4 99.748 0 112C10.4 124.252 20.4 136 32 136C43.6 136 53.6 124.252 64 112C74.4 99.748 84.4 88 96 88C107.6 88 117.6 99.748 128 112C138.4 124.252 148.4 136 160 136C171.6 136 181.6 124.252 192 112C202.4 99.748 212.4 88 224 88C235.6 88 245.6 99.748 256 112C266.4 124.252 276.4 136 288 136C299.6 136 309.6 124.252 320 112C330.4 99.748 340.4 88 352 88C363.6 88 373.6 99.748 384 112L384 -300L-128 -300Z"/></clipPath><clipPath id="c1-dn"><path d="M-128 112C-117.6 124.252 -107.6 136 -96 136C-84.4 136 -74.4 124.252 -64 112C-53.6 99.748 -43.6 88 -32 88C-20.4 88 -10.4 99.748 0 112C10.4 124.252 20.4 136 32 136C43.6 136 53.6 124.252 64 112C74.4 99.748 84.4 88 96 88C107.6 88 117.6 99.748 128 112C138.4 124.252 148.4 136 160 136C171.6 136 181.6 124.252 192 112C202.4 99.748 212.4 88 224 88C235.6 88 245.6 99.748 256 112C266.4 124.252 276.4 136 288 136C299.6 136 309.6 124.252 320 112C330.4 99.748 340.4 88 352 88C363.6 88 373.6 99.748 384 112L384 400L-128 400Z"/></clipPath><linearGradient id="c2-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><clipPath id="c2-b"><path d="M80 48H176A32 32 0 0 1 208 80V112A32 32 0 0 1 176 144H80L48 176V80A32 32 0 0 1 80 48Z"/></clipPath><linearGradient id="c3-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><clipPath id="c3-b"><path d="M88 48H192A48 48 0 0 1 240 96V128A48 48 0 0 1 192 176H88A48 48 0 0 1 40 128V96A48 48 0 0 1 88 48Z"/></clipPath><linearGradient id="c4-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><clipPath id="c4-a"><path d="M56 64H136A24 24 0 0 1 160 88V120A24 24 0 0 1 136 144H32V88A24 24 0 0 1 56 64Z"/></clipPath><clipPath id="c4-b"><path d="M120 112H224V168A24 24 0 0 1 200 192H120A24 24 0 0 1 96 168V136A24 24 0 0 1 120 112Z"/></clipPath><linearGradient id="c5-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><linearGradient id="c6-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient><clipPath id="c6-dn"><path d="M-128 112C-117.6 124.252 -107.6 136 -96 136C-84.4 136 -74.4 124.252 -64 112C-53.6 99.748 -43.6 88 -32 88C-20.4 88 -10.4 99.748 0 112C10.4 124.252 20.4 136 32 136C43.6 136 53.6 124.252 64 112C74.4 99.748 84.4 88 96 88C107.6 88 117.6 99.748 128 112C138.4 124.252 148.4 136 160 136C171.6 136 181.6 124.252 192 112C202.4 99.748 212.4 88 224 88C235.6 88 245.6 99.748 256 112C266.4 124.252 276.4 136 288 136C299.6 136 309.6 124.252 320 112C330.4 99.748 340.4 88 352 88C363.6 88 373.6 99.748 384 112L384 400L-128 400Z"/></clipPath><linearGradient id="c7-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient>
   </defs>
+<symbol id="ic-app" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#ia-tile)"/>
 
-  <!-- NEW app icon: capsule + cradle/stem/base + sparkle on a violet tile. -->
-  <symbol id="ic-app" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#n-tile)"/>
-    <g fill="url(#n-glyph)">
-      <rect x="96" y="32" width="64" height="96" rx="32"/>
-      <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
-            fill="none" stroke="url(#n-glyph)" stroke-width="32" stroke-linecap="round"/>
-      <rect x="112" y="176" width="32" height="32"/>
-      <rect x="80" y="192" width="96" height="32" rx="16"/>
-    </g>
-    <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-             C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-          fill="#c9fff7" transform="translate(176 32) scale(1.5)"/>
-  </symbol>
+  
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/>
 
-  <!-- Anatomy: each of the three shapes alone on the tile. -->
-  <symbol id="an-1" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#n-tile)"/>
-    <rect x="96" y="32" width="64" height="96" rx="32" fill="url(#n-glyph)"/>
-  </symbol>
-  <symbol id="an-2" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#n-tile)"/>
-    <g fill="url(#n-glyph)">
-      <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
-            fill="none" stroke="url(#n-glyph)" stroke-width="32" stroke-linecap="round"/>
-      <rect x="112" y="176" width="32" height="32"/>
-      <rect x="80" y="192" width="96" height="32" rx="16"/>
-    </g>
-  </symbol>
-  <symbol id="an-3" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#n-tile)"/>
-    <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-             C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-          fill="#c9fff7" transform="translate(176 32) scale(1.5)"/>
-  </symbol>
+  
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#ia-below)"/>
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#ffffff" clip-path="url(#ia-above)"/>
 
-  <!-- RETIRED app icon (equalizer V + sparkle on a navy tile) — comparison only. -->
-  <symbol id="ic-old" viewBox="0 0 256 256">
-    <rect width="256" height="256" fill="url(#o-tile)"/>
-    <rect width="256" height="256" fill="url(#o-glow)"/>
-    <g fill="url(#o-grad)">
-      <rect x="50"  y="86"  width="22" height="78"  rx="11"/>
-      <rect x="86"  y="108" width="22" height="100" rx="11"/>
-      <rect x="117" y="132" width="22" height="80"  rx="11"/>
-      <rect x="148" y="108" width="22" height="100" rx="11"/>
-      <rect x="184" y="86"  width="22" height="78"  rx="11"/>
-    </g>
-    <path d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
-             C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"
-          fill="#cfeee9" transform="translate(97 41) scale(1.93)"/>
-  </symbol>
+  
+  <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#ia-bubble)"/></symbol>
+<symbol id="ic-mic" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#im-tile)"/>
 
-  <!-- Tray glyph, coloured (Windows shows tray-32.png as-is). 32 grid. -->
-  <symbol id="tray-c" viewBox="0 0 32 32">
-    <g fill="#7c5cff">
-      <rect x="10" y="2" width="12" height="16" rx="6"/>
-      <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="#7c5cff" stroke-width="4"/>
-      <rect x="14" y="24" width="4" height="3"/>
-      <rect x="10" y="26" width="12" height="4" rx="2"/>
-      <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-               C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-            transform="translate(23 1) scale(.25)"/>
-    </g>
-  </symbol>
-  <!-- Same glyph in currentColor: what a macOS template image looks like once
-       the system has tinted its alpha mask for the menu bar. -->
-  <symbol id="tray-m" viewBox="0 0 32 32">
-    <g fill="currentColor">
-      <rect x="10" y="2" width="12" height="16" rx="6"/>
-      <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="currentColor" stroke-width="4"/>
-      <rect x="14" y="24" width="4" height="3"/>
-      <rect x="10" y="26" width="12" height="4" rx="2"/>
-      <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-               C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-            transform="translate(23 1) scale(.25)"/>
-    </g>
-  </symbol>
+  <g fill="url(#im-glyph)">
+    
+    <rect x="96" y="32" width="64" height="96" rx="32"/>
+    
+    <path d="M64 112 V128 A32 32 0 0 0 96 160 H160 A32 32 0 0 0 192 128 V112"
+          fill="none" stroke="url(#im-glyph)" stroke-width="32" stroke-linecap="round"/>
+    <rect x="112" y="176" width="32" height="32"/>
+    <rect x="80" y="192" width="96" height="32" rx="16"/>
+  </g>
+
+  
+  <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+           C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+        fill="#c9fff7" transform="translate(176 32) scale(1.5)"/></symbol>
+<symbol id="ic-eq" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#ie-tileBG)"/>
+  <rect width="256" height="256" fill="url(#ie-glowAI)"/>
+
+  <g fill="url(#ie-aiGradV)">
+    <rect x="50"  y="86"  width="22" height="78"  rx="11"/>
+    <rect x="86"  y="108" width="22" height="100" rx="11"/>
+    <rect x="117" y="132" width="22" height="80"  rx="11"/>
+    <rect x="148" y="108" width="22" height="100" rx="11"/>
+    <rect x="184" y="86"  width="22" height="78"  rx="11"/>
+  </g>
+
+  
+  <path d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
+           C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"
+        fill="#cfeee9" transform="translate(97 41) scale(1.93)"/></symbol>
+<symbol id="tray-c" viewBox="0 0 32 32"><path d="M8 6H22A6 6 0 0 1 28 12V16A6 6 0 0 1 22 22H6L2 26V12A6 6 0 0 1 8 6Z" fill="#7c5cff" mask="url(#tc-cut)"/></symbol>
+<symbol id="tray-m" viewBox="0 0 32 32"><path d="M8 6H22A6 6 0 0 1 28 12V16A6 6 0 0 1 22 22H6L2 26V12A6 6 0 0 1 8 6Z" fill="currentColor" mask="url(#tm-cut)"/></symbol>
+<symbol id="tray-old" viewBox="0 0 32 32"><rect x="10" y="2" width="12" height="16" rx="6"/>
+  
+  <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="#7c5cff" stroke-width="4"/>
+  <rect x="14" y="24" width="4" height="3"/>
+  <rect x="10" y="26" width="12" height="4" rx="2"/>
+  
+  <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
+           C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
+        transform="translate(23 1) scale(.25)"/></symbol>
+<symbol id="cd-1" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c1-g)"/><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#0e1117" opacity=".16" transform="translate(0 8)"/>
+<g clip-path="url(#c1-dn)"><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#bceae6"/></g><g clip-path="url(#c1-up)"><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#ffffff"/></g>
+<path d="M-128 112C-117.6 124.252 -107.6 136 -96 136C-84.4 136 -74.4 124.252 -64 112C-53.6 99.748 -43.6 88 -32 88C-20.4 88 -10.4 99.748 0 112C10.4 124.252 20.4 136 32 136C43.6 136 53.6 124.252 64 112C74.4 99.748 84.4 88 96 88C107.6 88 117.6 99.748 128 112C138.4 124.252 148.4 136 160 136C171.6 136 181.6 124.252 192 112C202.4 99.748 212.4 88 224 88C235.6 88 245.6 99.748 256 112C266.4 124.252 276.4 136 288 136C299.6 136 309.6 124.252 320 112C330.4 99.748 340.4 88 352 88C363.6 88 373.6 99.748 384 112" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#c1-b)"/></symbol>
+<symbol id="cd-2" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c2-g)"/><path d="M16 96C25.1 85.79 33.85 76 44 76C54.15 76 62.9 85.79 72 96C81.1 106.21 89.85 116 100 116C110.15 116 118.9 106.21 128 96C137.1 85.79 145.85 76 156 76C166.15 76 174.9 85.79 184 96C193.1 106.21 201.85 116 212 116C222.15 116 230.9 106.21 240 96" fill="none" stroke="#bceae6" stroke-width="32" stroke-linecap="round"/>
+<path d="M80 48H176A32 32 0 0 1 208 80V112A32 32 0 0 1 176 144H80L48 176V80A32 32 0 0 1 80 48Z" fill="#ffffff"/><path d="M16 96C25.1 85.79 33.85 76 44 76C54.15 76 62.9 85.79 72 96C81.1 106.21 89.85 116 100 116C110.15 116 118.9 106.21 128 96C137.1 85.79 145.85 76 156 76C166.15 76 174.9 85.79 184 96C193.1 106.21 201.85 116 212 116C222.15 116 230.9 106.21 240 96" fill="none" stroke="#0e1117" stroke-width="32" stroke-linecap="round" clip-path="url(#c2-b)"/></symbol>
+<symbol id="cd-3" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c3-g)"/><path d="M88 48H192A48 48 0 0 1 240 96V128A48 48 0 0 1 192 176H88A48 48 0 0 1 40 128V96A48 48 0 0 1 88 48Z" fill="#ffffff"/><path d="M24 200C38.5 200 51 176.504 64 152C77 127.496 89.5 104 104 104C118.5 104 131 127.496 144 152" fill="none" stroke-width="32" stroke-linecap="round" stroke="#ffffff"/><path d="M24 200C38.5 200 51 176.504 64 152C77 127.496 89.5 104 104 104C118.5 104 131 127.496 144 152" fill="none" stroke-width="32" stroke-linecap="round" stroke="#0e1117" clip-path="url(#c3-b)"/></symbol>
+<symbol id="cd-4" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c4-g)"/><path d="M120 112H224V168A24 24 0 0 1 200 192H120A24 24 0 0 1 96 168V136A24 24 0 0 1 120 112Z" fill="#bceae6"/><path d="M56 64H136A24 24 0 0 1 160 88V120A24 24 0 0 1 136 144H32V88A24 24 0 0 1 56 64Z" fill="#ffffff"/>
+<g clip-path="url(#c4-a)"><g clip-path="url(#c4-b)"><rect x="96" y="112" width="64" height="32" fill="#0e1117" opacity=".9"/></g></g></symbol>
+<symbol id="cd-5" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c5-g)"/><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#0e1117" opacity=".16" transform="translate(0 8)"/><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#ffffff"/><rect x="40" y="84" width="32" height="56" rx="16" fill="#0e1117"/><rect x="88" y="64" width="32" height="96" rx="16" fill="#0e1117"/><rect x="136" y="72" width="32" height="80" rx="16" fill="#0e1117"/><rect x="184" y="88" width="32" height="48" rx="16" fill="#0e1117"/></symbol>
+<symbol id="cd-6" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c6-g)"/><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#ffffff"/><g clip-path="url(#c6-dn)"><path d="M72 48H184A48 48 0 0 1 232 96V128A48 48 0 0 1 184 176H56L24 208V96A48 48 0 0 1 72 48Z" fill="#0e1117"/></g></symbol>
+<symbol id="cd-7" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#c7-g)"/><path d="M128 32A96 96 0 0 1 224 128A96 96 0 0 1 128 224H32V128A96 96 0 0 1 128 32Z" fill="#ffffff"/><path d="M48 128C58.4 115.748 68.4 104 80 104C91.6 104 101.6 115.748 112 128C122.4 140.252 132.4 152 144 152C155.6 152 165.6 140.252 176 128C186.4 115.748 196.4 104 208 104C219.6 104 229.6 115.748 240 128" fill="none" stroke="#0e1117" stroke-width="32" stroke-linecap="round"/></symbol>
+<symbol id="an-1" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#ia-tile)"/>
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#ia-below)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" clip-path="url(#ia-above)"/></symbol>
+<symbol id="an-2" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#ia-tile)"/>
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" fill-opacity=".18"/><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#ia-bubble)"/></symbol>
+<symbol id="an-3" viewBox="0 0 256 256"><rect width="256" height="256" fill="url(#ia-tile)"/>
+  <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></symbol>
 
   <!-- Neutral stand-ins for Windows system tray glyphs (Wi-Fi, volume, battery). -->
   <symbol id="sys-wifi" viewBox="0 0 16 16">
@@ -224,17 +253,17 @@
 <div class="wrap">
   <header>
     <h1>Voc<span class="k">ium</span> · App Icon</h1>
-    <p>AI Mic — 一支麥克風加一枚 AI 火花；為 16 px 與深／淺工作列而設計。向量母版：<code>icon.svg</code>（App）＋ <code>tray.svg</code>（系統匣／選單列）</p>
-    <span class="badge">2026-10-30 修訂 3 · AI Mic 定案 · 取代舊版「等化器 V」</span>
+    <p>Voice Ribbon — 一條正弦聲波帶切過一個黃金矩形對話框；向量母版：<code>icon.svg</code>（App）＋ <code>tray.svg</code>（系統匣／選單列）</p>
+    <span class="badge">2026-10-30 修訂 4 · Voice Ribbon 定案 · 取代已退件的「AI Mic」與最初的「等化器 V」</span>
   </header>
 
   <!-- ====================== 1. CONCEPT ====================== -->
-  <h2>設計概念 — AI Mic</h2>
-  <div class="sub"><b>白→薄荷漸層的麥克風，加一枚 AI 火花，坐在中亮度紫磚上。</b>麥克風是「語音輸入」最通用、不必解釋的符號；火花是生成式 AI 的通用訊號；紫色沿用品牌 violet（即 App 的 <i>inject／AI 處理</i> 狀態色），字符底部的薄荷漸層保留品牌 teal。整個圖示只有 <b>3 個形狀</b>，縮到 16 px 仍是同一個剪影。</div>
+  <h2>設計概念 — Voice Ribbon</h2>
+  <div class="sub"><b>聲波與文字方塊不是並排，而是同一個物件。</b>一條正弦聲波帶橫切過對話框，兩端被對話框的輪廓裁得剛好貼齊；沿著波的中心線，對話框分成上下兩片——<b>上片（白）是說出口的話，下片（薄荷，品牌 teal 的淡調）是落成的文字</b>。波是點對稱的（旋轉 180° 不變），所以同一個圖形讀作「語音 → 文字」，也讀作「文字 → 語音」：對應產品現在的 STT 與路線圖上的 TTS。整個圖示只有<b>兩個基本形</b>（對話框、帶），縮到 16 px 仍是同一條波。</div>
 
   <div class="concept">
-    <div class="title">AI Mic<span class="tag">定案</span></div>
-    <div class="desc">滿版方形母版（Windows／Tauri 會自行套圓角）；下列由左至右為母版、OS 圓角預覽，以及各常見尺寸。<b>所有筆劃 32 單位（16 px 時 = 2 px）、所有間隙 16 單位（= 1 px）、所有邊緣落在 16 單位格線上</b>，所以縮小後依然銳利。</div>
+    <div class="title">Voice Ribbon<span class="tag">定案</span></div>
+    <div class="desc">滿版方形母版（Windows／Tauri 會自行套圓角）；下列由左至右為母版、OS 圓角預覽，以及各常見尺寸。</div>
     <div class="row">
       <div class="spec"><svg class="tile sq s256"><use href="#ic-app"/></svg><span class="cap">256 母版（滿版方形）</span></div>
       <div class="spec"><svg class="tile s128"><use href="#ic-app"/></svg><span class="cap">128（開始功能表／安裝程式）</span></div>
@@ -245,104 +274,181 @@
     </div>
 
     <div class="anat">
-      <div class="spec"><svg class="tile s128"><use href="#an-1"/></svg><span class="cap"><b>① 膠囊</b><br>64 × 96，麥克風本體（16 px 時 4 × 6 px）</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#an-2"/></svg><span class="cap"><b>② 托架＋底座</b><br>方正 U 形托架 + 短柱 + 底座，連成一體</span></div>
-      <div class="spec"><svg class="tile s128"><use href="#an-3"/></svg><span class="cap"><b>③ AI 火花</b><br>4 角凹星 48 × 48，放在膠囊右上的空位</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#an-1"/></svg><span class="cap"><b>① 對話框的兩片</b><br>B − R：沿波的中心線切成白（上）與薄荷（下）</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#an-2"/></svg><span class="cap"><b>② 聲波帶</b><br>B ∩ R：被對話框裁到貼齊的墨色帶</span></div>
+      <div class="spec"><svg class="tile s128"><use href="#an-3"/></svg><span class="cap"><b>③ 深度</b><br>對話框下移 8 單位的平面陰影，加兩色漸層磚</span></div>
     </div>
   </div>
 
   <div class="concept">
-    <div class="title">色彩與角色</div>
-    <div class="desc">紫色定位在<b>中亮度帶</b>（相對亮度 L 0.15–0.22），讓同一塊磚對深色與淺色表面都有邊界；對比由<b>明度</b>承擔，不靠色相，因此轉成灰階也成立。</div>
+    <div class="title">設計簡報 → 這個圖示怎麼做到</div>
     <table>
-      <tr><th>角色</th><th>色票</th><th>用途</th></tr>
-      <tr><td>磚面（起）</td><td><span class="sw" style="background:#8466ff"></span><code>#8466ff</code></td><td>左上；品牌 violet 微調，對 #f3f3f3 為 3.55 : 1</td></tr>
-      <tr><td>磚面（止）</td><td><span class="sw" style="background:#6c4ef6"></span><code>#6c4ef6</code></td><td>右下；對 #1f1f1f 為 3.19 : 1</td></tr>
-      <tr><td>字符（上）</td><td><span class="sw" style="background:#ffffff"></span><code>#ffffff</code></td><td>膠囊頂端，對磚面 3.9–5.2 : 1</td></tr>
-      <tr><td>字符（下）</td><td><span class="sw" style="background:#8cefe3"></span><code>#8cefe3</code></td><td>底座端的薄荷（品牌 teal 提亮），對磚面 3.8 : 1</td></tr>
-      <tr><td>火花</td><td><span class="sw" style="background:#c9fff7"></span><code>#c9fff7</code></td><td>淡薄荷白，對磚面 3.6 : 1</td></tr>
-      <tr><td>系統匣單色</td><td><span class="sw" style="background:#7c5cff"></span><code>#7c5cff</code></td><td>tray.svg 唯一顏色，與 App 的 inject 狀態色同一個</td></tr>
+      <tr><th style="width:230px">簡報要求</th><th>本設計的做法</th></tr>
+      <tr><td><b>聲波曲線與幾何文字方塊／對話框完美融合</b></td><td>正弦帶 ∩ 對話框：帶的兩端貼齊對話框外緣，畫面上沒有「一條波＋一個框」，只有一個被波切開的框。</td></tr>
+      <tr><td><b>精確的幾何網格</b></td><td>16 單位網格（u = 16）；每個尺寸都是 Fibonacci 數 × u：1 · 2 · 3 · 5 · 8 · 13（見〈構圖〉）。</td></tr>
+      <tr><td><b>黃金比例 1 : 1.618</b></td><td>對話框 13 : 8 = 1.625（+0.4 %）；巢狀的緞帶包絡 8 : 5 = 1.600（−1.1 %）；圓角 ÷ 對話框高 = 3 : 8 = 0.375 ≈ 1/φ² = 0.382。</td></tr>
+      <tr><td><b>平行線</b></td><td>聲波帶兩緣是相距 32 的平行偏移曲線；對話框上、下緣互相平行；兩片的分界與帶同一條曲線。</td></tr>
+      <tr><td><b>向量布林運算產生的交集與重疊</b></td><td>B ∩ R = 墨色帶；B − R = 兩片；陰影 = B 的位移疊合。三個基本形，沒有手繪輪廓。</td></tr>
+      <tr><td><b>極簡、科技感、扁平＋微立體</b></td><td>四個顏色、兩個基本形；深度只有兩色漸層磚與 8 單位平面陰影。沒有發光、斜角、重漸層。</td></tr>
+      <tr><td><b>公司級的克制（Linear／Vercel／Arc／Raycast）</b></td><td>單一圖形、單一切法；不畫麥克風、不加火花，也不用字母。</td></tr>
     </table>
   </div>
 
-  <!-- ====================== 2. WHY THE OLD ONE FAILED ====================== -->
-  <h2>為什麼要換 — 舊版在 16 px 消失</h2>
-  <div class="sub">舊版是<b>深藍磚＋五條漸層等化器（排成 V）＋火花</b>，已停用。它在 Windows 系統匣會消失，原因不是品味，而是四個可量測的問題。下方並排同一個 16 px／32 px 在兩種工作列上的實際樣子。</div>
+  <!-- ====================== 2. CONSTRUCTION ====================== -->
+  <h2>構圖 — 網格、黃金比例與布林運算</h2>
+  <div class="sub">下圖是母版的實際構造：<b>左</b>為 256 畫布上的網格與黃金矩形（青）、Fibonacci 正方形與黃金螺線（橘）、緞帶包絡（紫）與正弦帶（白）；<b>右</b>為六個布林步驟；<b>下</b>為 Fibonacci 模數與比例對照。圖中座標與 <code>icon.svg</code> 完全相同。</div>
+  <div class="figure">
+<svg viewBox="0 0 1360 960" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Voice Ribbon 構圖圖：網格、黃金矩形、布林運算與 Fibonacci 模數"><defs>
+    <linearGradient id="dc-tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a6cff"/><stop offset="1" stop-color="#6e4ff5"/></linearGradient>
+    <clipPath id="dc-b"><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z"/></clipPath>
+    <clipPath id="dc-up"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V-16H0Z"/></clipPath>
+    <clipPath id="dc-dn"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128V272H0Z"/></clipPath>
+    <clipPath id="dc-t"><rect width="256" height="256"/></clipPath>
+  </defs><rect width="1360" height="960" fill="#0e1117"/><text x="36" y="44" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="22" font-weight="700" fill="#e6edf3" text-anchor="start" >Voice Ribbon — 構圖</text><text x="36" y="68" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="400" fill="#8b949e" text-anchor="start" >16 單位網格（u = 16）· Fibonacci 模數 1 · 2 · 3 · 5 · 8 · 13 · 黃金矩形 13 : 8 與 8 : 5 · 聲波帶 ∩ 對話框</text><rect x="36" y="96" width="640" height="640" fill="#12171f" stroke="rgba(255,255,255,.10)"/><line x1="76" y1="96" x2="76" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="136" x2="676" y2="136" stroke="rgba(255,255,255,.07)"/><line x1="116" y1="96" x2="116" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="176" x2="676" y2="176" stroke="rgba(255,255,255,.07)"/><line x1="156" y1="96" x2="156" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="216" x2="676" y2="216" stroke="rgba(255,255,255,.07)"/><line x1="196" y1="96" x2="196" y2="736" stroke="rgba(255,255,255,.16)"/><line x1="36" y1="256" x2="676" y2="256" stroke="rgba(255,255,255,.16)"/><line x1="236" y1="96" x2="236" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="296" x2="676" y2="296" stroke="rgba(255,255,255,.07)"/><line x1="276" y1="96" x2="276" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="336" x2="676" y2="336" stroke="rgba(255,255,255,.07)"/><line x1="316" y1="96" x2="316" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="376" x2="676" y2="376" stroke="rgba(255,255,255,.07)"/><line x1="356" y1="96" x2="356" y2="736" stroke="rgba(255,255,255,.16)"/><line x1="36" y1="416" x2="676" y2="416" stroke="rgba(255,255,255,.16)"/><line x1="396" y1="96" x2="396" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="456" x2="676" y2="456" stroke="rgba(255,255,255,.07)"/><line x1="436" y1="96" x2="436" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="496" x2="676" y2="496" stroke="rgba(255,255,255,.07)"/><line x1="476" y1="96" x2="476" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="536" x2="676" y2="536" stroke="rgba(255,255,255,.07)"/><line x1="516" y1="96" x2="516" y2="736" stroke="rgba(255,255,255,.16)"/><line x1="36" y1="576" x2="676" y2="576" stroke="rgba(255,255,255,.16)"/><line x1="556" y1="96" x2="556" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="616" x2="676" y2="616" stroke="rgba(255,255,255,.07)"/><line x1="596" y1="96" x2="596" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="656" x2="676" y2="656" stroke="rgba(255,255,255,.07)"/><line x1="636" y1="96" x2="636" y2="736" stroke="rgba(255,255,255,.07)"/><line x1="36" y1="696" x2="676" y2="696" stroke="rgba(255,255,255,.07)"/><g transform="translate(36 96) scale(2.5)" clip-path="url(#dc-t)">
+    <path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="rgba(255,255,255,.07)"/>
+    <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="rgba(138,108,255,.32)" stroke-width="32" clip-path="url(#dc-b)"/>
+  </g><g transform="translate(36 96) scale(2.5)" clip-path="url(#dc-t)" fill="none">
+    <rect x="24" y="64" width="208" height="128" stroke="#6ad0c8" stroke-width="1.1"/>
+    <rect x="24" y="64" width="128" height="128" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/><rect x="152" y="64" width="80" height="80" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/><rect x="184" y="144" width="48" height="48" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/><rect x="152" y="160" width="32" height="32" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/><rect x="152" y="144" width="16" height="16" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/><rect x="168" y="144" width="16" height="16" stroke="#6ad0c8" stroke-width=".55" stroke-opacity=".7"/>
+    <path d="M24 192A128 128 0 0 1 152 64A80 80 0 0 1 232 144A48 48 0 0 1 184 192A32 32 0 0 1 152 160A16 16 0 0 1 168 144" stroke="#f5a623" stroke-width="1.3"/>
+    <rect x="64" y="88" width="128" height="80" stroke="#8a6cff" stroke-width="1" stroke-dasharray="4 3"/>
+    <line x1="0" y1="128" x2="256" y2="128" stroke="#8a6cff" stroke-width=".6" stroke-dasharray="2 2"/>
+    <line x1="128" y1="0" x2="128" y2="256" stroke="rgba(255,255,255,.35)" stroke-width=".6" stroke-dasharray="2 2"/>
+    <path d="M-33.42 120.41L-33.1 120.27L-32.82 120.17L-32.6 120.1L-32.42 120.05L-32.27 120.03L-32.16 120.01L-32.08 120L-32 120L-31.92 120L-31.84 120.01L-31.73 120.03L-31.58 120.05L-31.4 120.1L-31.18 120.17L-30.9 120.27L-30.58 120.41L-30.2 120.59L-29.77 120.82L-29.29 121.1L-28.76 121.43L-28.19 121.82L-27.58 122.26L-26.93 122.76L-26.24 123.32L-25.52 123.94L-24.77 124.6L-24 125.32L-23.2 126.1L-22.37 126.92L-21.53 127.78L-20.66 128.69L-19.78 129.64L-18.88 130.63L-17.97 131.65L-17.04 132.7L-16.1 133.79L-15.14 134.9L-14.17 136.03L-13.19 137.18L-12.2 138.35L-11.19 139.54L-10.17 140.74L-9.14 141.94L-8.1 143.15L-7.04 144.37L-5.97 145.58L-4.88 146.8L-3.78 148.01L-2.66 149.21L-1.53 150.41L-0.37 151.59L0.8 152.76L2 153.92L3.23 155.06L4.48 156.17L5.76 157.26L7.07 158.33L8.42 159.37L9.81 160.37L11.24 161.34L12.71 162.27L14.23 163.15L15.8 163.99L17.42 164.76L19.1 165.47L20.82 166.11L22.6 166.66L24.42 167.13L26.27 167.51L28.16 167.78L30.08 167.94L32 168L33.92 167.94L35.84 167.78L37.73 167.51L39.58 167.13L41.4 166.66L43.18 166.11L44.9 165.47L46.58 164.76L48.2 163.99L49.77 163.15L51.29 162.27L52.76 161.34L54.19 160.37L55.58 159.37L56.93 158.33L58.24 157.26L59.52 156.17L60.77 155.06L62 153.92L63.2 152.76L64.37 151.59L65.53 150.41L66.66 149.21L67.78 148.01L68.88 146.8L69.97 145.58L71.04 144.37L72.1 143.15L73.14 141.94L74.17 140.74L75.19 139.54L76.2 138.35L77.19 137.18L78.17 136.03L79.14 134.9L80.1 133.79L81.04 132.7L81.97 131.65L82.88 130.63L83.78 129.64L84.66 128.69L85.53 127.78L86.37 126.92L87.2 126.1L88 125.32L88.77 124.6L89.52 123.94L90.24 123.32L90.93 122.76L91.58 122.26L92.19 121.82L92.76 121.43L93.29 121.1L93.77 120.82L94.2 120.59L94.58 120.41L94.9 120.27L95.18 120.17L95.4 120.1L95.58 120.05L95.73 120.03L95.84 120.01L95.92 120L96 120L96.08 120L96.16 120.01L96.27 120.03L96.42 120.05L96.6 120.1L96.82 120.17L97.1 120.27L97.42 120.41L97.8 120.59L98.23 120.82L98.71 121.1L99.24 121.43L99.81 121.82L100.42 122.26L101.07 122.76L101.76 123.32L102.48 123.94L103.23 124.6L104 125.32L104.8 126.1L105.63 126.92L106.47 127.78L107.34 128.69L108.22 129.64L109.12 130.63L110.03 131.65L110.96 132.7L111.9 133.79L112.86 134.9L113.83 136.03L114.81 137.18L115.8 138.35L116.81 139.54L117.83 140.74L118.86 141.94L119.9 143.15L120.96 144.37L122.03 145.58L123.12 146.8L124.22 148.01L125.34 149.21L126.47 150.41L127.63 151.59L128.8 152.76L130 153.92L131.23 155.06L132.48 156.17L133.76 157.26L135.07 158.33L136.42 159.37L137.81 160.37L139.24 161.34L140.71 162.27L142.23 163.15L143.8 163.99L145.42 164.76L147.1 165.47L148.82 166.11L150.6 166.66L152.42 167.13L154.27 167.51L156.16 167.78L158.08 167.94L160 168L161.92 167.94L163.84 167.78L165.73 167.51L167.58 167.13L169.4 166.66L171.18 166.11L172.9 165.47L174.58 164.76L176.2 163.99L177.77 163.15L179.29 162.27L180.76 161.34L182.19 160.37L183.58 159.37L184.93 158.33L186.24 157.26L187.52 156.17L188.77 155.06L190 153.92L191.2 152.76L192.37 151.59L193.53 150.41L194.66 149.21L195.78 148.01L196.88 146.8L197.97 145.58L199.04 144.37L200.1 143.15L201.14 141.94L202.17 140.74L203.19 139.54L204.2 138.35L205.19 137.18L206.17 136.03L207.14 134.9L208.1 133.79L209.04 132.7L209.97 131.65L210.88 130.63L211.78 129.64L212.66 128.69L213.53 127.78L214.37 126.92L215.2 126.1L216 125.32L216.77 124.6L217.52 123.94L218.24 123.32L218.93 122.76L219.58 122.26L220.19 121.82L220.76 121.43L221.29 121.1L221.77 120.82L222.2 120.59L222.58 120.41L222.9 120.27L223.18 120.17L223.4 120.1L223.58 120.05L223.73 120.03L223.84 120.01L223.92 120L224 120L224.08 120L224.16 120.01L224.27 120.03L224.42 120.05L224.6 120.1L224.82 120.17L225.1 120.27L225.42 120.41L225.8 120.59L226.23 120.82L226.71 121.1L227.24 121.43L227.81 121.82L228.42 122.26L229.07 122.76L229.76 123.32L230.48 123.94L231.23 124.6L232 125.32L232.8 126.1L233.63 126.92L234.47 127.78L235.34 128.69L236.22 129.64L237.12 130.63L238.03 131.65L238.96 132.7L239.9 133.79L240.86 134.9L241.83 136.03L242.81 137.18L243.8 138.35L244.81 139.54L245.83 140.74L246.86 141.94L247.9 143.15L248.96 144.37L250.03 145.58L251.12 146.8L252.22 148.01L253.34 149.21L254.47 150.41L255.63 151.59L256.8 152.76L258 153.92L259.23 155.06L260.48 156.17L261.76 157.26L263.07 158.33L264.42 159.37L265.81 160.37L267.24 161.34L268.71 162.27L270.23 163.15L271.8 163.99L273.42 164.76L275.1 165.47L276.82 166.11L278.6 166.66L280.42 167.13L282.27 167.51L284.16 167.78L286.08 167.94L288 168L289.92 167.94L291.84 167.78L293.73 167.51L295.58 167.13L297.4 166.66L299.18 166.11L300.9 165.47L302.58 164.76" stroke="#fff" stroke-width=".9" stroke-opacity=".9"/>
+    <path d="M-46.58 91.24L-44.9 90.53L-43.18 89.89L-41.4 89.34L-39.58 88.87L-37.73 88.49L-35.84 88.22L-33.92 88.06L-32 88L-30.08 88.06L-28.16 88.22L-26.27 88.49L-24.42 88.87L-22.6 89.34L-20.82 89.89L-19.1 90.53L-17.42 91.24L-15.8 92.01L-14.23 92.85L-12.71 93.73L-11.24 94.66L-9.81 95.63L-8.42 96.63L-7.07 97.67L-5.76 98.74L-4.48 99.83L-3.23 100.94L-2 102.08L-0.8 103.24L0.37 104.41L1.53 105.59L2.66 106.79L3.78 107.99L4.88 109.2L5.97 110.42L7.04 111.63L8.1 112.85L9.14 114.06L10.17 115.26L11.19 116.46L12.2 117.65L13.19 118.82L14.17 119.97L15.14 121.1L16.1 122.21L17.04 123.3L17.97 124.35L18.88 125.37L19.78 126.36L20.66 127.31L21.53 128.22L22.37 129.08L23.2 129.9L24 130.68L24.77 131.4L25.52 132.06L26.24 132.68L26.93 133.24L27.58 133.74L28.19 134.18L28.76 134.57L29.29 134.9L29.77 135.18L30.2 135.41L30.58 135.59L30.9 135.73L31.18 135.83L31.4 135.9L31.58 135.95L31.73 135.97L31.84 135.99L31.92 136L32 136L32.08 136L32.16 135.99L32.27 135.97L32.42 135.95L32.6 135.9L32.82 135.83L33.1 135.73L33.42 135.59L33.8 135.41L34.23 135.18L34.71 134.9L35.24 134.57L35.81 134.18L36.42 133.74L37.07 133.24L37.76 132.68L38.48 132.06L39.23 131.4L40 130.68L40.8 129.9L41.63 129.08L42.47 128.22L43.34 127.31L44.22 126.36L45.12 125.37L46.03 124.35L46.96 123.3L47.9 122.21L48.86 121.1L49.83 119.97L50.81 118.82L51.8 117.65L52.81 116.46L53.83 115.26L54.86 114.06L55.9 112.85L56.96 111.63L58.03 110.42L59.12 109.2L60.22 107.99L61.34 106.79L62.47 105.59L63.63 104.41L64.8 103.24L66 102.08L67.23 100.94L68.48 99.83L69.76 98.74L71.07 97.67L72.42 96.63L73.81 95.63L75.24 94.66L76.71 93.73L78.23 92.85L79.8 92.01L81.42 91.24L83.1 90.53L84.82 89.89L86.6 89.34L88.42 88.87L90.27 88.49L92.16 88.22L94.08 88.06L96 88L97.92 88.06L99.84 88.22L101.73 88.49L103.58 88.87L105.4 89.34L107.18 89.89L108.9 90.53L110.58 91.24L112.2 92.01L113.77 92.85L115.29 93.73L116.76 94.66L118.19 95.63L119.58 96.63L120.93 97.67L122.24 98.74L123.52 99.83L124.77 100.94L126 102.08L127.2 103.24L128.37 104.41L129.53 105.59L130.66 106.79L131.78 107.99L132.88 109.2L133.97 110.42L135.04 111.63L136.1 112.85L137.14 114.06L138.17 115.26L139.19 116.46L140.2 117.65L141.19 118.82L142.17 119.97L143.14 121.1L144.1 122.21L145.04 123.3L145.97 124.35L146.88 125.37L147.78 126.36L148.66 127.31L149.53 128.22L150.37 129.08L151.2 129.9L152 130.68L152.77 131.4L153.52 132.06L154.24 132.68L154.93 133.24L155.58 133.74L156.19 134.18L156.76 134.57L157.29 134.9L157.77 135.18L158.2 135.41L158.58 135.59L158.9 135.73L159.18 135.83L159.4 135.9L159.58 135.95L159.73 135.97L159.84 135.99L159.92 136L160 136L160.08 136L160.16 135.99L160.27 135.97L160.42 135.95L160.6 135.9L160.82 135.83L161.1 135.73L161.42 135.59L161.8 135.41L162.23 135.18L162.71 134.9L163.24 134.57L163.81 134.18L164.42 133.74L165.07 133.24L165.76 132.68L166.48 132.06L167.23 131.4L168 130.68L168.8 129.9L169.63 129.08L170.47 128.22L171.34 127.31L172.22 126.36L173.12 125.37L174.03 124.35L174.96 123.3L175.9 122.21L176.86 121.1L177.83 119.97L178.81 118.82L179.8 117.65L180.81 116.46L181.83 115.26L182.86 114.06L183.9 112.85L184.96 111.63L186.03 110.42L187.12 109.2L188.22 107.99L189.34 106.79L190.47 105.59L191.63 104.41L192.8 103.24L194 102.08L195.23 100.94L196.48 99.83L197.76 98.74L199.07 97.67L200.42 96.63L201.81 95.63L203.24 94.66L204.71 93.73L206.23 92.85L207.8 92.01L209.42 91.24L211.1 90.53L212.82 89.89L214.6 89.34L216.42 88.87L218.27 88.49L220.16 88.22L222.08 88.06L224 88L225.92 88.06L227.84 88.22L229.73 88.49L231.58 88.87L233.4 89.34L235.18 89.89L236.9 90.53L238.58 91.24L240.2 92.01L241.77 92.85L243.29 93.73L244.76 94.66L246.19 95.63L247.58 96.63L248.93 97.67L250.24 98.74L251.52 99.83L252.77 100.94L254 102.08L255.2 103.24L256.37 104.41L257.53 105.59L258.66 106.79L259.78 107.99L260.88 109.2L261.97 110.42L263.04 111.63L264.1 112.85L265.14 114.06L266.17 115.26L267.19 116.46L268.2 117.65L269.19 118.82L270.17 119.97L271.14 121.1L272.1 122.21L273.04 123.3L273.97 124.35L274.88 125.37L275.78 126.36L276.66 127.31L277.53 128.22L278.37 129.08L279.2 129.9L280 130.68L280.77 131.4L281.52 132.06L282.24 132.68L282.93 133.24L283.58 133.74L284.19 134.18L284.76 134.57L285.29 134.9L285.77 135.18L286.2 135.41L286.58 135.59L286.9 135.73L287.18 135.83L287.4 135.9L287.58 135.95L287.73 135.97L287.84 135.99L287.92 136L288 136L288.08 136L288.16 135.99L288.27 135.97L288.42 135.95L288.6 135.9L288.82 135.83L289.1 135.73L289.42 135.59" stroke="#fff" stroke-width=".9" stroke-opacity=".9"/>
+    <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" stroke="#fff" stroke-width="1.5"/>
+    <circle cx="72" cy="112" r="48" stroke="#f5a623" stroke-width=".7" stroke-dasharray="1.5 2.5"/>
+    <circle cx="184" cy="112" r="48" stroke="#f5a623" stroke-width=".7" stroke-dasharray="1.5 2.5"/>
+    <circle cx="184" cy="144" r="48" stroke="#f5a623" stroke-width=".7" stroke-dasharray="1.5 2.5"/>
+    <path d="M24 192V224L56 192Z" stroke="#f5a623" stroke-width="1.1" fill="rgba(245,166,35,.18)"/>
+  </g><circle cx="216" cy="376" r="2.4" fill="#f5a623"/><circle cx="496" cy="376" r="2.4" fill="#f5a623"/><circle cx="496" cy="456" r="2.4" fill="#f5a623"/><circle cx="356" cy="416" r="3.4" fill="#fff"/><circle cx="96" cy="256" r="9" fill="#0e1117" stroke="#6ad0c8" stroke-width="1.4"/><text x="96" y="260.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#6ad0c8" text-anchor="middle" >1</text><circle cx="196" cy="316" r="9" fill="#0e1117" stroke="#8a6cff" stroke-width="1.4"/><text x="196" y="320.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#8a6cff" text-anchor="middle" >2</text><circle cx="356" cy="416" r="9" fill="#0e1117" stroke="#fff" stroke-width="1.4"/><text x="356" y="420.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle" >3</text><circle cx="216" cy="376" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="216" y="380.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >4</text><circle cx="126" cy="621" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="126" y="625.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >5</text><circle cx="416" cy="256" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="416" y="260.2" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >6</text><text x="256" y="421" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="16" font-weight="600" fill="#6ad0c8" text-anchor="middle" >8</text><text x="516" y="361" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="16" font-weight="600" fill="#6ad0c8" text-anchor="middle" >5</text><text x="556" y="521" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="600" fill="#6ad0c8" text-anchor="middle" >3</text><text x="456" y="541" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="600" fill="#6ad0c8" text-anchor="middle" >2</text><text x="356" y="756" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#8b949e" text-anchor="middle" >256 畫布 = 16u × 16u；13u × 8u 黃金矩形與畫布同心（中心 128, 128），尾巴垂在下方</text><circle cx="45" cy="778" r="9" fill="#0e1117" stroke="#6ad0c8" stroke-width="1.4"/><text x="45" y="782" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#6ad0c8" text-anchor="middle" >1</text><text x="64" y="782" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >黃金矩形 13u × 8u = 208 × 128（13 : 8 = 1.625）= 對話框外框；內含 Fibonacci 正方形 8 · 5 · 3 · 2 · 1 · 1 與黃金螺線</text><circle cx="45" cy="802" r="9" fill="#0e1117" stroke="#8a6cff" stroke-width="1.4"/><text x="45" y="806" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#8a6cff" text-anchor="middle" >2</text><text x="64" y="806" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >緞帶包絡 8u × 5u = 128 × 80（8 : 5 = 1.6）：第二個黃金矩形，巢狀在 ① 內並置中</text><circle cx="45" cy="826" r="9" fill="#0e1117" stroke="#fff" stroke-width="1.4"/><text x="45" y="830" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#fff" text-anchor="middle" >3</text><text x="64" y="830" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >正弦：中心 (128, 128) = 畫布中心，點對稱；波長 8u、峰峰值 3u、筆寬 2u；兩緣為相距 32 的平行偏移曲線</text><circle cx="45" cy="850" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="45" y="854" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >4</text><text x="64" y="854" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >圓角 r = 3u = 48（= 8u ÷ φ²）；圓點為圓心，三個圓角各一個</text><circle cx="45" cy="874" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="45" y="878" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >5</text><text x="64" y="878" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >尾巴：直角三角形，直角邊 2u = 32，斜邊 45°</text><circle cx="45" cy="898" r="9" fill="#0e1117" stroke="#f5a623" stroke-width="1.4"/><text x="45" y="902" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#f5a623" text-anchor="middle" >6</text><text x="64" y="902" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#e6edf3" text-anchor="start" >黃金螺線：每個 Fibonacci 正方形取四分之一圓，半徑 8 · 5 · 3 · 2 · 1 · 1（單位 u）</text><text x="740" y="90" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="15" font-weight="700" fill="#e6edf3" text-anchor="start" >布林運算：三個基本形 → 一個物件</text><g><text x="740" y="112" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >① 對話框 B</text>
+      <g transform="translate(740 120) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff"/>
+    <rect x="24" y="64" width="208" height="128" rx="48" fill="none" stroke="#6ad0c8" stroke-width="3" stroke-dasharray="8 6"/>
+    <path d="M24 192V224L56 192Z" fill="#f5a623" fill-opacity=".95"/></g>
+      <text x="740" y="320.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >圓角矩形 ∪ 45° 尾巴</text><text x="740" y="335.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >（青虛線＝圓角矩形，橘＝尾巴）</text></g><g><text x="948.3199999999999" y="112" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >② 聲波帶 R</text>
+      <g transform="translate(948.3199999999999 120) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><g clip-path="url(#dc-t)"><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#fff" stroke-opacity=".30" stroke-width="32"/>
+    <path d="M-33.42 120.41L-33.1 120.27L-32.82 120.17L-32.6 120.1L-32.42 120.05L-32.27 120.03L-32.16 120.01L-32.08 120L-32 120L-31.92 120L-31.84 120.01L-31.73 120.03L-31.58 120.05L-31.4 120.1L-31.18 120.17L-30.9 120.27L-30.58 120.41L-30.2 120.59L-29.77 120.82L-29.29 121.1L-28.76 121.43L-28.19 121.82L-27.58 122.26L-26.93 122.76L-26.24 123.32L-25.52 123.94L-24.77 124.6L-24 125.32L-23.2 126.1L-22.37 126.92L-21.53 127.78L-20.66 128.69L-19.78 129.64L-18.88 130.63L-17.97 131.65L-17.04 132.7L-16.1 133.79L-15.14 134.9L-14.17 136.03L-13.19 137.18L-12.2 138.35L-11.19 139.54L-10.17 140.74L-9.14 141.94L-8.1 143.15L-7.04 144.37L-5.97 145.58L-4.88 146.8L-3.78 148.01L-2.66 149.21L-1.53 150.41L-0.37 151.59L0.8 152.76L2 153.92L3.23 155.06L4.48 156.17L5.76 157.26L7.07 158.33L8.42 159.37L9.81 160.37L11.24 161.34L12.71 162.27L14.23 163.15L15.8 163.99L17.42 164.76L19.1 165.47L20.82 166.11L22.6 166.66L24.42 167.13L26.27 167.51L28.16 167.78L30.08 167.94L32 168L33.92 167.94L35.84 167.78L37.73 167.51L39.58 167.13L41.4 166.66L43.18 166.11L44.9 165.47L46.58 164.76L48.2 163.99L49.77 163.15L51.29 162.27L52.76 161.34L54.19 160.37L55.58 159.37L56.93 158.33L58.24 157.26L59.52 156.17L60.77 155.06L62 153.92L63.2 152.76L64.37 151.59L65.53 150.41L66.66 149.21L67.78 148.01L68.88 146.8L69.97 145.58L71.04 144.37L72.1 143.15L73.14 141.94L74.17 140.74L75.19 139.54L76.2 138.35L77.19 137.18L78.17 136.03L79.14 134.9L80.1 133.79L81.04 132.7L81.97 131.65L82.88 130.63L83.78 129.64L84.66 128.69L85.53 127.78L86.37 126.92L87.2 126.1L88 125.32L88.77 124.6L89.52 123.94L90.24 123.32L90.93 122.76L91.58 122.26L92.19 121.82L92.76 121.43L93.29 121.1L93.77 120.82L94.2 120.59L94.58 120.41L94.9 120.27L95.18 120.17L95.4 120.1L95.58 120.05L95.73 120.03L95.84 120.01L95.92 120L96 120L96.08 120L96.16 120.01L96.27 120.03L96.42 120.05L96.6 120.1L96.82 120.17L97.1 120.27L97.42 120.41L97.8 120.59L98.23 120.82L98.71 121.1L99.24 121.43L99.81 121.82L100.42 122.26L101.07 122.76L101.76 123.32L102.48 123.94L103.23 124.6L104 125.32L104.8 126.1L105.63 126.92L106.47 127.78L107.34 128.69L108.22 129.64L109.12 130.63L110.03 131.65L110.96 132.7L111.9 133.79L112.86 134.9L113.83 136.03L114.81 137.18L115.8 138.35L116.81 139.54L117.83 140.74L118.86 141.94L119.9 143.15L120.96 144.37L122.03 145.58L123.12 146.8L124.22 148.01L125.34 149.21L126.47 150.41L127.63 151.59L128.8 152.76L130 153.92L131.23 155.06L132.48 156.17L133.76 157.26L135.07 158.33L136.42 159.37L137.81 160.37L139.24 161.34L140.71 162.27L142.23 163.15L143.8 163.99L145.42 164.76L147.1 165.47L148.82 166.11L150.6 166.66L152.42 167.13L154.27 167.51L156.16 167.78L158.08 167.94L160 168L161.92 167.94L163.84 167.78L165.73 167.51L167.58 167.13L169.4 166.66L171.18 166.11L172.9 165.47L174.58 164.76L176.2 163.99L177.77 163.15L179.29 162.27L180.76 161.34L182.19 160.37L183.58 159.37L184.93 158.33L186.24 157.26L187.52 156.17L188.77 155.06L190 153.92L191.2 152.76L192.37 151.59L193.53 150.41L194.66 149.21L195.78 148.01L196.88 146.8L197.97 145.58L199.04 144.37L200.1 143.15L201.14 141.94L202.17 140.74L203.19 139.54L204.2 138.35L205.19 137.18L206.17 136.03L207.14 134.9L208.1 133.79L209.04 132.7L209.97 131.65L210.88 130.63L211.78 129.64L212.66 128.69L213.53 127.78L214.37 126.92L215.2 126.1L216 125.32L216.77 124.6L217.52 123.94L218.24 123.32L218.93 122.76L219.58 122.26L220.19 121.82L220.76 121.43L221.29 121.1L221.77 120.82L222.2 120.59L222.58 120.41L222.9 120.27L223.18 120.17L223.4 120.1L223.58 120.05L223.73 120.03L223.84 120.01L223.92 120L224 120L224.08 120L224.16 120.01L224.27 120.03L224.42 120.05L224.6 120.1L224.82 120.17L225.1 120.27L225.42 120.41L225.8 120.59L226.23 120.82L226.71 121.1L227.24 121.43L227.81 121.82L228.42 122.26L229.07 122.76L229.76 123.32L230.48 123.94L231.23 124.6L232 125.32L232.8 126.1L233.63 126.92L234.47 127.78L235.34 128.69L236.22 129.64L237.12 130.63L238.03 131.65L238.96 132.7L239.9 133.79L240.86 134.9L241.83 136.03L242.81 137.18L243.8 138.35L244.81 139.54L245.83 140.74L246.86 141.94L247.9 143.15L248.96 144.37L250.03 145.58L251.12 146.8L252.22 148.01L253.34 149.21L254.47 150.41L255.63 151.59L256.8 152.76L258 153.92L259.23 155.06L260.48 156.17L261.76 157.26L263.07 158.33L264.42 159.37L265.81 160.37L267.24 161.34L268.71 162.27L270.23 163.15L271.8 163.99L273.42 164.76L275.1 165.47L276.82 166.11L278.6 166.66L280.42 167.13L282.27 167.51L284.16 167.78L286.08 167.94L288 168L289.92 167.94L291.84 167.78L293.73 167.51L295.58 167.13L297.4 166.66L299.18 166.11L300.9 165.47L302.58 164.76" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M-46.58 91.24L-44.9 90.53L-43.18 89.89L-41.4 89.34L-39.58 88.87L-37.73 88.49L-35.84 88.22L-33.92 88.06L-32 88L-30.08 88.06L-28.16 88.22L-26.27 88.49L-24.42 88.87L-22.6 89.34L-20.82 89.89L-19.1 90.53L-17.42 91.24L-15.8 92.01L-14.23 92.85L-12.71 93.73L-11.24 94.66L-9.81 95.63L-8.42 96.63L-7.07 97.67L-5.76 98.74L-4.48 99.83L-3.23 100.94L-2 102.08L-0.8 103.24L0.37 104.41L1.53 105.59L2.66 106.79L3.78 107.99L4.88 109.2L5.97 110.42L7.04 111.63L8.1 112.85L9.14 114.06L10.17 115.26L11.19 116.46L12.2 117.65L13.19 118.82L14.17 119.97L15.14 121.1L16.1 122.21L17.04 123.3L17.97 124.35L18.88 125.37L19.78 126.36L20.66 127.31L21.53 128.22L22.37 129.08L23.2 129.9L24 130.68L24.77 131.4L25.52 132.06L26.24 132.68L26.93 133.24L27.58 133.74L28.19 134.18L28.76 134.57L29.29 134.9L29.77 135.18L30.2 135.41L30.58 135.59L30.9 135.73L31.18 135.83L31.4 135.9L31.58 135.95L31.73 135.97L31.84 135.99L31.92 136L32 136L32.08 136L32.16 135.99L32.27 135.97L32.42 135.95L32.6 135.9L32.82 135.83L33.1 135.73L33.42 135.59L33.8 135.41L34.23 135.18L34.71 134.9L35.24 134.57L35.81 134.18L36.42 133.74L37.07 133.24L37.76 132.68L38.48 132.06L39.23 131.4L40 130.68L40.8 129.9L41.63 129.08L42.47 128.22L43.34 127.31L44.22 126.36L45.12 125.37L46.03 124.35L46.96 123.3L47.9 122.21L48.86 121.1L49.83 119.97L50.81 118.82L51.8 117.65L52.81 116.46L53.83 115.26L54.86 114.06L55.9 112.85L56.96 111.63L58.03 110.42L59.12 109.2L60.22 107.99L61.34 106.79L62.47 105.59L63.63 104.41L64.8 103.24L66 102.08L67.23 100.94L68.48 99.83L69.76 98.74L71.07 97.67L72.42 96.63L73.81 95.63L75.24 94.66L76.71 93.73L78.23 92.85L79.8 92.01L81.42 91.24L83.1 90.53L84.82 89.89L86.6 89.34L88.42 88.87L90.27 88.49L92.16 88.22L94.08 88.06L96 88L97.92 88.06L99.84 88.22L101.73 88.49L103.58 88.87L105.4 89.34L107.18 89.89L108.9 90.53L110.58 91.24L112.2 92.01L113.77 92.85L115.29 93.73L116.76 94.66L118.19 95.63L119.58 96.63L120.93 97.67L122.24 98.74L123.52 99.83L124.77 100.94L126 102.08L127.2 103.24L128.37 104.41L129.53 105.59L130.66 106.79L131.78 107.99L132.88 109.2L133.97 110.42L135.04 111.63L136.1 112.85L137.14 114.06L138.17 115.26L139.19 116.46L140.2 117.65L141.19 118.82L142.17 119.97L143.14 121.1L144.1 122.21L145.04 123.3L145.97 124.35L146.88 125.37L147.78 126.36L148.66 127.31L149.53 128.22L150.37 129.08L151.2 129.9L152 130.68L152.77 131.4L153.52 132.06L154.24 132.68L154.93 133.24L155.58 133.74L156.19 134.18L156.76 134.57L157.29 134.9L157.77 135.18L158.2 135.41L158.58 135.59L158.9 135.73L159.18 135.83L159.4 135.9L159.58 135.95L159.73 135.97L159.84 135.99L159.92 136L160 136L160.08 136L160.16 135.99L160.27 135.97L160.42 135.95L160.6 135.9L160.82 135.83L161.1 135.73L161.42 135.59L161.8 135.41L162.23 135.18L162.71 134.9L163.24 134.57L163.81 134.18L164.42 133.74L165.07 133.24L165.76 132.68L166.48 132.06L167.23 131.4L168 130.68L168.8 129.9L169.63 129.08L170.47 128.22L171.34 127.31L172.22 126.36L173.12 125.37L174.03 124.35L174.96 123.3L175.9 122.21L176.86 121.1L177.83 119.97L178.81 118.82L179.8 117.65L180.81 116.46L181.83 115.26L182.86 114.06L183.9 112.85L184.96 111.63L186.03 110.42L187.12 109.2L188.22 107.99L189.34 106.79L190.47 105.59L191.63 104.41L192.8 103.24L194 102.08L195.23 100.94L196.48 99.83L197.76 98.74L199.07 97.67L200.42 96.63L201.81 95.63L203.24 94.66L204.71 93.73L206.23 92.85L207.8 92.01L209.42 91.24L211.1 90.53L212.82 89.89L214.6 89.34L216.42 88.87L218.27 88.49L220.16 88.22L222.08 88.06L224 88L225.92 88.06L227.84 88.22L229.73 88.49L231.58 88.87L233.4 89.34L235.18 89.89L236.9 90.53L238.58 91.24L240.2 92.01L241.77 92.85L243.29 93.73L244.76 94.66L246.19 95.63L247.58 96.63L248.93 97.67L250.24 98.74L251.52 99.83L252.77 100.94L254 102.08L255.2 103.24L256.37 104.41L257.53 105.59L258.66 106.79L259.78 107.99L260.88 109.2L261.97 110.42L263.04 111.63L264.1 112.85L265.14 114.06L266.17 115.26L267.19 116.46L268.2 117.65L269.19 118.82L270.17 119.97L271.14 121.1L272.1 122.21L273.04 123.3L273.97 124.35L274.88 125.37L275.78 126.36L276.66 127.31L277.53 128.22L278.37 129.08L279.2 129.9L280 130.68L280.77 131.4L281.52 132.06L282.24 132.68L282.93 133.24L283.58 133.74L284.19 134.18L284.76 134.57L285.29 134.9L285.77 135.18L286.2 135.41L286.58 135.59L286.9 135.73L287.18 135.83L287.4 135.9L287.58 135.95L287.73 135.97L287.84 135.99L287.92 136L288 136L288.08 136L288.16 135.99L288.27 135.97L288.42 135.95L288.6 135.9L288.82 135.83L289.1 135.73L289.42 135.59" fill="none" stroke="#fff" stroke-width="2.2"/>
+    <path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="3"/></g></g>
+      <text x="948.3199999999999" y="320.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >正弦中心線 + 筆寬 32</text><text x="948.3199999999999" y="335.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >兩緣為平行偏移曲線（距離 32）</text></g><g><text x="1156.6399999999999" y="112" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >③ B ∩ R（交集）</text>
+      <g transform="translate(1156.6399999999999 120) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" fill-opacity=".18"/><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#dc-b)"/></g>
+      <text x="1156.6399999999999" y="320.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >聲波帶被對話框裁到剛好貼齊</text><text x="1156.6399999999999" y="335.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >＝ 墨色帶</text></g><g><text x="740" y="376.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >④ B − R（差集）</text>
+      <g transform="translate(740 384.32) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#dc-dn)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" clip-path="url(#dc-up)"/></g>
+      <text x="740" y="584.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >沿正弦中心線分成兩片：</text><text x="740" y="599.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >上＝說話（白）、下＝文字（薄荷）</text></g><g><text x="948.3199999999999" y="376.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >⑤ 疊合</text>
+      <g transform="translate(948.3199999999999 384.32) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#dc-dn)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" clip-path="url(#dc-up)"/><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#dc-b)"/></g>
+      <text x="948.3199999999999" y="584.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >兩片 + 墨色帶</text><text x="948.3199999999999" y="599.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >+ 8 單位平移陰影（微立體）</text></g><g><text x="1156.6399999999999" y="376.32" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="13" font-weight="700" fill="#e6edf3" text-anchor="start" >⑥ 平行線</text>
+      <g transform="translate(1156.6399999999999 384.32) scale(0.72)"><rect width="256" height="256" fill="url(#dc-tile)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#0e1117" fill-opacity=".16" transform="translate(0 8)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#bceae6" clip-path="url(#dc-dn)"/><path d="M72 64H184A48 48 0 0 1 232 112V144A48 48 0 0 1 184 192H56L24 224V112A48 48 0 0 1 72 64Z" fill="#fff" clip-path="url(#dc-up)"/><path d="M0 128C10.4 140.25 20.4 152 32 152C43.6 152 53.6 140.25 64 128C74.4 115.75 84.4 104 96 104C107.6 104 117.6 115.75 128 128C138.4 140.25 148.4 152 160 152C171.6 152 181.6 140.25 192 128C202.4 115.75 212.4 104 224 104C235.6 104 245.6 115.75 256 128" fill="none" stroke="#0e1117" stroke-width="32" clip-path="url(#dc-b)"/>
+    <path d="M-33.42 120.41L-33.1 120.27L-32.82 120.17L-32.6 120.1L-32.42 120.05L-32.27 120.03L-32.16 120.01L-32.08 120L-32 120L-31.92 120L-31.84 120.01L-31.73 120.03L-31.58 120.05L-31.4 120.1L-31.18 120.17L-30.9 120.27L-30.58 120.41L-30.2 120.59L-29.77 120.82L-29.29 121.1L-28.76 121.43L-28.19 121.82L-27.58 122.26L-26.93 122.76L-26.24 123.32L-25.52 123.94L-24.77 124.6L-24 125.32L-23.2 126.1L-22.37 126.92L-21.53 127.78L-20.66 128.69L-19.78 129.64L-18.88 130.63L-17.97 131.65L-17.04 132.7L-16.1 133.79L-15.14 134.9L-14.17 136.03L-13.19 137.18L-12.2 138.35L-11.19 139.54L-10.17 140.74L-9.14 141.94L-8.1 143.15L-7.04 144.37L-5.97 145.58L-4.88 146.8L-3.78 148.01L-2.66 149.21L-1.53 150.41L-0.37 151.59L0.8 152.76L2 153.92L3.23 155.06L4.48 156.17L5.76 157.26L7.07 158.33L8.42 159.37L9.81 160.37L11.24 161.34L12.71 162.27L14.23 163.15L15.8 163.99L17.42 164.76L19.1 165.47L20.82 166.11L22.6 166.66L24.42 167.13L26.27 167.51L28.16 167.78L30.08 167.94L32 168L33.92 167.94L35.84 167.78L37.73 167.51L39.58 167.13L41.4 166.66L43.18 166.11L44.9 165.47L46.58 164.76L48.2 163.99L49.77 163.15L51.29 162.27L52.76 161.34L54.19 160.37L55.58 159.37L56.93 158.33L58.24 157.26L59.52 156.17L60.77 155.06L62 153.92L63.2 152.76L64.37 151.59L65.53 150.41L66.66 149.21L67.78 148.01L68.88 146.8L69.97 145.58L71.04 144.37L72.1 143.15L73.14 141.94L74.17 140.74L75.19 139.54L76.2 138.35L77.19 137.18L78.17 136.03L79.14 134.9L80.1 133.79L81.04 132.7L81.97 131.65L82.88 130.63L83.78 129.64L84.66 128.69L85.53 127.78L86.37 126.92L87.2 126.1L88 125.32L88.77 124.6L89.52 123.94L90.24 123.32L90.93 122.76L91.58 122.26L92.19 121.82L92.76 121.43L93.29 121.1L93.77 120.82L94.2 120.59L94.58 120.41L94.9 120.27L95.18 120.17L95.4 120.1L95.58 120.05L95.73 120.03L95.84 120.01L95.92 120L96 120L96.08 120L96.16 120.01L96.27 120.03L96.42 120.05L96.6 120.1L96.82 120.17L97.1 120.27L97.42 120.41L97.8 120.59L98.23 120.82L98.71 121.1L99.24 121.43L99.81 121.82L100.42 122.26L101.07 122.76L101.76 123.32L102.48 123.94L103.23 124.6L104 125.32L104.8 126.1L105.63 126.92L106.47 127.78L107.34 128.69L108.22 129.64L109.12 130.63L110.03 131.65L110.96 132.7L111.9 133.79L112.86 134.9L113.83 136.03L114.81 137.18L115.8 138.35L116.81 139.54L117.83 140.74L118.86 141.94L119.9 143.15L120.96 144.37L122.03 145.58L123.12 146.8L124.22 148.01L125.34 149.21L126.47 150.41L127.63 151.59L128.8 152.76L130 153.92L131.23 155.06L132.48 156.17L133.76 157.26L135.07 158.33L136.42 159.37L137.81 160.37L139.24 161.34L140.71 162.27L142.23 163.15L143.8 163.99L145.42 164.76L147.1 165.47L148.82 166.11L150.6 166.66L152.42 167.13L154.27 167.51L156.16 167.78L158.08 167.94L160 168L161.92 167.94L163.84 167.78L165.73 167.51L167.58 167.13L169.4 166.66L171.18 166.11L172.9 165.47L174.58 164.76L176.2 163.99L177.77 163.15L179.29 162.27L180.76 161.34L182.19 160.37L183.58 159.37L184.93 158.33L186.24 157.26L187.52 156.17L188.77 155.06L190 153.92L191.2 152.76L192.37 151.59L193.53 150.41L194.66 149.21L195.78 148.01L196.88 146.8L197.97 145.58L199.04 144.37L200.1 143.15L201.14 141.94L202.17 140.74L203.19 139.54L204.2 138.35L205.19 137.18L206.17 136.03L207.14 134.9L208.1 133.79L209.04 132.7L209.97 131.65L210.88 130.63L211.78 129.64L212.66 128.69L213.53 127.78L214.37 126.92L215.2 126.1L216 125.32L216.77 124.6L217.52 123.94L218.24 123.32L218.93 122.76L219.58 122.26L220.19 121.82L220.76 121.43L221.29 121.1L221.77 120.82L222.2 120.59L222.58 120.41L222.9 120.27L223.18 120.17L223.4 120.1L223.58 120.05L223.73 120.03L223.84 120.01L223.92 120L224 120L224.08 120L224.16 120.01L224.27 120.03L224.42 120.05L224.6 120.1L224.82 120.17L225.1 120.27L225.42 120.41L225.8 120.59L226.23 120.82L226.71 121.1L227.24 121.43L227.81 121.82L228.42 122.26L229.07 122.76L229.76 123.32L230.48 123.94L231.23 124.6L232 125.32L232.8 126.1L233.63 126.92L234.47 127.78L235.34 128.69L236.22 129.64L237.12 130.63L238.03 131.65L238.96 132.7L239.9 133.79L240.86 134.9L241.83 136.03L242.81 137.18L243.8 138.35L244.81 139.54L245.83 140.74L246.86 141.94L247.9 143.15L248.96 144.37L250.03 145.58L251.12 146.8L252.22 148.01L253.34 149.21L254.47 150.41L255.63 151.59L256.8 152.76L258 153.92L259.23 155.06L260.48 156.17L261.76 157.26L263.07 158.33L264.42 159.37L265.81 160.37L267.24 161.34L268.71 162.27L270.23 163.15L271.8 163.99L273.42 164.76L275.1 165.47L276.82 166.11L278.6 166.66L280.42 167.13L282.27 167.51L284.16 167.78L286.08 167.94L288 168L289.92 167.94L291.84 167.78L293.73 167.51L295.58 167.13L297.4 166.66L299.18 166.11L300.9 165.47L302.58 164.76" fill="none" stroke="#f5a623" stroke-width="2.4" clip-path="url(#dc-b)"/><path d="M-46.58 91.24L-44.9 90.53L-43.18 89.89L-41.4 89.34L-39.58 88.87L-37.73 88.49L-35.84 88.22L-33.92 88.06L-32 88L-30.08 88.06L-28.16 88.22L-26.27 88.49L-24.42 88.87L-22.6 89.34L-20.82 89.89L-19.1 90.53L-17.42 91.24L-15.8 92.01L-14.23 92.85L-12.71 93.73L-11.24 94.66L-9.81 95.63L-8.42 96.63L-7.07 97.67L-5.76 98.74L-4.48 99.83L-3.23 100.94L-2 102.08L-0.8 103.24L0.37 104.41L1.53 105.59L2.66 106.79L3.78 107.99L4.88 109.2L5.97 110.42L7.04 111.63L8.1 112.85L9.14 114.06L10.17 115.26L11.19 116.46L12.2 117.65L13.19 118.82L14.17 119.97L15.14 121.1L16.1 122.21L17.04 123.3L17.97 124.35L18.88 125.37L19.78 126.36L20.66 127.31L21.53 128.22L22.37 129.08L23.2 129.9L24 130.68L24.77 131.4L25.52 132.06L26.24 132.68L26.93 133.24L27.58 133.74L28.19 134.18L28.76 134.57L29.29 134.9L29.77 135.18L30.2 135.41L30.58 135.59L30.9 135.73L31.18 135.83L31.4 135.9L31.58 135.95L31.73 135.97L31.84 135.99L31.92 136L32 136L32.08 136L32.16 135.99L32.27 135.97L32.42 135.95L32.6 135.9L32.82 135.83L33.1 135.73L33.42 135.59L33.8 135.41L34.23 135.18L34.71 134.9L35.24 134.57L35.81 134.18L36.42 133.74L37.07 133.24L37.76 132.68L38.48 132.06L39.23 131.4L40 130.68L40.8 129.9L41.63 129.08L42.47 128.22L43.34 127.31L44.22 126.36L45.12 125.37L46.03 124.35L46.96 123.3L47.9 122.21L48.86 121.1L49.83 119.97L50.81 118.82L51.8 117.65L52.81 116.46L53.83 115.26L54.86 114.06L55.9 112.85L56.96 111.63L58.03 110.42L59.12 109.2L60.22 107.99L61.34 106.79L62.47 105.59L63.63 104.41L64.8 103.24L66 102.08L67.23 100.94L68.48 99.83L69.76 98.74L71.07 97.67L72.42 96.63L73.81 95.63L75.24 94.66L76.71 93.73L78.23 92.85L79.8 92.01L81.42 91.24L83.1 90.53L84.82 89.89L86.6 89.34L88.42 88.87L90.27 88.49L92.16 88.22L94.08 88.06L96 88L97.92 88.06L99.84 88.22L101.73 88.49L103.58 88.87L105.4 89.34L107.18 89.89L108.9 90.53L110.58 91.24L112.2 92.01L113.77 92.85L115.29 93.73L116.76 94.66L118.19 95.63L119.58 96.63L120.93 97.67L122.24 98.74L123.52 99.83L124.77 100.94L126 102.08L127.2 103.24L128.37 104.41L129.53 105.59L130.66 106.79L131.78 107.99L132.88 109.2L133.97 110.42L135.04 111.63L136.1 112.85L137.14 114.06L138.17 115.26L139.19 116.46L140.2 117.65L141.19 118.82L142.17 119.97L143.14 121.1L144.1 122.21L145.04 123.3L145.97 124.35L146.88 125.37L147.78 126.36L148.66 127.31L149.53 128.22L150.37 129.08L151.2 129.9L152 130.68L152.77 131.4L153.52 132.06L154.24 132.68L154.93 133.24L155.58 133.74L156.19 134.18L156.76 134.57L157.29 134.9L157.77 135.18L158.2 135.41L158.58 135.59L158.9 135.73L159.18 135.83L159.4 135.9L159.58 135.95L159.73 135.97L159.84 135.99L159.92 136L160 136L160.08 136L160.16 135.99L160.27 135.97L160.42 135.95L160.6 135.9L160.82 135.83L161.1 135.73L161.42 135.59L161.8 135.41L162.23 135.18L162.71 134.9L163.24 134.57L163.81 134.18L164.42 133.74L165.07 133.24L165.76 132.68L166.48 132.06L167.23 131.4L168 130.68L168.8 129.9L169.63 129.08L170.47 128.22L171.34 127.31L172.22 126.36L173.12 125.37L174.03 124.35L174.96 123.3L175.9 122.21L176.86 121.1L177.83 119.97L178.81 118.82L179.8 117.65L180.81 116.46L181.83 115.26L182.86 114.06L183.9 112.85L184.96 111.63L186.03 110.42L187.12 109.2L188.22 107.99L189.34 106.79L190.47 105.59L191.63 104.41L192.8 103.24L194 102.08L195.23 100.94L196.48 99.83L197.76 98.74L199.07 97.67L200.42 96.63L201.81 95.63L203.24 94.66L204.71 93.73L206.23 92.85L207.8 92.01L209.42 91.24L211.1 90.53L212.82 89.89L214.6 89.34L216.42 88.87L218.27 88.49L220.16 88.22L222.08 88.06L224 88L225.92 88.06L227.84 88.22L229.73 88.49L231.58 88.87L233.4 89.34L235.18 89.89L236.9 90.53L238.58 91.24L240.2 92.01L241.77 92.85L243.29 93.73L244.76 94.66L246.19 95.63L247.58 96.63L248.93 97.67L250.24 98.74L251.52 99.83L252.77 100.94L254 102.08L255.2 103.24L256.37 104.41L257.53 105.59L258.66 106.79L259.78 107.99L260.88 109.2L261.97 110.42L263.04 111.63L264.1 112.85L265.14 114.06L266.17 115.26L267.19 116.46L268.2 117.65L269.19 118.82L270.17 119.97L271.14 121.1L272.1 122.21L273.04 123.3L273.97 124.35L274.88 125.37L275.78 126.36L276.66 127.31L277.53 128.22L278.37 129.08L279.2 129.9L280 130.68L280.77 131.4L281.52 132.06L282.24 132.68L282.93 133.24L283.58 133.74L284.19 134.18L284.76 134.57L285.29 134.9L285.77 135.18L286.2 135.41L286.58 135.59L286.9 135.73L287.18 135.83L287.4 135.9L287.58 135.95L287.73 135.97L287.84 135.99L287.92 136L288 136L288.08 136L288.16 135.99L288.27 135.97L288.42 135.95L288.6 135.9L288.82 135.83L289.1 135.73L289.42 135.59" fill="none" stroke="#f5a623" stroke-width="2.4" clip-path="url(#dc-b)"/>
+    <line x1="24" y1="64" x2="232" y2="64" stroke="#f5a623" stroke-width="2.4"/><line x1="24" y1="192" x2="232" y2="192" stroke="#f5a623" stroke-width="2.4"/></g>
+      <text x="1156.6399999999999" y="584.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >橘線：帶緣＝偏移曲線；</text><text x="1156.6399999999999" y="599.64" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >對話框上、下緣互相平行</text></g><text x="740" y="632" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="15" font-weight="700" fill="#e6edf3" text-anchor="start" >Fibonacci 模數（u = 16）：每個尺寸都是 Fibonacci 數 × u</text><rect x="740" y="650" width="20.1" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.215" stroke="#6ad0c8" stroke-opacity=".6"/><text x="750.05" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >1u</text><text x="750.05" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >16</text><rect x="768.1" y="650" width="22.2" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.25" stroke="#6ad0c8" stroke-opacity=".6"/><text x="779.2" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >2u</text><text x="779.2" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >32</text><rect x="798.3000000000001" y="650" width="24.3" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.28500000000000003" stroke="#6ad0c8" stroke-opacity=".6"/><text x="810.45" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >3u</text><text x="810.45" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >48</text><rect x="830.6" y="650" width="28.5" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.355" stroke="#6ad0c8" stroke-opacity=".6"/><text x="844.85" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >5u</text><text x="844.85" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >80</text><rect x="867.1" y="650" width="34.8" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.46" stroke="#6ad0c8" stroke-opacity=".6"/><text x="884.5" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >8u</text><text x="884.5" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >128</text><rect x="909.9" y="650" width="45.3" height="26" rx="3" fill="#6ad0c8" fill-opacity="0.635" stroke="#6ad0c8" stroke-opacity=".6"/><text x="932.55" y="667" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle" >13u</text><text x="932.55" y="692" font-family="Consolas, ui-monospace, monospace" font-size="11" font-weight="400" fill="#6ad0c8" text-anchor="middle" >208</text><text x="740" y="716" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >1u = 16  陰影位移 8 = u/2</text><text x="945" y="716" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >2u = 32  筆寬 · 尾巴</text><text x="1150" y="716" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >3u = 48  圓角 · 峰峰值</text><text x="740" y="734" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >5u = 80  緞帶包絡高</text><text x="945" y="734" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >8u = 128  對話框高 · 波長</text><text x="1150" y="734" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="11" font-weight="400" fill="#8b949e" text-anchor="start" >13u = 208  對話框寬</text><text x="740" y="776" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="15" font-weight="700" fill="#e6edf3" text-anchor="start" >比例對照</text><text x="740" y="802" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="700" fill="#e6edf3" text-anchor="start" >13 : 8</text><text x="824" y="802" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#6ad0c8" text-anchor="start" >1.625</text><text x="900" y="802" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#f5a623" text-anchor="start" >+0.4 %</text><text x="1040" y="802" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#8b949e" text-anchor="start" >對話框 208 × 128</text><text x="740" y="824" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="700" fill="#e6edf3" text-anchor="start" >8 : 5</text><text x="824" y="824" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#6ad0c8" text-anchor="start" >1.600</text><text x="900" y="824" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#f5a623" text-anchor="start" >-1.1 %</text><text x="1040" y="824" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#8b949e" text-anchor="start" >緞帶包絡 128 × 80</text><text x="740" y="846" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="700" fill="#e6edf3" text-anchor="start" >r / h</text><text x="824" y="846" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#6ad0c8" text-anchor="start" >0.375</text><text x="900" y="846" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#f5a623" text-anchor="start" >1/φ² = 0.382</text><text x="1040" y="846" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#8b949e" text-anchor="start" >圓角 48 ÷ 對話框高 128</text><text x="740" y="868" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="700" fill="#e6edf3" text-anchor="start" >φ</text><text x="824" y="868" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#6ad0c8" text-anchor="start" >1.618</text><text x="900" y="868" font-family="Consolas, ui-monospace, monospace" font-size="12" font-weight="400" fill="#f5a623" text-anchor="start" >(1 + √5) / 2</text><text x="1040" y="868" font-family="Segoe UI, Microsoft JhengHei, system-ui, sans-serif" font-size="12" font-weight="400" fill="#8b949e" text-anchor="start" >黃金比例</text></svg>
+  </div>
 
+  <div class="concept" style="margin-top:22px">
+    <div class="title">關鍵座標（256 畫布）</div>
+    <table>
+      <tr><th>元件</th><th>數值</th><th>推導</th></tr>
+      <tr><td>對話框 B</td><td class="mono">x 24 · y 64 · 208 × 128</td><td>13u × 8u 黃金矩形，與畫布同心 (128, 128)；13 + 3 = 16，所以左右各留 1.5u</td></tr>
+      <tr><td>圓角</td><td class="mono">r = 48（左上、右上、右下）</td><td>3u；r ÷ h = 3 : 8 = 0.375 ≈ 1/φ²；左下角為直角，由尾巴延續</td></tr>
+      <tr><td>尾巴</td><td class="mono">(24,192) → (24,224) → (56,192)</td><td>直角三角形，直角邊 2u，斜邊正好 45°（落在網格對角線上）</td></tr>
+      <tr><td>聲波中心線 R</td><td class="mono">y = 128 + 24·sin(2πx / 128)</td><td>波長 8u；峰峰值 3u；以 (128, 128) 為點對稱中心；每 8 單位一條四分之一波的三次貝茲（誤差 &lt; 0.01 單位）</td></tr>
+      <tr><td>聲波帶筆寬</td><td class="mono">32</td><td>2u；包絡 = 峰峰值 3u + 筆寬 2u = 5u，所以包絡矩形 8u × 5u = 128 × 80（8 : 5）</td></tr>
+      <tr><td>陰影</td><td class="mono">B 下移 8，墨色 16 %</td><td>u ÷ 2；16 px 時約 0.5 px，只在大尺寸出現</td></tr>
+      <tr><td>磚面</td><td class="mono">#8a6cff → #6e4ff5（上 → 下）</td><td>品牌 violet 的兩個明度；兩端都對深／淺工作列 ≥ 3 : 1</td></tr>
+    </table>
+    <div class="desc" style="margin:16px 0 0"><b>為什麼是 13 : 8 而不是精確的 1.618。</b>φ 是無理數；相鄰 Fibonacci 數的比值 3:2、5:3、8:5、13:8 逐步逼近它，13:8 已經只差 0.4 %，又能整除 16 單位網格（13u = 208、8u = 128）。同一組整數同時決定筆寬 2u、圓角 3u、包絡 5u、波長 8u，所以整個構圖是一個模數系統，不是各自湊出來的數字。</div>
+    <div class="desc" style="margin:10px 0 0"><b>網格吸附。</b>所有水平邊（y = 64、192、224）與帶的筆寬都落在 16 單位網格上，所以 16 px 時是整像素；對話框的垂直邊（x = 24、56、232）落在平移 8 單位的同一組網格上——13u 無法在 16u 內置中，這是唯一的代價。16 px 時它們落在半像素，由 r = 48 的圓角與斜尾巴吸收，仍可讀（見 16 px 像素檢視）。</div>
+  </div>
+
+  <!-- ====================== 3. COLOUR ====================== -->
+  <h2>色彩規格</h2>
+  <div class="sub">四個顏色加一個陰影。<b>對比由明度承擔，不靠色相</b>：磚面落在中亮度帶，白、薄荷、墨都與它拉開；轉成灰階仍成立。數值為 WCAG 對比，由 <code>icon.svg</code> 的實際色票計算。</div>
   <div class="concept">
-    <div class="title">Before / After<span class="tag old">舊版已停用</span></div>
-    <div class="desc">左：舊版（深藍磚）；右：新版。1:1 實際尺寸。</div>
-    <div class="shells">
-      <div class="shell dark"><span class="lbl">深色工作列 #1f1f1f</span>
-        <div class="line">
-          <div class="item"><svg class="tile s16"><use href="#ic-old"/></svg><small>舊 16</small></div>
-          <div class="item"><svg class="tile s32"><use href="#ic-old"/></svg><small>舊 32</small></div>
-          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>新 16</small></div>
-          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>新 32</small></div>
-        </div>
-      </div>
-      <div class="shell light"><span class="lbl">淺色工作列 #f3f3f3</span>
-        <div class="line">
-          <div class="item"><svg class="tile s16"><use href="#ic-old"/></svg><small>舊 16</small></div>
-          <div class="item"><svg class="tile s32"><use href="#ic-old"/></svg><small>舊 32</small></div>
-          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>新 16</small></div>
-          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>新 32</small></div>
-        </div>
-      </div>
-    </div>
-    <table style="margin-top:18px">
-      <tr><th>問題</th><th>舊版</th><th>新版</th></tr>
-      <tr><td><b>磚面對比</b></td><td><span class="bad">深藍磚 #0c0f15–#1b2330 對深色工作列僅 1.04–1.16 : 1</span>，整塊融進背景</td><td><span class="good">中亮度紫磚，對 #1f1f1f ≥ 3.1 : 1、對 #f3f3f3 ≥ 3.5 : 1</span></td></tr>
-      <tr><td><b>筆劃粗細</b></td><td><span class="bad">五條 22 單位的細條，16 px 時僅 1.4 px，條與條的間隙不到 1 px（0.6–0.9 px），糊成一片</span></td><td><span class="good">所有筆劃 32 單位（2 px）、間隙 16 單位（1 px）</span></td></tr>
-      <tr><td><b>形狀數量</b></td><td><span class="bad">5 條 + 火花 = 6 個</span>，縮小後剪影不穩</td><td><span class="good">3 個：膠囊、托架＋底座、火花</span></td></tr>
-      <tr><td><b>系統匣用圖</b></td><td><span class="bad">把 128×128 彩色 App 圖示直接縮成 16 px</span></td><td><span class="good">專用單色剪影 tray.svg，另有 16／22／32／44 px 輸出</span></td></tr>
+    <table>
+      <tr><th>角色</th><th>色票</th><th>用途與對比</th></tr>
+      <tr><td>磚面（上）</td><td><span class="sw" style="background:#8a6cff"></span><code>#8a6cff</code></td><td>品牌 violet 提亮；對 #1f1f1f 4.45 : 1、對 #f3f3f3 3.34 : 1</td></tr>
+      <tr><td>磚面（下）</td><td><span class="sw" style="background:#6e4ff5"></span><code>#6e4ff5</code></td><td>品牌 violet 壓暗；對 #1f1f1f 3.22 : 1、對 #f3f3f3 4.62 : 1</td></tr>
+      <tr><td>上片（說話）</td><td><span class="sw" style="background:#ffffff"></span><code>#ffffff</code></td><td>對磚面 4.00 : 1（上緣）– 4.73 : 1（下緣）</td></tr>
+      <tr><td>下片（文字）</td><td><span class="sw" style="background:#bceae6"></span><code>#bceae6</code></td><td>品牌 teal #6ad0c8 的 45 % ＋ 白 55 %；對磚面 3.61 : 1（尾巴處）– 3.32 : 1（中段）</td></tr>
+      <tr><td>聲波帶</td><td><span class="sw" style="background:#0e1117"></span><code>#0e1117</code></td><td>品牌 ink；對白 18.90 : 1、對薄荷 14.44 : 1、對磚面 4.35 : 1（帶端與磚面相接處）</td></tr>
+      <tr><td>陰影</td><td><span class="sw" style="background:#0e1117;opacity:.16"></span><code>#0e1117 @ 16 %</code></td><td>對話框下移 8；只負責深度，不承擔辨識</td></tr>
+      <tr><td>系統匣單色</td><td><span class="sw" style="background:#7c5cff"></span><code>#7c5cff</code></td><td>tray.svg 唯一顏色，與磚面同一個 violet；對 #1f1f1f 3.79 : 1、對 #f3f3f3 3.92 : 1（單一靜態色能同時對兩邊取得的最大值約 3.85）</td></tr>
     </table>
+    <div class="desc" style="margin:14px 0 0">白與薄荷彼此只有 1.31 : 1——這是刻意的：兩片的分界由墨色帶負責，色調差只是「說話／文字」的暗示與微立體，拿掉也不影響辨識。</div>
   </div>
 
-  <!-- ====================== 3. 16 PX LEGIBILITY ====================== -->
-  <h2>16 px 可讀性推理</h2>
-  <div class="sub">設計時以 16 px 為第一檢驗尺寸：先看縮到 16 px 還剩什麼，再回頭決定 256 px 的細節。五條規則：</div>
-
+  <!-- ====================== 4. 16 PX ====================== -->
+  <h2>16 px 可讀性</h2>
+  <div class="sub">以 16 px 為第一檢驗尺寸：先看縮到 16 px 還剩什麼，再回頭決定 256 px 的細節。</div>
   <div class="concept">
     <ol class="rules">
-      <li><b>剪影先於細節。</b>只留 3 個形狀；把圖示糊掉（squint test）仍能認出「麥克風」。大尺寸才多出來的細節（漸層、火花）都不承擔辨識。</li>
-      <li><b>筆劃 ≥ 2 px、間隙 ≥ 1 px。</b>256 母版上筆劃 32、間隙 16，正好是 16 px 的 2 px 與 1 px；沒有任何低於 2/16 畫布的細線。</li>
-      <li><b>對齊像素格。</b>邊緣都落在 16 單位格線上（16 px 時 = 整像素，32 px 時 = 2 px），膠囊寬 4 px 而非 4.5 px；托架用方正 U 形（直邊＋小圓角），直邊在縮圖時不會變成半透明的灰邊。</li>
-      <li><b>明度承擔對比。</b>磚面落在中亮度帶，白色字符與它的對比 3.9–5.2 : 1；邊界對深／淺工作列都 ≥ 3 : 1（見下表）。</li>
-      <li><b>顏色只加分。</b>薄荷漸層與火花的色相是品牌感；就算只看灰階，磚與字符的明暗差仍在。</li>
+      <li><b>剪影先於細節。</b>16 px 可見的基本形只有兩個：對話框（含尾巴）與聲波帶；陰影、漸層、白／薄荷色調差都不承擔辨識。</li>
+      <li><b>筆寬 ≥ 2 px。</b>聲波帶筆寬 32 單位 = 2 px；沒有任何低於 2/16 畫布的筆劃。上下兩片最薄處（波峰、波谷）24 單位 = 1.5 px，但它們被墨色帶與磚面夾住，邊界對比 ≥ 3.7 : 1，仍清楚（見像素檢視）。</li>
+      <li><b>水平邊對齊像素。</b>y = 64、192、224 在 16 px 是整像素（4、12、14），對話框上下緣與尾巴底邊銳利；垂直邊落在半像素，由圓角吸收。</li>
+      <li><b>明度承擔對比。</b>磚面兩端對深／淺工作列都 ≥ 3.2 : 1；白、墨、薄荷與磚面的邊界 ≥ 3.3 : 1（見〈色彩規格〉）。</li>
+      <li><b>一個動作。</b>整個圖示只有「一條波切過一個框」這一個動作，沒有第二個焦點。</li>
     </ol>
   </div>
 
   <div class="concept">
-    <div class="title">實測對比（WCAG 相對亮度）</div>
-    <table>
-      <tr><th>元件</th><th>顏色</th><th>對 #1f1f1f（深）</th><th>對 #f3f3f3（淺）</th></tr>
-      <tr><td>磚面（起）</td><td><code>#8466ff</code></td><td>4.18 : 1</td><td>3.55 : 1</td></tr>
-      <tr><td>磚面（止）</td><td><code>#6c4ef6</code></td><td>3.19 : 1</td><td>4.66 : 1</td></tr>
-      <tr><td>系統匣單色</td><td><code>#7c5cff</code></td><td>3.79 : 1</td><td>3.92 : 1</td></tr>
-      <tr><td>（舊）深藍磚</td><td><code>#0c0f15</code> / <code>#1b2330</code></td><td><span class="bad">1.16 : 1 / 1.04 : 1</span></td><td>17.3 : 1 / 14.2 : 1</td></tr>
-    </table>
-    <div class="desc" style="margin:14px 0 0">單一顏色要同時面對 #1f1f1f 與 #f3f3f3 時，兩邊對比相等的亮度約為 L 0.195；<code>#7c5cff</code>（L 0.192）幾乎正中，所以系統匣單色字符挑它。</div>
-  </div>
-
-  <div class="concept">
     <div class="title">16 px 像素檢視（實際輸出檔，放大 8 倍）</div>
-    <div class="desc">下面是 <code>icons/16x16.png</code> 與 <code>icons/tray-16.png</code> 的內嵌副本（最近鄰放大，不做平滑），也就是系統真正拿到的像素。圖示改版後需重新嵌入。</div>
+    <div class="desc">下面是 <code>icons/16x16.png</code> 與 <code>icons/tray-16.png</code> 的內嵌副本（最近鄰放大，不做平滑），也就是系統真正拿到的像素。</div>
     <div class="pixrow">
-      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfElEQVR42qWSuU/CUBzH+Q+9DzzxYPS+RRElMRASFI2J0cUYBzSG1eigYXDBY5HVrVIQMJSjpdD2a/uw5RWoC8Nnaj6f3+/1PZvXCXidCvamFexOKfBMasjYmZDhdsjYHpcIW2MSXKMSNkeqhI3hKtaHqrC1I6/ZK7BZyZdBGdmsgmxGwUVANuTDQMWQScBq8ldaAifXYL4lQ34uCzjwi0ReHVQDVmuzkmhCXzvoq8srA6IWaH3mz4pggl5bl5f71QAtP8V5gvbDYkkecbFEiLE8ER8/eIIukwA9OVbOE7TzhvxlRNkCookCgvsCCejfdXmpTw3Qaz+wHKJ8DgGPaLoqDZ9bIN/uE5whL/aWawH9ns8jRdyVfv7l9KZgyAs9aoB+JC5HFSe3eYSZLCLFtIkwk8HxtTrdXpdJwOqFaVzlUwT6zLQ83y3A1ko+ek/jjGNNhF4zTfJc11+gcXLgLYVQjjHhf0k2ybOdaqBRph+J1dq6TALtyDMdPH4BEn0B+IoNMeEAAAAASUVORK5CYII=" alt="App icon 16 px on dark" /><span>App 16 · 深</span></div>
-      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfElEQVR42qWSuU/CUBzH+Q+9DzzxYPS+RRElMRASFI2J0cUYBzSG1eigYXDBY5HVrVIQMJSjpdD2a/uw5RWoC8Nnaj6f3+/1PZvXCXidCvamFexOKfBMasjYmZDhdsjYHpcIW2MSXKMSNkeqhI3hKtaHqrC1I6/ZK7BZyZdBGdmsgmxGwUVANuTDQMWQScBq8ldaAifXYL4lQ34uCzjwi0ReHVQDVmuzkmhCXzvoq8srA6IWaH3mz4pggl5bl5f71QAtP8V5gvbDYkkecbFEiLE8ER8/eIIukwA9OVbOE7TzhvxlRNkCookCgvsCCejfdXmpTw3Qaz+wHKJ8DgGPaLoqDZ9bIN/uE5whL/aWawH9ns8jRdyVfv7l9KZgyAs9aoB+JC5HFSe3eYSZLCLFtIkwk8HxtTrdXpdJwOqFaVzlUwT6zLQ83y3A1ko+ek/jjGNNhF4zTfJc11+gcXLgLYVQjjHhf0k2ybOdaqBRph+J1dq6TALtyDMdPH4BEn0B+IoNMeEAAAAASUVORK5CYII=" alt="App icon 16 px on light" /><span>App 16 · 淺</span></div>
-      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA0ElEQVR42rWSSwoCMQyGi4JbH4fQE3VjKx7DgRnoUr2Dr7M4eBMfC73Db1JGkE5aq2AhizbNl8cfpX44C41+8oPT6FUG68riWlpcSoMVv7FPa3TJt3MOnSiAAygY7+Yhcww42N8ttnwXAZxZANx8dZSZIJtkBWHwy7Jn8AmQDPIzoMG1AAbn8F8cIAyRbJkNYMkY4iUMZIwDDB7sKGYYR9s0mDQS3qUKDrHhCZLupe0beUhTiWjso0Uqphhm7XyWfJFeT0L2+htA3erb4qj+cZ6RKzPt2JDxlAAAAABJRU5ErkJggg==" alt="Tray glyph 16 px on dark" /><span>Tray 16 · 深</span></div>
-      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA0ElEQVR42rWSSwoCMQyGi4JbH4fQE3VjKx7DgRnoUr2Dr7M4eBMfC73Db1JGkE5aq2AhizbNl8cfpX44C41+8oPT6FUG68riWlpcSoMVv7FPa3TJt3MOnSiAAygY7+Yhcww42N8ttnwXAZxZANx8dZSZIJtkBWHwy7Jn8AmQDPIzoMG1AAbn8F8cIAyRbJkNYMkY4iUMZIwDDB7sKGYYR9s0mDQS3qUKDrHhCZLupe0beUhTiWjso0Uqphhm7XyWfJFeT0L2+htA3erb4qj+cZ6RKzPt2JDxlAAAAABJRU5ErkJggg==" alt="Tray glyph 16 px on light" /><span>Tray 16 · 淺</span></div>
+      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABeUlEQVR42qWP3StDcRjHf3+BcuVvULjwMjpjij/AWlgSsRia2kujrZG1vLSSXBBlk+TlArWEtNz6A1yIvMRkZ0uZ1LGxnfny/OpoDRecX306T8/n+Vwc5rcAamBTA+9QA5vsy0INbNychRqYr0cGEZjIInIpQ87g10eObuhW6ZjXJGPaLiMpZfmRJElYXdvg0Jz/aBcIrsPbL4JaNtaVQWg5xWUsHkd5pYCCwiJORZXAd8rL9eauJVDLRjvTCG9LSCSeUCPUc1km6Dg0045cvrc41kAt83Sk4XPvQKhr4LK0uhahi3NOiUbLd1pd4ze/sBIDtczd/gZjq4/L4nINtk5PcPQgcmimnfJLuX5mNgZqmavtFa6xQ7gXFrEfuf6KFfZur7jL9Qc3UXh6E6CWDRtfMR8Uv4U/ERZFbB7fYcR2B+oI5mxJYS4gYvfsHk5TBJam6K8MfmIzPIIaBeZoTsHvFzHUHQXNf4XZDUlY9c+g739gVv0L1PABji/bqrjSbrEAAAAASUVORK5CYII=" alt="App icon 16 px on dark" /><span>App 16 · 深</span></div>
+      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABeUlEQVR42qWP3StDcRjHf3+BcuVvULjwMjpjij/AWlgSsRia2kujrZG1vLSSXBBlk+TlArWEtNz6A1yIvMRkZ0uZ1LGxnfny/OpoDRecX306T8/n+Vwc5rcAamBTA+9QA5vsy0INbNychRqYr0cGEZjIInIpQ87g10eObuhW6ZjXJGPaLiMpZfmRJElYXdvg0Jz/aBcIrsPbL4JaNtaVQWg5xWUsHkd5pYCCwiJORZXAd8rL9eauJVDLRjvTCG9LSCSeUCPUc1km6Dg0045cvrc41kAt83Sk4XPvQKhr4LK0uhahi3NOiUbLd1pd4ze/sBIDtczd/gZjq4/L4nINtk5PcPQgcmimnfJLuX5mNgZqmavtFa6xQ7gXFrEfuf6KFfZur7jL9Qc3UXh6E6CWDRtfMR8Uv4U/ERZFbB7fYcR2B+oI5mxJYS4gYvfsHk5TBJam6K8MfmIzPIIaBeZoTsHvFzHUHQXNf4XZDUlY9c+g739gVv0L1PABji/bqrjSbrEAAAAASUVORK5CYII=" alt="App icon 16 px on light" /><span>App 16 · 淺</span></div>
+      <div class="pixbox dark"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAqElEQVR42mNgGB6gPvQ/W030/86amP/PgPg/Llwd8/9pdfT/DpB6FANAgvg0YhgEVI9iAMxmoA2HamP+mxeG/ucE0UBXHcZhwHN0A0ASW0JD/zMji4P4QENrgHIfQHRp0n9eoOatIPUYBoAkoArqgIo/Am2vxWYgyCKsBuAItCO1sf8t69P+c4FoEB8sF/3/CVEG4MHtZBmAMxqhCurJTkhAUxsYRi4AACJjBzQzYmE2AAAAAElFTkSuQmCC" alt="Tray glyph 16 px on dark" /><span>Tray 16 · 深</span></div>
+      <div class="pixbox light"><img class="pix" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAqElEQVR42mNgGB6gPvQ/W030/86amP/PgPg/Llwd8/9pdfT/DpB6FANAgvg0YhgEVI9iAMxmoA2HamP+mxeG/ucE0UBXHcZhwHN0A0ASW0JD/zMji4P4QENrgHIfQHRp0n9eoOatIPUYBoAkoArqgIo/Am2vxWYgyCKsBuAItCO1sf8t69P+c4FoEB8sF/3/CVEG4MHtZBmAMxqhCurJTkhAUxsYRi4AACJjBzQzYmE2AAAAAElFTkSuQmCC" alt="Tray glyph 16 px on light" /><span>Tray 16 · 淺</span></div>
     </div>
   </div>
 
-  <!-- ====================== 4. TRAY GLYPH ====================== -->
-  <h2>系統匣／選單列字符 — tray.svg</h2>
-  <div class="sub">系統匣沒有磚，字符直接站在使用者的工作列上，所以另外畫一個<b>單色剪影</b>：同樣的麥克風＋火花，砍掉磚面與漸層。32 格線設計，16 px 是精確的 2 倍縮小；筆劃 4 單位（2 px）、間隙 2 單位（1 px）。</div>
+  <!-- ====================== 5. BEFORE / AFTER ====================== -->
+  <h2>前後對照 — 與先前兩版並排</h2>
+  <div class="sub">兩個先前版本都已停用：<b>最初的「等化器 V」</b>（深藍磚＋五條漸層條＋火花）在 Windows 系統匣會消失；<b>「AI Mic」</b>（紫磚＋白→薄荷麥克風＋火花）解決了磚面對比，但被退件——它是通用的麥克風圖示，沒有聲波曲線與對話框的融合，也不遵循網格與黃金比例。下方為同一個 16／32 px 在兩種工作列上的實際樣子（1:1）。</div>
+  <div class="concept">
+    <div class="title">Before / After<span class="tag old">兩個舊版皆已停用</span></div>
+    <div class="shells">
+      <div class="shell dark"><span class="lbl">深色工作列 #1f1f1f</span>
+        <div class="line">
+          <div class="item"><svg class="tile s16"><use href="#ic-eq"/></svg><small>等化器 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-eq"/></svg><small>等化器 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-mic"/></svg><small>AI Mic 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-mic"/></svg><small>AI Mic 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>現行 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>現行 32</small></div>
+        </div>
+      </div>
+      <div class="shell light"><span class="lbl">淺色工作列 #f3f3f3</span>
+        <div class="line">
+          <div class="item"><svg class="tile s16"><use href="#ic-eq"/></svg><small>等化器 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-eq"/></svg><small>等化器 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-mic"/></svg><small>AI Mic 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-mic"/></svg><small>AI Mic 32</small></div>
+          <div class="item"><svg class="tile s16"><use href="#ic-app"/></svg><small>現行 16</small></div>
+          <div class="item"><svg class="tile s32"><use href="#ic-app"/></svg><small>現行 32</small></div>
+        </div>
+      </div>
+    </div>
+    <table style="margin-top:18px">
+      <tr><th></th><th>等化器 V（原版，停用）</th><th>AI Mic（退件，停用）</th><th>Voice Ribbon（現行）</th></tr>
+      <tr><td><b>磚面對比</b></td><td><span class="bad">深藍磚對深色工作列 1.04–1.16 : 1，整塊融進背景</span></td><td>紫磚 ≥ 3.1 : 1</td><td><span class="good">紫磚 ≥ 3.22 : 1（深）／≥ 3.34 : 1（淺）</span></td></tr>
+      <tr><td><b>16 px 的基本形</b></td><td><span class="bad">5 條 + 火花 = 6 個</span></td><td>3 個（膠囊、托架、火花）</td><td><span class="good">2 個（對話框、帶）</span></td></tr>
+      <tr><td><b>最細筆劃</b></td><td><span class="bad">22 單位 = 1.4 px，間隙 &lt; 1 px</span></td><td>32 單位 = 2 px</td><td><span class="good">32 單位 = 2 px</span></td></tr>
+      <tr><td><b>系統匣</b></td><td><span class="bad">把彩色 App 圖示直接縮成 16 px</span></td><td>專用單色剪影</td><td><span class="good">專用單色剪影，與 App 圖示同一個構圖</span></td></tr>
+      <tr><td><b>與簡報的距離</b></td><td>沒有對話框，不是黃金比例</td><td><span class="bad">麥克風＋火花：通用符號，無「波 × 框」融合，無網格</span></td><td><span class="good">波 × 框單一物件；Fibonacci 網格；布林構成</span></td></tr>
+    </table>
+  </div>
 
+  <!-- ====================== 6. TRAY ====================== -->
+  <h2>系統匣／選單列字符 — tray.svg</h2>
+  <div class="sub">系統匣沒有磚，字符直接站在使用者的工作列上，所以另外畫一個<b>單色剪影</b>：同一個對話框、同一條波，但把波從對話框「挖掉」（B − R）。畫在 32 格線上（1 單位 = 母版的 1/8），16 px 是精確的 2 倍縮小。有三處為了沒有磚而與 App 圖示不同：</div>
+  <div class="concept">
+    <ol class="rules">
+      <li><b>波不貼齊兩緣。</b>波的兩端停在離外緣 3 單位（1.5 px）處、圓頭收尾，剪影才保有封閉的對話框輪廓；若波從側緣切穿，剪影會裂成兩條彎曲的長條，在 16 px 讀成「≈」（App 圖示有磚面把輪廓補完，所以不需要）。</li>
+      <li><b>峰峰值 2u（母版為 3u）。</b>這樣波上下的環保持 4 單位 = 2 px；3u 時環只有 1.5 px，16 px 會糊成灰階。</li>
+      <li><b>以整組外框置中、左緣在 x = 2。</b>沒有磚可以置中對話框主體，改為讓含尾巴的外框置中；所有邊落在偶數座標，16 px 為整像素（Windows 由 32 px 檔縮到 16 px 時同樣對齊）。</li>
+    </ol>
+  </div>
   <div class="concept">
     <div class="title">Windows — 原樣顯示（單色 #7c5cff）</div>
-    <div class="desc">單一顏色無法同時對深淺兩種工作列最佳，所以取兩邊對比相等的中亮度紫；在灰白色的系統圖示之間，飽和的紫本身就是辨識線索。</div>
+    <div class="desc">單一顏色無法同時對深淺兩種工作列最佳，所以取兩邊對比接近相等的中亮度紫（3.79 : 1／3.92 : 1，已接近單色上限）；在灰白色的系統圖示之間，飽和的紫本身就是辨識線索。</div>
     <div class="shells">
       <div class="shell dark"><span class="lbl">深色工作列 · 系統匣 1:1</span>
         <div class="line">
@@ -365,7 +471,7 @@
 
   <div class="concept">
     <div class="title">macOS — 樣板圖（template image）</div>
-    <div class="desc"><code>icon_as_template(true)</code> 讓 macOS <b>只讀 alpha 通道</b>，由系統依選單列明暗自動染成黑或白；PNG 裡的紫色在 macOS 上被忽略，形狀本身就是全部資訊。下面用 currentColor 模擬染色後的結果。</div>
+    <div class="desc"><code>icon_as_template(true)</code> 讓 macOS <b>只讀 alpha 通道</b>，由系統依選單列明暗自動染成黑或白；PNG 裡的紫色在 macOS 上被忽略，實心的對話框加上透明的波，正是樣板圖要的形狀。下面用 currentColor 模擬染色後的結果。</div>
     <div class="row">
       <div class="menubar mdark"><svg width="16" height="16"><use href="#tray-m"/></svg><svg width="22" height="22"><use href="#tray-m"/></svg><svg width="32" height="32"><use href="#tray-m"/></svg><span style="font-size:11px;opacity:.7">深色選單列 → 白</span></div>
       <div class="menubar mlight"><svg width="16" height="16"><use href="#tray-m"/></svg><svg width="22" height="22"><use href="#tray-m"/></svg><svg width="32" height="32"><use href="#tray-m"/></svg><span style="font-size:11px;opacity:.7">淺色選單列 → 黑</span></div>
@@ -379,12 +485,40 @@
     </table>
   </div>
 
-  <!-- ====================== 5. HANDOFF ====================== -->
+  <!-- ====================== 7. EXPLORATION ====================== -->
+  <h2>探索紀錄 — 七個構圖，為什麼是這一個</h2>
+  <div class="sub">先在同一個調色盤下畫出七個不同的構圖，各自在 128 與 16 px、深與淺兩種工作列上看過，再選一個。<b>把波與對話框融合的四種常見手法都畫過</b>（波被對話框裁切、尾巴由波構成、兩個黃金矩形的交集承載波、平行長條構成波），另加三個變體。</div>
+  <div class="concept">
+    <table class="cand">
+      <tr><th>構圖</th><th>128 ／ 16 px（深、淺）</th><th>判斷</th></tr>
+      <tr class="win"><td><b>① 波被對話框裁切（採用）</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-1"/></svg><svg class="tile s16"><use href="#cd-1"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-1"/></svg><svg class="tile s16"><use href="#cd-1"/></svg></span></td><td>帶寬 2 px，兩端貼齊外框，16 px 仍是一條清楚的波；只有對話框與帶兩個基本形，剛好是「波穿過框並被框裁切」的布林交集。</td></tr>
+      <tr><td><b>② 波穿出對話框</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-2"/></svg><svg class="tile s16"><use href="#cd-2"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-2"/></svg><svg class="tile s16"><use href="#cd-2"/></svg></span></td><td>帶露在外面的兩小段（32 單位）在 16 px 只剩 1–2 個雜點，還把外輪廓弄碎；波與框反而讀成兩個物件。</td></tr>
+      <tr><td><b>③ 尾巴由波構成</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-3"/></svg><svg class="tile s16"><use href="#cd-3"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-3"/></svg><svg class="tile s16"><use href="#cd-3"/></svg></span></td><td>尾巴變成一條細彎鉤，失去「尾巴＝說話」的明確剪影，框的頂部像護目鏡；16 px 尾巴只剩 1 px 斜線。</td></tr>
+      <tr><td><b>④ 兩個黃金矩形的交集</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-4"/></svg><svg class="tile s16"><use href="#cd-4"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-4"/></svg><svg class="tile s16"><use href="#cd-4"/></svg></span></td><td>兩個 8u × 5u 矩形錯位 3u × 2u，交集只有 5u × 3u（16 px 約 5 × 3 px），放不下 2 px 的波；看起來像兩張貼紙。</td></tr>
+      <tr><td><b>⑤ 平行長條（等化器式）</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-5"/></svg><svg class="tile s16"><use href="#cd-5"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-5"/></svg><svg class="tile s16"><use href="#cd-5"/></svg></span></td><td>16 px 辨識度最好，但合法筆寬（32）下只排得下 4 條，成了「梳子」，沒有曲線；等於舊版等化器語彙，也是通用的語音訊息圖示。</td></tr>
+      <tr><td><b>⑥ 對話框被正弦分成兩色</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-6"/></svg><svg class="tile s16"><use href="#cd-6"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-6"/></svg><svg class="tile s16"><use href="#cd-6"/></svg></span></td><td>剪影很強，但波只是色塊的邊界而不是一條線；墨色塊太重並與尾巴糊在一起，像一面旗。</td></tr>
+      <tr><td><b>⑦ 圓形對話框＋帶</b></td><td class="pv"><span class="pvbox dark"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-7"/></svg><svg class="tile s16"><use href="#cd-7"/></svg></span> <span class="pvbox light"><svg class="tile" style="width:64px;height:64px;border-radius:14%"><use href="#cd-7"/></svg><svg class="tile s16"><use href="#cd-7"/></svg></span></td><td>1 : 1 的圓放不下黃金矩形；帶內縮後兩端與圓弧留下 1 px 的縫，像鑰匙孔。</td></tr>
+    </table>
+  </div>
+
+  <!-- ====================== 8. ITERATIONS ====================== -->
+  <h2>修訂紀錄 — 定案前的三次修改</h2>
+  <div class="sub">每次都是畫完整張審查圖（深／淺工作列、16–256 px、1:1 系統匣、像素檢視、與舊版並排）之後，依看到的問題修改。</div>
+  <div class="concept">
+    <table>
+      <tr><th style="width:150px">回合</th><th>看到的問題</th><th>修改</th></tr>
+      <tr><td><b>系統匣初稿</b></td><td>托盤剪影若讓波從側緣切穿（與 App 圖示相同），16 px 對話框輪廓是開的，只剩上下兩條彎曲長條，讀成「≈」。</td><td>托盤版的波改為內縮 3 單位、圓頭收尾，輪廓封閉；App 圖示不變（磚面補完輪廓）。</td></tr>
+      <tr><td><b>審查圖第 1 版</b></td><td>托盤版峰峰值 3u 使波上下的環只有 1.5 px，16 px 像素檢視是一圈灰階，邊緣糊。</td><td>托盤版峰峰值改 2u，環 = 2 px，16 px 邊緣銳利。</td></tr>
+      <tr><td><b>審查圖第 2 版</b></td><td>對話框主體偏上（y = 48），畫面重心不穩；構圖圖上「黃金矩形中心、波的對稱中心、畫布中心」是三個不同的點。試過 3u 尾巴（y = 32／48）：外框變成 13u × 11u、重心更往下，16 px 沒有更好。</td><td>主體下移到 y = 64：黃金矩形、波的點對稱中心、畫布中心三點重合於 (128, 128)；尾巴維持 2u、垂在下方。</td></tr>
+    </table>
+  </div>
+
+  <!-- ====================== 9. HANDOFF ====================== -->
   <h2>交付與產生流程</h2>
   <div class="sub">SVG 是單一事實來源；PNG／ICO／ICNS 皆由它衍生，不手改。</div>
   <div class="concept">
-<pre>app-tauri/src-tauri/icons/icon.svg     # App 圖示母版（256，滿版方形）
-app-tauri/src-tauri/icons/tray.svg     # 系統匣／選單列字符母版（32 格線，單色）
+<pre>app-tauri/src-tauri/icons/icon.svg     # App 圖示母版（256，滿版方形；檔頭註解含構圖摘要）
+app-tauri/src-tauri/icons/tray.svg     # 系統匣／選單列字符母版（32 格線，單色，波用 mask 挖空）
 scripts/gen-icons.mjs                  # 把兩個母版轉成 PNG／ICO（sharp + png-to-ico）
 
 npm run icons                          # gen-icons.mjs → tauri icon（icns / ico / 各尺寸）
@@ -395,7 +529,7 @@ app-tauri/src-tauri/src/lib.rs         # build_tray：include_bytes!("../icons/t
                                        #   + .icon_as_template(cfg!(target_os = "macos"))</pre>
   </div>
 
-  <footer>Vocium · App Icon 修訂 3（AI Mic）· <code>icon.svg</code> + <code>tray.svg</code> 為單一事實來源 · 舊版「等化器 V」已停用</footer>
+  <footer>Vocium · App Icon 修訂 4（Voice Ribbon）· <code>icon.svg</code> + <code>tray.svg</code> 為單一事實來源 · 「AI Mic」與「等化器 V」已停用</footer>
 </div>
 </body>
 </html>

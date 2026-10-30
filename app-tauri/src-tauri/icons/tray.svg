@@ -1,25 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Vocium tray / menu-bar glyph (vector source of truth for tray-16/22/32/44.png).
-     Single colour, no tile: the silhouette alone carries the identity (mic +
-     AI sparkle). Designed on a 32 grid so 16 px is an exact 2x reduction:
-     every edge sits on an even coordinate, and the cradle is a squared "U"
-     (flats + small corner radius), so 16 px stays crisp. Every stroke is
-     4 units (2 px at 16 px) and every gap is 2 units (1 px) — no hairlines.
-       - Windows: shown as-is. #7c5cff is the one static colour with balanced
-         contrast on both shells (3.8:1 on #1f1f1f, 3.9:1 on #f3f3f3).
-       - macOS: loaded with icon_as_template(true) — only the alpha channel is
-         used and the system tints it for light/dark menu bars, so the colour
-         here is irrelevant there.
-     Shapes: capsule, cradle+stem+base, sparkle. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="#7c5cff">
-  <!-- Mic capsule (12 x 16). -->
-  <rect x="10" y="2" width="12" height="16" rx="6"/>
-  <!-- Squared-U cradle, then stem + 2 px base (one connected piece). -->
-  <path d="M6 12 V18 Q6 22 10 22 H22 Q26 22 26 18 V12" fill="none" stroke="#7c5cff" stroke-width="4"/>
-  <rect x="14" y="24" width="4" height="3"/>
-  <rect x="10" y="26" width="12" height="4" rx="2"/>
-  <!-- AI sparkle (4-point concave star in an 8x8 box at 23,1; baked transform). -->
-  <path d="M16 0 C17.8 11.2 20.8 14.2 32 16 C20.8 17.8 17.8 20.8 16 32
-           C14.2 20.8 11.2 17.8 0 16 C11.2 14.2 14.2 11.2 16 0 Z"
-        transform="translate(23 1) scale(.25)"/>
+     Single-colour silhouette of the app icon's "Voice Ribbon": the same bubble with the same sine
+     ribbon cut out of it (bubble minus ribbon). Drawn on a 32 grid (1 unit = 1/8 of the 256 master,
+     2 units = 1 px at 16 px), so the construction is the app icon at 1/8 scale:
+       bubble = 26 x 16 (13u x 8u golden rectangle, 13:8 = 1.625) at (2,6), corner radius 6 (3u),
+                square bottom-left corner + 45-degree tail with legs 4 (2u);
+       ribbon = sine, wavelength 16 (8u), peak-to-peak 4 (2u), stroke 4 (2u = 2 px at 16 px).
+     Differences from the app icon, all forced by having no tile:
+       - peak-to-peak is 2u instead of 3u, so the ring above and below the ribbon stays 4 units = 2 px
+         at 16 px (3u leaves 1.5 px rings that smear into grey);
+       - the ribbon stops 3 units (1.5 px) short of the flanks (round caps), so the silhouette keeps a closed bubble
+         outline (a ribbon running flank to flank splits the glyph into two wavy bars that read as "~~");
+       - the bubble sits at x = 2 (not centred at 3) so that every edge is on an even coordinate, i.e.
+         on a whole pixel at 16 px (and on the 16-unit grid scaled to 32).
+     Windows shows the PNG as-is: #7c5cff is the one static colour with balanced contrast on both shells
+     (3.79:1 on #1f1f1f, 3.92:1 on #f3f3f3). macOS loads it with icon_as_template(true): only the alpha
+     channel is used and the system tints it, so the colour is irrelevant there (the glyph is a solid
+     shape with a transparent ribbon, which is exactly what a template image wants).
+     Shapes: bubble (with the ribbon cut out by a mask). No filters, text or <use>. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+      <rect width="32" height="32" fill="#fff"/>
+      <path d="M7 14C8.3 12.98 9.55 12 11 12C12.45 12 13.7 12.98 15 14C16.3 15.02 17.55 16 19 16C20.45 16 21.7 15.02 23 14" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M8 6H22A6 6 0 0 1 28 12V16A6 6 0 0 1 22 22H6L2 26V12A6 6 0 0 1 8 6Z" fill="#7c5cff" mask="url(#cut)"/>
 </svg>
