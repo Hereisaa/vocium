@@ -3,7 +3,6 @@ export type SttProvider = 'groq' | 'openai' | 'gemini' | 'mock';
 
 export interface VociumConfig {
   hotkey: string;
-  cancelKey: string;
   sttProvider: SttProvider;
   groqApiKey: string;
   groqModel: string;
@@ -32,7 +31,6 @@ export interface VociumConfig {
 
 export const DEFAULTS: VociumConfig = {
   hotkey: 'Ctrl+Shift+Space',
-  cancelKey: 'Escape',
   sttProvider: 'groq',
   groqApiKey: '',
   groqModel: 'whisper-large-v3-turbo',

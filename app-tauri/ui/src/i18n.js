@@ -63,7 +63,6 @@
       // Settings STT
       'lbl.sttProvider': 'STT 來源',
       'opt.local': '本地',
-      'lbl.apiKey': 'API Key',
       'ph.key': '貼上金鑰後按儲存',
       'aria.keyToggle': '顯示或隱藏金鑰',
       'title.keyToggle': '顯示/隱藏',
@@ -156,7 +155,6 @@
       // Settings STT
       'lbl.sttProvider': 'STT provider',
       'opt.local': 'Local',
-      'lbl.apiKey': 'API Key',
       'ph.key': 'Paste your key, then Save',
       'aria.keyToggle': 'Show or hide key',
       'title.keyToggle': 'Show/hide',

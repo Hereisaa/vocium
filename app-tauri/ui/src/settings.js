@@ -566,8 +566,7 @@ function resetClearConfirm() {
 
 /**
  * Reflect "configured" state in the key field.
- * NOTE: #keyHint was removed in Task 12 HTML. Feedback is via the Save button
- * success-pulse animation (minimal-surface approach chosen in Task 13).
+ * NOTE: there is no inline key hint; feedback is the Save button's success pulse.
  */
 function applyKeyState(keySet, keyMask) {
   lastKeySet  = !!keySet;

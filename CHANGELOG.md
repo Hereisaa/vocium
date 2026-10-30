@@ -23,10 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cancelling while a transcription is in flight now drops the late result instead
   of pasting it.
 
+### Added
+
+- `docs/ARCHITECTURE.md` — the architecture single source of truth (process
+  boundaries, source map, state machine, IPC contract, decision log).
+- `docs/archify/` — Archify architecture + voice-input workflow diagrams with
+  source citations, rendered from the JSON candidates next to them.
+
 ### Removed
 
 - MCP tools (`transcribe_clip`, `inject_text`, `polish_text`, state-machine tools),
   `dist/sidecar/main.js` entry point, Bun build requirement.
+- Dead config field `cancelKey`, unused i18n key `lbl.apiKey`, the one-off
+  `scripts/gen-sample-audio.ps1`, `@types/node`, and leftover sidecar/MCP/spec
+  references in comments.
 
 ## [0.1.0] - 2026-05-22
 

@@ -33,7 +33,6 @@ pub type LogFn = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// Shared app state.
 struct ShellState {
-    hotkey_ok: Mutex<bool>,
     /// The currently-registered global toggle shortcut (for runtime re-binding).
     shortcut: Mutex<Option<Shortcut>>,
     /// The tray "快捷鍵：…" menu item so set_hotkey can refresh its label live.
@@ -333,8 +332,8 @@ fn position_icon_window(app: &AppHandle, offset_x: i32) {
         let pos = m.position();
         let win_w = win.outer_size().map(|s| s.width as i32).unwrap_or(220);
         let x = pos.x + ((size.width as i32 - win_w) / 2) + offset_x;
-        // 待實機驗證: uses monitor top; true Windows work area (SPI_GETWORKAREA) deferred — see ROADMAP
-        let y = pos.y + 8; // work.y + 8 per FR-WIN-3
+        // Uses the monitor top edge; the true Windows work area (SPI_GETWORKAREA) is not consulted yet.
+        let y = pos.y + 8;
         let _ = win.set_position(PhysicalPosition::new(x, y));
     }
     let _ = win.set_always_on_top(true);
@@ -346,7 +345,7 @@ fn position_icon_window(app: &AppHandle, offset_x: i32) {
 }
 
 /// Windows: add WS_EX_NOACTIVATE so the icon window never takes focus, ensuring
-/// pasted text lands in whatever app the user was typing in (FR-WIN-4).
+/// pasted text lands in whatever app the user was typing in.
 #[cfg(windows)]
 fn apply_no_activate(win: &tauri::WebviewWindow) {
     use windows::Win32::Foundation::HWND;
@@ -638,10 +637,7 @@ fn get_config(app: AppHandle) -> Result<Value, String> {
                 "openai": !read_str(&cfgv,"openaiApiKey").trim().is_empty(),
                 "gemini": !read_str(&cfgv,"geminiApiKey").trim().is_empty()
             }
-        },
-        // Back-compat: kept until settings.js migrates to providers.groq.*; remove the next two lines then.
-        "groqKeySet": !read_str(&cfgv,"groqApiKey").trim().is_empty(),
-        "groqKeyMask": mask_key(&read_str(&cfgv,"groqApiKey"))
+        }
     }))
 }
 
@@ -741,8 +737,8 @@ async fn set_provider_key(
     Ok(json!({ "ok": true, "sttProvider": stt_provider }))
 }
 
-/// Switch the active STT provider. 'local' is rejected (design D4: never
-/// persisted; the webview keeps the dropdown on 'local' purely informationally).
+/// Switch the active STT provider. 'local' is rejected: it is never persisted;
+/// the webview keeps the dropdown on 'local' purely informationally.
 #[tauri::command]
 async fn set_stt_provider(app: AppHandle, provider: String) -> Result<Value, String> {
     if !matches!(provider.as_str(), "groq" | "openai" | "gemini" | "mock") {
@@ -864,7 +860,6 @@ fn save_offset_x(app: AppHandle, offset_x: i32) -> Result<(), String> {
 pub fn run() {
     let cfg = read_config();
     let cfg_for_state = cfg.clone();
-    let logs_dir = cfg.config_dir.join("logs");
     let log = make_logger(&cfg.config_dir);
     log("[boot] vocium shell starting");
     let log_setup = log.clone();
@@ -875,7 +870,6 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .manage(ShellState {
-            hotkey_ok: Mutex::new(false),
             shortcut: Mutex::new(None),
             hk_item: Mutex::new(None),
             stt_item: Mutex::new(None),
@@ -945,8 +939,6 @@ pub fn run() {
                     rebuild_tray_menu(&app_for_probe);
                 });
             }
-            let _ = &logs_dir;
-
             // 2. Surface the effective STT provider to the webview so it can
             //    show a correct transcribing subtitle (shell-config-derived).
             let _ = handle.emit(
@@ -974,7 +966,6 @@ pub fn run() {
                     false
                 }
             };
-            *handle.state::<ShellState>().hotkey_ok.lock().unwrap() = hotkey_ok;
 
             // 5. System tray.
             // Seed health-panel inputs that have a known boot-time truth so
@@ -1288,7 +1279,7 @@ fn rebuild_tray_menu(app: &AppHandle) {
         }
         // The on_menu_event handler is preserved across set_menu calls in
         // Tauri 2; we do NOT rebuild it here. New ids (health items) are
-        // handled in the same closure (extended in Task 7).
+        // handled in the same closure.
     } else {
         (state.log)("[rebuild_tray_menu] tray_by_id(\"vocium-tray\") returned None");
     }
@@ -1296,7 +1287,7 @@ fn rebuild_tray_menu(app: &AppHandle) {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Health panel — pure types + derive function (testable; no I/O).
-// `HealthState` (added in Task 3) is the I/O-bound holder; `derive_health`
+// `ShellState` holds the I/O-bound inputs; `derive_health`
 // is the pure mapping from raw inputs to a serialisable HealthReport that
 // both the Tauri command and the tray menu builder consume.
 // ──────────────────────────────────────────────────────────────────────────
@@ -1309,11 +1300,6 @@ pub enum HealthStatus {
     Block,
 }
 
-// TODO(T3): if any Rust consumer needs to pattern-match on `id` or
-// `action`, replace the `&'static str` discriminants with enums (with
-// serde rename_all = "snake_case") and add an `as_str()` view for the
-// tray menu's display layer. For T2 the &'static str shape matches the
-// JSON the webview consumes and keeps allocations zero.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct HealthItem {
     pub id: &'static str,
@@ -1338,9 +1324,6 @@ pub struct HealthReport {
 pub struct HealthInputs<'a> {
     pub mic_device_count: u32,
     pub mic_perm: &'a str,        // 'granted' | 'prompt' | 'denied' | other
-    // TODO(T3): consider replacing Option<bool> with a 3-variant enum
-    // (NotApplicable / Applicable(true) / Applicable(false)) to avoid the
-    // visual ambiguity between `None` and `Some(false)` at call sites.
     pub mac_a11y_ok: Option<bool>, // None = not applicable (non-macOS or unprobed yet)
     pub stt_key_set: bool,
     pub hotkey_registered: bool,

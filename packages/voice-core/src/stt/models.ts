@@ -1,9 +1,9 @@
 // src/stt/models.ts
-// Single source of truth for the model dropdown (design D7). Maintained by
+// Single source of truth for the model dropdown. Maintained by
 // release/PR — NO runtime fetch. The "自訂…" escape hatch (Settings UI) means
 // a stale list never blocks anyone: any current/future model id can be typed.
 // `label` carries zh-TW speed/cost/quality hints; `labelEn` is the English
-// equivalent. `app-tauri/ui/settings.js` mirrors this shape. Verified: 2026-05.
+// equivalent. The Settings webview imports these lists directly. Verified: 2026-05.
 export type CloudProvider = 'groq' | 'openai' | 'gemini';
 export interface ModelOption { id: string; label: string; labelEn: string; }
 
@@ -30,7 +30,7 @@ export const DEFAULT_MODEL: Record<CloudProvider, string> = {
   gemini: 'gemini-3.5-flash',
 };
 
-// ---- Polish (LLM) models (design §7.1; same single-source rule as STT_MODELS) ----
+// ---- Polish (LLM) models (same single-source rule as STT_MODELS) ----
 export type PolishProvider = 'groq' | 'openai' | 'gemini' | 'claude';
 
 export const POLISH_MODELS: Record<PolishProvider, ModelOption[]> = {

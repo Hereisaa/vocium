@@ -1,5 +1,5 @@
 // src/audio/trim-silence.ts
-// Pure frame-selection logic for the opt-in VAD silence trim (design D3/§8).
+// Pure frame-selection logic for the opt-in VAD silence trim.
 // The real Silero speech decision runs in the webview and is injected here as
 // `isSpeech(frameIndex)`, so this stays deterministic and unit-testable.
 export interface TrimOpts { padFrames: number; }

@@ -1,5 +1,5 @@
 // src/polish/polish.ts
-// Optional post-transcription LLM polish (design §4). Total: any failure,
+// Optional post-transcription LLM polish. Total: any failure,
 // non-2xx, timeout, empty response, or missing key → returns the input text
 // unchanged, never throws (mirrors zh-convert.ts contract).
 import { buildSystemPrompt, wrapTranscript, type PolishStyle } from './prompts.js';
@@ -27,7 +27,7 @@ interface KeySlice {
   geminiApiKey: string;
 }
 
-/** Same-provider key reuse with optional override (design E1). */
+/** Same-provider key reuse with optional override. */
 export function resolvePolishKey(c: KeySlice): string {
   if (c.polishProvider === 'claude') return c.claudeApiKey.trim();
   if (c.polishApiKey.trim()) return c.polishApiKey.trim();

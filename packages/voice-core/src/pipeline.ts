@@ -22,12 +22,12 @@ export interface PipelineDeps {
    *  active provider. Defaults to the zh-TW Groq GUIDANCE_MSG so callers that
    *  omit it (e.g. tests) keep the previous behavior. */
   guidance?: string;
-  /** Resolved per-call from the live setting (no sidecar restart needed).
+  /** Resolved per-call from the live setting.
    *  'twp' → force Traditional(TW), 'cn' → force Simplified. */
   getZhMode?: () => 'twp' | 'cn';
   /** Resolved per-call (live). Returns possibly-polished text; total (any
-   *  failure returns the input). styleOverride is used by the polish_text MCP
-   *  tool. Default: identity (polish disabled). */
+   *  failure returns the input). styleOverride lets a caller force a style
+   *  regardless of the user's toggle. Default: identity (polish disabled). */
   polish?: (text: string, styleOverride?: 'light' | 'full' | 'custom') => Promise<string>;
 }
 /** Raw audio bytes + container MIME type. Bytes (not base64) so the webview
@@ -96,7 +96,7 @@ export function createPipeline({ session, stt, injector, noKey = false, lang = '
         // instead of pasting stale text into whatever is focused now.
         if (session.getState() !== 'transcribing') return { text: raw.text, cancelled: true };
         let polished = raw.text;
-        try { polished = await polish(raw.text); } catch { /* polish best-effort (design E6): fall back to raw */ }
+        try { polished = await polish(raw.text); } catch { /* polish is best-effort: fall back to raw */ }
         if (session.getState() !== 'transcribing') return { text: polished, cancelled: true };
         const text = convertZh(polished, getZhMode()); // zh conversion is the FINAL transform (deterministic; normalizes whatever script polish produced)
         if (!text.trim()) {
@@ -118,7 +118,7 @@ export function createPipeline({ session, stt, injector, noKey = false, lang = '
     },
     async transcribeClip(p: AudioPayload): Promise<{ text: string; durationMs?: number }> {
       // Consistent with submitAudio: no key -> guidance text, never a raw
-      // 'Groq API key not configured' throw leaking to MCP consumers.
+      // 'API key not configured' throw leaking to callers.
       if (noKey) return { text: guidance };
       const raw = await stt.transcribe({
         audio: p.audio, mimeType: p.mimeType, language: p.language,

@@ -6,7 +6,7 @@
 // microphone capture and the Tauri GUI.
 //
 // Usage (PowerShell):
-//   npm run build                       # ensure dist/ is current
+//   npm run build:core                  # ensure packages/voice-core/dist is current
 //   $env:GROQ_API_KEY = "gsk_..."       # never hardcode / never commit
 //   node scripts/probe-groq.mjs path\to\sample.webm [language]
 //
@@ -19,7 +19,7 @@ import { extname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
-const ADAPTER_PATH = resolve(HERE, '../dist/core/stt/groq-stt.js');
+const ADAPTER_PATH = resolve(HERE, '../packages/voice-core/dist/stt/groq-stt.js');
 
 // Groq Whisper accepted container types → MIME.
 const MIME_BY_EXT = {
