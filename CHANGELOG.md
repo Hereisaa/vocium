@@ -30,6 +30,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/archify/` — Archify architecture + voice-input workflow diagrams with
   source citations, rendered from the JSON candidates next to them.
 
+### Changed (icon + README)
+
+- **New app icon** ("Swash"): a solid black disc cut once by a hand-lettered V. One mark and
+  one gesture: the V is the opening of a mouth, the disc is the "o" of Vocium (and the plainest
+  speech-bubble outline), and the wedge the cut frees is the word leaving it. One ink
+  (`#000000`), no gradient, outline or second shape, on a flat white tile; it replaces "V-Mic"
+  (and, before that, "Cut-V Bubble", "Voice Ribbon", "AI Mic" and the equaliser V, all retired).
+  The V is a single channel of constant width 28 (1.75 px at 16 px) whose arms leave the vertex
+  at 26 and 34 degrees and relax to 40 and 56, so it leans 4 to 8 degrees like a hand-lettered
+  V; it splits the disc (r = 104, 81 % of the tile) into a wedge and a bowl. Every convex corner
+  is r = 6 and the vertex r = 7, blended with a Gaussian so the curvature never jumps; each
+  contour is fitted to 12 and 14 cubic Beziers (G1, maximum deviation 0.05 units) and the mark is
+  optically centred (moved by 0.09, -1.66). At 16 px the gap is 1.75 px, the black chin under
+  the V 2.2 px and the wedge 7.3 px tall.
+- **Tray glyph in two colours.** `tray.svg` is the same mark without the tile: the same two
+  shapes scaled 0.1413 onto the 32 grid, with the V channel widened to 32 construction units
+  (2.3 px at 16 px) so it still opens up when the system downscales. `npm run icons` now renders
+  `tray-dark-*.png` (black, for light taskbars and the macOS template image) and
+  `tray-light-*.png` (white, for dark taskbars). On Windows `build_tray` reads
+  `HKCU\...\Themes\Personalize\SystemUsesLightTheme` at startup (new `Win32_System_Registry`
+  feature of the `windows` crate) and embeds the matching one; elsewhere it embeds the white one.
+  A taskbar theme change takes effect on the next launch. The old `tray-{16,22,32,44}.png` are no
+  longer generated or used; `lib.rs` is unchanged. Rationale, construction, the two other
+  finalists ("Orb Cut" and "Bubble Cut", sources included for a one-file swap), the 16 px rules,
+  the explorations and why the five earlier marks were retired are in `docs/ICON_DESIGN.html`.
+- **README rewritten** (zh-TW + en): short sections, feature table, three-step
+  setup, permissions table. The hero is now an animated SVG
+  (`docs/assets/showcase.svg`); `npm run showcase` renders the GIF fallback.
+- Removed the old `showcase.html` + `gen-banner.mjs` banner pipeline.
+
 ### Fixed (review follow-ups)
 
 - A late STT result (or failure) from a cancelled round is dropped even when a

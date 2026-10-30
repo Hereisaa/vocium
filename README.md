@@ -4,189 +4,156 @@
 
 <h1 align="center">Vocium</h1>
 
-<p align="center">
-  <b>桌面 AI 智慧語音輸入。</b>
-</p>
+<p align="center"><b>按一個鍵、開口說，文字直接落在你正在打字的地方。</b></p>
 
 <p align="center">
   <b>繁體中文</b> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555" alt="Platform: Windows and macOS" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-555" alt="Windows · macOS" />
+  <img src="https://img.shields.io/badge/keys-BYOK%20%C2%B7%20%E5%83%85%E5%AD%98%E6%9C%AC%E6%A9%9F-6ad0c8" alt="BYOK" />
+  <img src="https://img.shields.io/badge/process-%E5%96%AE%E4%B8%80%E8%A1%8C%E7%A8%8B-8a6cff" alt="single process" />
 </p>
 
 <p align="center">
-  <img src="docs/assets/showcase.gif" width="940" alt="Vocium — AI 語音輸入示範（快捷鍵 → 說話 → 文字落入輸入框）" />
+  <img src="docs/assets/showcase.svg" width="940" alt="Vocium 示範：按快捷鍵 → 說話 → AI 轉錄 → 文字落入原本的輸入框" />
 </p>
 
 ---
 
-按下快捷鍵、開口說話，AI 即時將語音轉為文字並自動貼入目前焦點的輸入框——不搶焦點、無伺服器、不內建任何憑證。支援 Windows 與 macOS。
+## 這是什麼
 
-## 架構
+Vocium 是桌面上的 AI 語音輸入工具。
 
-單一行程。Tauri 2（Rust）殼層只做作業系統層的事：視窗、系統匣、全域快捷鍵、設定檔、原生文字注入。所有語音邏輯——狀態機、錄音、STT、AI 潤稿、繁簡轉換——是 **`@vocium/voice-core`**，一個純 TypeScript 套件，直接在懸浮 ICON 的 webview 裡執行。網路請求經由 Tauri 的 http 插件由 Rust 發出。
+- 游標停在**任何** App 的輸入框。
+- 按快捷鍵，說話。
+- 文字自動貼進去。不搶焦點，不開新視窗。
 
-```
-Vocium.exe（唯一行程）
-  ├ Rust 殼層     視窗 · Tray · 快捷鍵 · 設定檔 · 剪貼簿＋貼上鍵
-  └ webview       UI + voice-core（狀態機 · STT · 潤稿 · 繁簡）
-```
-
-`packages/voice-core/` 不依賴任何平台 API（只需要一個 `fetch`），可以在瀏覽器、Node 或 Bun 裡重用。
-
-## 功能
-
-- **懸浮 ICON** — 鎖定／解除拖曳、縮小到系統匣、不搶焦點
-- **切換模式或按鍵發話** — 可自訂全域快捷鍵
-- **多家雲端 STT** — Groq、OpenAI Whisper、Gemini；自備金鑰（BYOK），僅存本機
-- **AI 潤稿** — 注入前可選的 LLM 潤飾（標點、贅詞、通順）
-- **中文輸出** — 強制繁體或簡體；可選 VAD 靜音修剪
-- **剪貼簿還原** — 注入後把你原本的剪貼簿文字放回去
+辨識交給你自備金鑰的雲端服務（Groq、OpenAI、Gemini）。沒有伺服器，沒有帳號，金鑰只存在你的電腦。
 
 ---
 
-### 前置需求
+## 特色
 
-| 工具 | 用途 | 備註 |
-|---|---|---|
-| **Node.js ≥ 20** | 編譯 voice-core 與 webview | 內含 `npm` |
-| **Rust 工具鏈** | 建置 Tauri 殼 | — |
-
-平台額外需求：
-**Windows** — WebView2 Runtime（Win 10 2020+/11 已內建）+ MSVC Build Tools（勾選 *「使用 C++ 的桌面開發」* 工作負載）。
-**macOS** — Xcode Command Line Tools（`xcode-select --install`）。
+| | |
+|---|---|
+| 🎙️ **兩種說話方式** | 切換模式：按一下開始、再按一下結束。按住說話：按住錄、放開送。快捷鍵可自訂。 |
+| 🔑 **自備金鑰（BYOK）** | Groq、OpenAI Whisper、Gemini 三選一。OpenAI 相容端點可接自架服務。 |
+| ✨ **AI 潤稿（選用）** | 貼上前先讓 LLM 補標點、去贅詞、順句子。三種風格，可自訂 prompt。 |
+| 🀄 **繁簡強制輸出** | 不管辨識出什麼，統一轉成繁體（台灣）或簡體。離線完成。 |
+| 📋 **不弄亂剪貼簿** | 貼完會把你原本的剪貼簿內容放回去。 |
+| 🩺 **系統匣健康面板** | 麥克風、權限、金鑰、快捷鍵狀態一目了然，壞掉的項目點一下直達設定。 |
+| 🧩 **單一行程** | 一個執行檔，沒有背景服務。核心邏輯是純 TypeScript 套件，可在其他專案重用。 |
 
 ---
 
-## 快速安裝指令
+## 三步上手
 
-無發佈的安裝檔 —— 從原始碼建置
+### 1. 安裝
 
-### 前置環境
+目前尚未發佈安裝檔，請從原始碼建置。需要 **Node.js ≥ 20** 與 **Rust 工具鏈**。
 
-**🪟 Windows（PowerShell）：**
+<details>
+<summary>🪟 Windows 工具鏈（PowerShell）</summary>
+
 ```powershell
-winget install --id OpenJS.NodeJS.LTS          # Node.js（LTS, ≥ 20）
-winget install --id Rustlang.Rustup            # Rust
-winget install --id Microsoft.VisualStudio.2022.BuildTools  # 勾「使用 C++ 的桌面開發」
+winget install --id OpenJS.NodeJS.LTS
+winget install --id Rustlang.Rustup
+winget install --id Microsoft.VisualStudio.2022.BuildTools   # 勾「使用 C++ 的桌面開發」
 ```
 
-**🍎 macOS（Terminal）：**
-```bash
-xcode-select --install                                          # Xcode CLT（系統對話框）
-brew install node                                               # Node.js（≥ 20），或用 nvm
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Rust
-```
+WebView2 Runtime 在 Windows 10 2020+ / 11 已內建。安裝後請開新視窗讓 `PATH` 生效。
+</details>
 
-安裝 Rust 後請開新 shell，讓更新後的 `PATH` 生效。
-
-### 確認版本
+<details>
+<summary>🍎 macOS 工具鏈（Terminal）</summary>
 
 ```bash
-node -v   # ≥ 20（建議 LTS）
-npm -v    # 應乾淨印出版本，不該報相容性錯誤
-cargo -V
+xcode-select --install
+brew install node
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
-
-### 從原始碼執行
+</details>
 
 ```bash
 git clone https://github.com/Hereisaa/vocium.git
 cd vocium
 npm install
-npm run dev   # 編譯 voice-core 與 webview，再透過 `tauri dev` 啟動桌面程式
+npm run dev
 ```
 
-### 打包成應用程式
+要打包成安裝檔：`npm run package`，產物在 `app-tauri/src-tauri/target/release/bundle/`。
 
-```bash
-npm run package # 產生獨立安裝檔
-# 產物在 `app-tauri/src-tauri/target/release/bundle/`
-```
+### 2. 填金鑰
 
-**🪟 Windows**
+右下角系統匣 → **Vocium → 設定… → 語音轉文字**，選一家、貼上金鑰、儲存。
 
-| 格式 | 路徑 | 說明 |
+| 供應商 | 取得金鑰 | 備註 |
 |---|---|---|
-| `.msi` | `bundle/msi/Vocium_<ver>_x64_en-US.msi` | 群組原則／靜默安裝 |
-| `.nsis` | `bundle/nsis/Vocium_<ver>_x64-setup.exe` | 體積小，OSS 常用 |
+| **Groq**（推薦） | [console.groq.com](https://console.groq.com) | 有免費額度，中文辨識快又準 |
+| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | 可改 Base URL 接相容服務 |
+| **Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | — |
 
-首次啟動（未簽署）：SmartScreen →**其他資訊 → 仍要執行**。
+### 3. 說話
 
-**🍎 macOS**
-
-| 格式 | 路徑 | 說明 |
-|---|---|---|
-| `.app` | `bundle/macos/Vocium.app` | 可執行的應用程式 bundle |
-| `.dmg` | `bundle/dmg/Vocium_<ver>_{x64\|aarch64}.dmg` | 散佈用磁碟映像 |
-
-首次啟動（未簽署）：Gatekeeper →**右鍵 → 打開 → 仍要打開**（一次）。
-※ 未簽署版每次 rebuild 需重新授權輔助使用——見 [權限](#權限)。
+1. 游標放在任何輸入框。
+2. 按 **Ctrl+Shift+Space**（預設）。
+3. 說話，再按一次。
+4. 文字出現。
 
 ---
 
 ## 權限
 
-Vocium 首次執行需要作業系統層級權限，內容與還原流程兩平台略有不同。
-
-**🪟 Windows**
-
-| 權限 | 用途 | 怎麼給 |
+| 平台 | 需要 | 怎麼給 |
 |---|---|---|
-| **麥克風** | 錄你的語音 | 首次錄音時 Windows 跳標準權限對話框——點*允許* |
+| Windows | 麥克風 | 首次錄音時系統會問，點「允許」。 |
+| macOS | 麥克風 | 首次錄音時系統會問。 |
+| macOS | 輔助使用 | **系統設定 → 隱私權與安全性 → 輔助使用**，加入 Vocium 並啟用。沒給的話文字仍會複製到剪貼簿，自己按 Cmd+V 即可。 |
 
-不需要貼上權限——Vocium 直接用 Win32 剪貼簿 API 與 `SendInput` 送出 Ctrl+V，不需提權。
-
-**🍎 macOS**
-
-| 權限 | 用途 | 怎麼給 |
-|---|---|---|
-| **麥克風** | 錄你的語音 | 首次錄音時 macOS 跳系統提示；授予給 App（或執行 `npm run dev` 的終端機） |
-| **輔助使用** | 把貼上按鍵（Cmd+V）送到焦點 App | **系統設定 ▸ 隱私權與安全性 ▸ 輔助使用** — 加入 Vocium 並打勾啟用 |
-
-未授予輔助使用時，轉錄文字仍會複製到剪貼簿，懸浮 ICON 顯示指引文字 —— 你可手動 Cmd+V 貼上。
-
-> **遇到 npm run package 之後無法觸發自動貼上，解決方式** :
-每次 `npm run package` 都產生新的 ad-hoc 簽章，macOS 把每次 rebuild 當成不同 App —— 舊的輔助使用綠勾還在，但指向已失效的 binary。若 rebuild 後「轉錄成功但貼上不發生」：
-**系統設定 ▸ 隱私權與安全性 ▸ 輔助使用 → 移除舊的 Vocium 列 → 加入新的 `Vocium.app` 並啟用**。
-dev loop（`npm run dev`）重用已授權的 entry，故此問題只出現在 packaged 版。
+> **macOS 重新打包後貼上失效？** 每次 `npm run package` 都是新的簽章，macOS 視為不同 App。到輔助使用清單移除舊的 Vocium、加入新的即可。
 
 ---
 
-## Tray 健康面板
+## 設定
 
-系統列選單即時顯示麥克風裝置、麥克風權限、STT 金鑰、全域快捷鍵、（macOS）輔助使用的狀態。失敗項以 ⚠ 標示且可點——直接開啟對應的系統設定頁或內部設定視窗。若有阻斷性檢查失敗（無麥克風或權限被拒），按快捷鍵不會進入聆聽，UI 顯示原因。
+所有設定都在系統匣的「設定…」視窗，分三頁：
 
----
+- **一般**：介面語言、快捷鍵、麥克風、輸入模式、靜音修剪、繁簡輸出。
+- **語音轉文字**：供應商、金鑰、模型。
+- **AI 潤稿**：開關、供應商、模型、風格。
 
-## 操作
-
-1. 把焦點放在任一輸入框。（當下無焦點則複製到剪貼簿）
-2. 按快捷鍵 或 點擊 Vocium → Vocium 進入 **聆聽中**。
-3. **說話。**
-4. 再按一次 → 轉錄成功
-
-**切換模式** — 按一次開始，再按一次停止並轉錄。
-**按鍵發話** — 按住錄音，鬆手即轉錄。
-
-首次執行需設定 STT API 金鑰——見 [CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md)。
+設定檔位置與完整欄位說明見 [docs/CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md)。
 
 ---
 
-## 在其他專案重用 voice-core
+## 運作方式
+
+```
+按快捷鍵 → 錄音 → 雲端 STT → AI 潤稿（選用）→ 繁簡轉換 → 貼進焦點視窗
+```
+
+- **Rust 殼層**只做作業系統的事：視窗、系統匣、快捷鍵、設定檔、貼上。
+- **voice-core** 是純 TypeScript 套件，負責狀態機、辨識、潤稿、繁簡。跑在 App 的 webview 裡。
+- 只有真正的辨識結果會被貼上。沒說話、辨識失敗、沒設金鑰，都只在懸浮 ICON 上提示，不會弄髒你的文件。
+
+完整架構、IPC 契約與決策紀錄見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（架構的唯一事實來源）。互動式架構圖見 [docs/archify/](docs/archify/)。
+
+---
+
+## 在你的專案重用辨識核心
 
 ```ts
-import { createSttAdapter, normalizeConfig, polishText } from '@vocium/voice-core';
+import { createSttAdapter, normalizeConfig } from '@vocium/voice-core';
 
 const cfg = normalizeConfig({ sttProvider: 'groq', groqApiKey: process.env.GROQ_KEY });
 const stt = createSttAdapter(cfg, { fetch });
 const { text } = await stt.transcribe({ audio: bytes, mimeType: 'audio/webm' });
 ```
 
-套件只依賴 `fetch`，沒有 Node 或 DOM 依賴；目前以 npm workspace 形式存在於 `packages/voice-core/`。
+套件只依賴 `fetch`，瀏覽器、Node、Bun 都能跑。目前位於 `packages/voice-core/`。
 
 ---
 
@@ -194,12 +161,12 @@ const { text } = await stt.transcribe({ audio: bytes, mimeType: 'audio/webm' });
 
 | 文件 | 內容 |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **架構 SSOT**：行程邊界、原始碼地圖、狀態機、IPC 契約、決策紀錄 |
-| [docs/archify/vocium-architecture.html](docs/archify/vocium-architecture.html)、[voice-input-workflow.html](docs/archify/voice-input-workflow.html) | 互動式架構圖與流程圖（Archify，從同目錄的 JSON 渲染，含原始碼溯源） |
-| [docs/CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md) | `vocium-config.json`、各家 BYOK 金鑰設定、AI 潤稿 |
-| [docs/ROADMAP.zh-TW.md](docs/ROADMAP.zh-TW.md) | 已完成／規劃中／延後的項目 |
-| [docs/CONTRIBUTING.zh-TW.md](docs/CONTRIBUTING.zh-TW.md) | 開發流程、build gates、新增 provider |
-| [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html)、[ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) | 設計圖（線上預覽） |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架構 SSOT：邊界、狀態機、IPC、決策紀錄 |
+| [CONFIGURATION.zh-TW.md](docs/CONFIGURATION.zh-TW.md) | 設定檔欄位、各家金鑰、潤稿 |
+| [ROADMAP.zh-TW.md](docs/ROADMAP.zh-TW.md) | 已完成、規劃中、延後 |
+| [CONTRIBUTING.zh-TW.md](docs/CONTRIBUTING.zh-TW.md) | 開發流程、測試關卡、新增供應商 |
+| [archify/](docs/archify/) | 互動式架構圖與流程圖 |
+| [ICON_DESIGN](https://hereisaa.github.io/vocium/ICON_DESIGN.html) · [DESIGN_MOCKUP](https://hereisaa.github.io/vocium/DESIGN_MOCKUP.html) | 圖示與介面設計 |
 
 ---
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vocium tray / menu-bar glyph (vector source of truth for tray-dark-* and tray-light-*.png).
+     The app icon's "Swash" without the tile: the same two shapes, built from the same construction and
+     scaled by 0.1413 (disc diameter 208 becomes 29.4 units on a 32 canvas, bounding box
+     1.3..30.7 x 1..30.4). 1 unit is 1 px at 32 px and 1/2 px at 16 px.
+     The one change for the tray: the V channel is widened from 28 to 32 construction units (4.5 units on this canvas),
+     so it is 2.3 px at 16 px and still opens up cleanly when the system downscales; the corner radii scale with the
+     mark (about 0.85 units), which is below one pixel at 16 px, so the horn tips simply anti-alias.
+     Two closed contours (the fin and the bowl), so everything outside them, including the V channel, stays
+     transparent and shows whatever is under the tray.
+     This file is the black variant (#000000; the fill is the only colour in it). scripts/gen-icons.mjs renders it
+     as tray-dark-{16,22,32,44}.png (black mark, for light taskbars / menu bars) and, with that fill swapped to
+     #ffffff, as tray-light-{16,22,32,44}.png (white mark, for dark taskbars). macOS loads the black one as a
+     template image (alpha only, the system tints it).
+     No filters, masks, text or <use>. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <path fill="#000000" d="M20.32 1.675C22.132 2.23 23.834 3.138 25.302 4.336C25.626 4.601 25.972 4.884 25.94 5.347C25.917 5.688 25.678 5.93 25.449 6.159C23.718 7.896 22.086 9.722 20.545 11.631C19.258 13.226 18.033 14.871 16.837 16.536C16.547 16.939 16.23 17.355 15.664 17.193C15.306 17.091 15.129 16.773 14.969 16.464C13.934 14.452 12.889 12.447 11.778 10.475C10.667 8.503 9.49 6.574 8.26 4.674C8.09 4.411 7.919 4.134 7.964 3.808C8.017 3.41 8.34 3.19 8.66 3.003C12.165 0.962 16.447 0.489 20.32 1.675ZM13.367 23.402C13.656 23.995 13.943 24.589 14.235 25.18C14.47 25.653 14.751 26.061 15.348 26.014C15.882 25.973 16.136 25.54 16.406 25.14C19.917 19.934 23.468 14.701 27.846 10.171C28.125 9.883 28.423 9.554 28.861 9.585C29.383 9.622 29.583 10.061 29.747 10.489C31.458 14.946 30.863 20.011 28.19 23.963C24.645 29.205 18.101 31.597 12.011 29.871C3.222 27.381 -1.196 17.533 2.791 9.312C2.98 8.922 3.425 8.016 3.739 7.759C3.881 7.642 4.059 7.574 4.243 7.568C4.784 7.552 5.039 8.019 5.29 8.417C8.323 13.219 10.878 18.303 13.367 23.402Z"/>
+</svg>
