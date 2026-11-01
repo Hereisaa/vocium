@@ -12,10 +12,10 @@ Edit via **Tray → Vocium → Settings…** (three tabs: General / Speech-to-Te
   "groqApiKey": "<your-groq-key>",
   "groqModel": "whisper-large-v3-turbo",
   "openaiApiKey": "<your-openai-key>", // optional; fill in when using the OpenAI provider
-  "openaiModel": "whisper-1",
+  "openaiModel": "gpt-transcribe",
   "openaiBaseUrl": "",                 // optional; leave empty to use api.openai.com
   "geminiApiKey": "<your-gemini-key>", // optional; fill in when using the Gemini provider
-  "geminiModel": "gemini-3.5-flash",
+  "geminiModel": "gemini-3.8-flash",
   "inputMode": "toggle",               // "toggle" | "ptt" (push-to-talk mode)
   "vadTrim": false,                    // whether to enable automatic silence trimming
   "maxListenMs": 30000,

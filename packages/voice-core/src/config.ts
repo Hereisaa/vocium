@@ -1,4 +1,5 @@
 // src/config.ts
+import { DEFAULT_MODEL, DEFAULT_POLISH_MODEL, resolveRetiredModel } from './stt/models.js';
 export type SttProvider = 'groq' | 'openai' | 'gemini' | 'mock';
 
 export interface VociumConfig {
@@ -33,12 +34,12 @@ export const DEFAULTS: VociumConfig = {
   hotkey: 'Ctrl+Shift+Space',
   sttProvider: 'groq',
   groqApiKey: '',
-  groqModel: 'whisper-large-v3-turbo',
+  groqModel: DEFAULT_MODEL.groq,
   openaiApiKey: '',
-  openaiModel: 'whisper-1',
+  openaiModel: DEFAULT_MODEL.openai,
   openaiBaseUrl: 'https://api.openai.com/v1',
   geminiApiKey: '',
-  geminiModel: 'gemini-3.5-flash',
+  geminiModel: DEFAULT_MODEL.gemini,
   mockText: '這是一段由 Vocium 模擬語音輸入產生的文字。',
   maxListenMs: 30000,
   iconOffsetX: 0,
@@ -50,7 +51,7 @@ export const DEFAULTS: VociumConfig = {
   micDeviceId: '',
   polishEnabled: false,
   polishProvider: 'groq',
-  polishModel: 'llama-3.3-70b-versatile',
+  polishModel: DEFAULT_POLISH_MODEL.groq,
   polishStyle: 'light',
   polishCustomPrompt: '',
   polishApiKey: '',
@@ -100,6 +101,11 @@ export function normalizeConfig(parsed: unknown): VociumConfig {
   merged.polishProvider = normalizePolishProvider(merged.polishProvider);
   merged.polishStyle = normalizePolishStyle(merged.polishStyle);
   merged.polishEnabled = merged.polishEnabled === true;
+  // A config saved before a provider retired its model must keep working.
+  merged.groqModel = resolveRetiredModel(merged.groqModel);
+  merged.openaiModel = resolveRetiredModel(merged.openaiModel);
+  merged.geminiModel = resolveRetiredModel(merged.geminiModel);
+  merged.polishModel = resolveRetiredModel(merged.polishModel);
   return merged;
 }
 
@@ -165,7 +171,7 @@ export function readPolishConfig(fs: FsLike, path: PathLike, dir: string): Polis
     return {
       polishEnabled: p.polishEnabled === true,
       polishProvider: normalizePolishProvider(p.polishProvider),
-      polishModel: str('polishModel') || DEFAULTS.polishModel,
+      polishModel: resolveRetiredModel(str('polishModel') || DEFAULTS.polishModel),
       polishStyle: normalizePolishStyle(p.polishStyle),
       polishCustomPrompt: str('polishCustomPrompt'),
       polishApiKey: str('polishApiKey'),
