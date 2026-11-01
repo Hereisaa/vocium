@@ -1,39 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Vocium app icon — master (vector source of truth). Concept B+ :
-     voice equalizer bars tracing a "V" + AI sparkle, teal→inject-violet
-     gradient (brand palette). Full-bleed 256 square (Windows-safe; OS rounds
-     where it wants). Rasterize via scripts/gen-icons.mjs. -->
+<!-- Vocium app icon: master, vector source of truth.
+     Concept "Swash": a solid black disc (the "o" of Vocium) cut once by a hand-lettered V. One solid black mark (no gradient, no outline, no second colour)
+     on a flat white 256 tile. The cut is the whole idea: a V is what an open mouth looks like from the front, the
+     disc is the "o" of Vocium (and the round shape of a bubble), and the wedge that the V frees from the disc is the
+     word leaving it. It reads as the letter V and as a speech form at once, and it is one gesture, not a letter
+     plus an object.
+
+     Construction (256 canvas; the mark is moved by 0.1, -1.7 for optical centring, so every number below
+     is the pre-shift value; the path data is final):
+       disc      circle r = 104 centred (128,128), so the mark box is 24..232 (208 = 81 % of the tile, 9.4 % margin
+                 on every side before the nudge)
+       gap       ONE V-shaped channel of constant width 28 (1.75 px at 16 px), vertex centreline at (124,176).
+                 Left arm leaves the vertex 26 deg off the vertical and relaxes to 40 deg; right arm leaves at 34 deg and relaxes to 56 deg,
+                 so the V's axis leans 4 deg (at the vertex) to 8 deg (at the rim) to the right, like a hand-lettered V.
+                 Each arm is one cubic Bezier whose handles are 0.42 of the arm length, so the flanks flare very slightly
+                 (radius of curvature about 400 to 800); the vertex is a sharp V softened by a radius of 7.
+       pieces    the channel splits the disc into two shapes: the fin (the wedge above the V, with the disc's arc as
+                 its top) and the bowl (everything below and beside it). Both are one closed contour each.
+       corners   every convex corner (horn tips, fin shoulders, fin tip) is rounded to r = 6, the concave vertex to
+                 r = 7, and the transitions are blended with a Gaussian of sigma 1.5 so the curvature changes
+                 continuously instead of jumping at the tangent points (no elbow bumps).
+       curves    the two contours are fitted to 12 and 14 cubic Beziers (G1 at every node, maximum
+                 deviation from the constructed outline 0.05 units); the long edges are true arcs or near-straight cubics.
+       centring  mean of the bounding-box centre and the ink centroid is the tile centre (the bowl is the heavy part).
+     Legibility at 16 px: gap 1.75 px, chin below the V 2.2 px, fin 7.3 px tall, ink 39.8 % of the tile,
+     margin to the tile edge at least 8.7 %; no black feature is thinner than 2 px except the last 2 px of the two
+     horn tips (acute corners, not strokes). Colour: one ink (#000000) on #ffffff, contrast 21:1.
+     Full-bleed square (the OS rounds the corners). Rasterize via scripts/gen-icons.mjs; companion tray glyph: tray.svg;
+     rationale, construction diagram, the other finalists and why the five earlier marks were retired:
+     docs/ICON_DESIGN.html. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <defs>
-    <linearGradient id="tileBG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1b2330"/><stop offset="1" stop-color="#0c0f15"/>
-    </linearGradient>
-    <radialGradient id="glowAI" cx="50%" cy="44%" r="62%">
-      <stop offset="0" stop-color="#8f7cff" stop-opacity=".30"/>
-      <stop offset="50%" stop-color="#6ad0c8" stop-opacity=".10"/>
-      <stop offset="100%" stop-color="#6ad0c8" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="aiGradV" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8ff0e6"/>
-      <stop offset="55%" stop-color="#5cc7be"/>
-      <stop offset="100%" stop-color="#8a6cff"/>
-    </linearGradient>
-  </defs>
-
-  <rect width="256" height="256" fill="url(#tileBG)"/>
-  <rect width="256" height="256" fill="url(#glowAI)"/>
-
-  <g fill="url(#aiGradV)">
-    <rect x="50"  y="86"  width="22" height="78"  rx="11"/>
-    <rect x="86"  y="108" width="22" height="100" rx="11"/>
-    <rect x="117" y="132" width="22" height="80"  rx="11"/>
-    <rect x="148" y="108" width="22" height="100" rx="11"/>
-    <rect x="184" y="86"  width="22" height="78"  rx="11"/>
-  </g>
-
-  <!-- AI sparkle nested in the V opening (baked transform so it rasterizes
-       identically everywhere — not a <use>, which doesn't size on <path>). -->
-  <path d="M16 1 C17.6 9.5 22.5 14.4 31 16 C22.5 17.6 17.6 22.5 16 31
-           C14.4 22.5 9.5 17.6 1 16 C9.5 14.4 14.4 9.5 16 1 Z"
-        fill="#cfeee9" transform="translate(97 41) scale(1.93)"/>
+  <rect width="256" height="256" fill="#ffffff"/>
+  <path fill="#000000" d="M158.55 26.91C172.01 31.03 184.6 37.91 195.33 47.01C197.55 48.9 200.03 51.01 199.81 54.21C199.64 56.72 197.83 58.46 196.16 60.14C183.55 72.76 171.71 86.11 160.55 100.03C151.21 111.67 142.34 123.67 133.68 135.82C131.59 138.74 129.31 141.8 125.19 140.52C122.77 139.77 121.55 137.62 120.46 135.5C113.04 121.04 105.58 106.6 97.65 92.41C89.47 77.79 80.8 63.46 71.67 49.4C70.47 47.55 69.2 45.61 69.41 43.3C69.68 40.38 72.03 38.72 74.34 37.32C99.47 22.06 130.47 18.31 158.55 26.91ZM69.27 99.12C85.95 128.28 100.7 158.46 115.48 188.61C116.98 191.66 118.52 194.61 122.26 195.08C126.84 195.66 128.97 192.15 131.18 188.87C155.28 153.12 179.84 117.36 209.81 86.2C211.79 84.14 214.01 81.26 217.03 80.91C220.39 80.51 222.44 82.71 223.72 85.52C226.05 90.66 227.76 96.15 229.1 101.61C240.75 149.25 217.37 198.79 173.17 220.05C115.03 248.01 45.56 216.71 28.02 154.62C21.6 131.88 23.18 107.24 32.45 85.51C34.6 80.47 37.13 75.54 40.1 70.93C41.76 68.36 43.9 66.23 47.22 66.84C49.9 67.34 51.38 69.58 52.75 71.72C58.5 80.7 63.97 89.86 69.27 99.12Z"/>
 </svg>
