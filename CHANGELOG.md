@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Changed
 
 - Settings window is larger (540×700, was 420×560) and resizable.
@@ -101,5 +103,6 @@ First public release. A desktop AI voice-input tool whose core is exposed over a
 - **Multi-microphone selection** in settings.
 - **Cross-platform** — Windows and macOS, from source (`npm run dev`) or packaged installers (`.msi` / `.nsis` / `.app` / `.dmg` via a Bun-compiled sidecar binary).
 
-[Unreleased]: https://github.com/Hereisaa/vocium/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Hereisaa/vocium/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Hereisaa/vocium/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Hereisaa/vocium/releases/tag/v0.1.0
