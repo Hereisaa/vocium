@@ -300,6 +300,14 @@ body {
   align-self:flex-end; margin-top:2px; }
 .clearkey:hover { text-decoration:underline; }
 .s-hint { font-size:12px; color:var(--text-dim); line-height:1.65; }
+/* "Refresh model list" row under the model dropdown: text-style button +
+   one-line status (count on success, error on failure, hint when no key). */
+.refreshrow { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:6px; }
+.refreshbtn { font:inherit; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;
+  background:none; border:none; padding:0; white-space:nowrap; }
+.refreshbtn:hover:not(:disabled) { text-decoration:underline; }
+.refreshbtn:disabled { color:var(--text-dim); cursor:default; opacity:.6; }
+.refreshrow .s-hint.is-err { color:var(--error); }
 .s-err { font-size:12px; color:var(--error); line-height:1.65; }
 .s-foot { display:flex; justify-content:flex-end; gap:10px; padding:14px 18px;
   border-top:1px solid var(--stroke); background:var(--panel-2); }

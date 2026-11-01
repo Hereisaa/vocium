@@ -29,6 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **"↻ Refresh model list" in Settings** (Speech-to-Text and AI Polish tabs). New
+  `listModels(provider, cfg, { fetch })` in `@vocium/voice-core` fetches the live
+  catalogue — `GET {baseUrl}/models` for Groq / OpenAI-compatible endpoints, Gemini's
+  `v1beta/models`, Anthropic's `v1/models` for Claude polish — and buckets it into
+  STT (`whisper`/`transcribe`, or Gemini models with `generateContent`), polish (known
+  chat families) and "other" (everything unclassified, kept so nothing is hidden). The
+  static `STT_MODELS` / `POLISH_MODELS` stay the offline default and are shown first as
+  "Recommended"; fetched models follow in "Fetched" / "Other" groups. Results live in
+  memory only (never written to the config file); the button is disabled with a hint
+  when no key is available and a failed fetch shows one line next to the button.
 - `docs/ARCHITECTURE.md` — the architecture single source of truth (process
   boundaries, source map, state machine, IPC contract, decision log).
 - `docs/archify/` — Archify architecture + voice-input workflow diagrams with

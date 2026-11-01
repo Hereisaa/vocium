@@ -1,7 +1,8 @@
 import './i18n.js';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { STT_MODELS, POLISH_MODELS } from '@vocium/voice-core';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { STT_MODELS, POLISH_MODELS, listModels } from '@vocium/voice-core';
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 const comboEl    = document.getElementById('combo');
@@ -22,6 +23,8 @@ const provFields = document.getElementById('provFields');
 const localStub  = document.getElementById('localStub');
 const modelSel   = document.getElementById('modelSel');
 const modelCustom = document.getElementById('modelCustom');
+const modelRefresh    = document.getElementById('modelRefresh');
+const modelRefreshMsg = document.getElementById('modelRefreshMsg');
 const baseUrlField = document.getElementById('baseUrlField');
 const baseUrlInput = document.getElementById('baseUrlInput');
 
@@ -35,10 +38,41 @@ const polishKeyClear    = document.getElementById('polishKeyClear');
 const polishModelSel    = document.getElementById('polishModelSel');
 const polishModelCustom = document.getElementById('polishModelCustom');
 const polishModelDelete = document.getElementById('polishModelDelete');
+const polishModelRefresh    = document.getElementById('polishModelRefresh');
+const polishModelRefreshMsg = document.getElementById('polishModelRefreshMsg');
 const polishCustomPrompt = document.getElementById('polishCustomPrompt');
 
 // ── Model lists come from voice-core (single source of truth) ─────────────
 const CUSTOM = '__custom__';
+
+// ── Fetched model lists (↻ 重新整理模型清單) ─────────────────────────────────
+// Memory only, per provider, for this Settings window's lifetime: never written
+// to the config file, so the static STT_MODELS / POLISH_MODELS stay the offline
+// default. Shape: { [provider]: { main: ModelOption[], other: ModelOption[] } }
+// where `main` is the role-appropriate bucket (stt or polish) from listModels.
+const fetchedStt    = {};
+const fetchedPolish = {};
+
+function modelLabel({ id, label, labelEn }) {
+  return window.I18N.getLang() === 'en' ? (labelEn || id) : (label || id);
+}
+
+/** Append `options` to `sel`, wrapped in an <optgroup> when `groupKey` is
+ *  given (used only once a fetched list exists, so the default look of a
+ *  flat preset list is unchanged). Skips ids already present in `seen`. */
+function appendOptions(sel, options, seen, groupKey) {
+  const fresh = options.filter((m) => !seen.has(m.id));
+  if (!fresh.length) return;
+  const parent = groupKey ? document.createElement('optgroup') : sel;
+  if (groupKey) { parent.label = window.I18N.t(groupKey); sel.appendChild(parent); }
+  fresh.forEach((m) => {
+    seen.add(m.id);
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = modelLabel(m);
+    parent.appendChild(opt);
+  });
+}
 
 // ── Cached config (populated by refreshFromConfig) ──────────────────────────
 let cachedCfg = null;       // full get_config snapshot
@@ -71,14 +105,16 @@ tabEls.forEach((t) => {
 /** Populate #modelSel options for a given provider. */
 function fillModels(provider, current) {
   const list = STT_MODELS[provider] || [];
-  const ids = list.map((m) => m.id);
+  const fetched = fetchedStt[provider];
   modelSel.innerHTML = '';
-  list.forEach(({ id, label, labelEn }) => {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = window.I18N.getLang() === 'en' ? (labelEn || id) : (label || id);
-    modelSel.appendChild(opt);
-  });
+  const seen = new Set();
+  // Static presets first (推薦); fetched ids that duplicate a preset are dropped.
+  appendOptions(modelSel, list, seen, fetched ? 'grp.recommended' : null);
+  if (fetched) {
+    appendOptions(modelSel, fetched.main, seen, 'grp.fetched');
+    appendOptions(modelSel, fetched.other, seen, 'grp.other');
+  }
+  const ids = [...seen];
   // Add custom option
   const customOpt = document.createElement('option');
   customOpt.value = CUSTOM;
@@ -145,6 +181,7 @@ function renderProvider(provider) {
     fillModels(provider, '');
     if (provider === 'openai') baseUrlInput.value = '';
   }
+  updateRefreshButtons();
 }
 
 provSel.addEventListener('change', () => renderProvider(provSel.value));
@@ -205,13 +242,14 @@ function fillPolishModels(provider, current) {
   const remembered = getRememberedModels(provider).filter((m) => !presetIds.includes(m));
 
   polishModelSel.innerHTML = '';
-  presets.forEach(({ id, label, labelEn }) => {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = window.I18N.getLang() === 'en' ? (labelEn || id) : (label || id);
-    polishModelSel.appendChild(opt);
-  });
-  remembered.forEach((id) => {
+  const fetched = fetchedPolish[provider];
+  const seen = new Set();
+  appendOptions(polishModelSel, presets, seen, fetched ? 'grp.recommended' : null);
+  if (fetched) {
+    appendOptions(polishModelSel, fetched.main, seen, 'grp.fetched');
+    appendOptions(polishModelSel, fetched.other, seen, 'grp.other');
+  }
+  remembered.filter((id) => !seen.has(id)).forEach((id) => {
     const opt = document.createElement('option');
     opt.value = id;
     opt.textContent = id; // user-entered custom: no preset tag
@@ -222,7 +260,7 @@ function fillPolishModels(provider, current) {
   customOpt.textContent = window.I18N.t('opt.modelCustom');
   polishModelSel.appendChild(customOpt);
 
-  const known = [...presetIds, ...remembered];
+  const known = [...seen, ...remembered];
   polishModelSel.value = (current && known.includes(current)) ? current : (presetIds[0] || '');
   polishModelCustom.value = '';
   polishModelCustom.style.display = 'none';
@@ -331,9 +369,104 @@ function renderPolishProvider(provider) {
     applyPolishKeyState(false, '');
     fillPolishModels(provider, '');
   }
+  updateRefreshButtons();
 }
 
 polishProvSel.addEventListener('change', () => renderPolishProvider(polishProvSel.value));
+
+// ── ↻ Refresh model list ──────────────────────────────────────────────────────
+// Key resolution mirrors what the pipeline will use: a key typed but not yet
+// saved wins; otherwise the saved key is read live via read_config_raw (same
+// process, local only — the icon webview already does this). Polish falls back
+// to the STT key of the same provider exactly like polish.ts does.
+function sttKeyAvailable(provider) {
+  if (keyInput.value.trim()) return true;
+  const p = cachedCfg && cachedCfg.providers && cachedCfg.providers[provider];
+  return !!(p && p.keySet);
+}
+function polishKeyAvailable(provider) {
+  if (polishKeyInput.value.trim()) return true;
+  const p = cachedCfg && cachedCfg.polish;
+  if (!p) return false;
+  if (provider === 'claude') return !!p.hasClaudeKey;
+  return !!(p.hasPolishOverride || (p.sharedKeyAvailable && p.sharedKeyAvailable[provider]));
+}
+async function resolveSttKey(provider) {
+  const typed = keyInput.value.trim();
+  if (typed) return typed;
+  const raw = await invoke('read_config_raw');
+  return (raw && raw[`${provider}ApiKey`]) || '';
+}
+async function resolvePolishKey(provider) {
+  const typed = polishKeyInput.value.trim();
+  if (typed) return typed;
+  const raw = (await invoke('read_config_raw')) || {};
+  if (provider === 'claude') return raw.claudeApiKey || '';
+  return raw.polishApiKey || raw[`${provider}ApiKey`] || '';
+}
+
+function setRefreshMsg(el, text, isErr) {
+  el.textContent = text || '';
+  el.classList.toggle('is-err', !!isErr);
+}
+
+/** Enable/disable both refresh buttons from the current provider + key state.
+ *  Disabled ⇒ the status line says why (no key). A previous attempt's error or
+ *  count stays visible until the key state flips or the next click. */
+function updateRefreshButtons() {
+  const pairs = [
+    [modelRefresh, modelRefreshMsg, provSel.value !== 'local' && sttKeyAvailable(provSel.value)],
+    [polishModelRefresh, polishModelRefreshMsg, polishProvSel.value !== 'local' && polishKeyAvailable(polishProvSel.value)],
+  ];
+  const noKey = window.I18N.t('hint.refreshNoKey');
+  for (const [btn, msg, ok] of pairs) {
+    if (!btn || btn.dataset.busy === '1') continue;
+    btn.disabled = !ok;
+    if (!ok) setRefreshMsg(msg, noKey, false);
+    else if (msg.textContent === noKey) setRefreshMsg(msg, '', false);
+  }
+}
+
+/** Shared click handler. `role` is 'stt' | 'polish'; on success the fetched
+ *  buckets are stored in memory and the dropdown re-rendered with the current
+ *  selection preserved; on failure only the status line changes. */
+async function refreshModelList(role) {
+  const isStt = role === 'stt';
+  const btn = isStt ? modelRefresh : polishModelRefresh;
+  const msg = isStt ? modelRefreshMsg : polishModelRefreshMsg;
+  const sel = isStt ? modelSel : polishModelSel;
+  const customInput = isStt ? modelCustom : polishModelCustom;
+  const provider = isStt ? provSel.value : polishProvSel.value;
+  if (provider === 'local' || btn.disabled) return;
+
+  btn.dataset.busy = '1';
+  btn.disabled = true;
+  const idleLabel = btn.textContent;
+  btn.textContent = window.I18N.t('btn.refreshing');
+  setRefreshMsg(msg, '', false);
+  try {
+    const apiKey = isStt ? await resolveSttKey(provider) : await resolvePolishKey(provider);
+    const cfg = { apiKey };
+    if (provider === 'openai' && isStt) cfg.baseUrl = baseUrlInput.value.trim();
+    const r = await listModels(provider, cfg, { fetch: tauriFetch });
+    const main = isStt ? r.stt : r.polish;
+    (isStt ? fetchedStt : fetchedPolish)[provider] = { main, other: r.other };
+    // Keep whatever is selected (preset, fetched or typed custom id).
+    const current = sel.value === CUSTOM ? customInput.value.trim() : sel.value;
+    if (isStt) fillModels(provider, current); else fillPolishModels(provider, current);
+    setRefreshMsg(msg, window.I18N.t('msg.refreshOk').replace('{n}', String(main.length + r.other.length)), false);
+  } catch (e) {
+    const reason = (e && e.message) ? e.message : String(e);
+    setRefreshMsg(msg, window.I18N.t('err.refreshModels') + reason, true);
+  } finally {
+    btn.textContent = idleLabel;
+    delete btn.dataset.busy;
+    btn.disabled = false;
+    updateRefreshButtons();
+  }
+}
+if (modelRefresh) modelRefresh.addEventListener('click', () => refreshModelList('stt'));
+if (polishModelRefresh) polishModelRefresh.addEventListener('click', () => refreshModelList('polish'));
 
 // ── Polish style seg custom prompt visibility ────────────────────────────────
 // (wired after polishStyleSeg is created, below in seg section)
@@ -383,6 +516,7 @@ polishKeyToggle.addEventListener('click', () => {
 polishKeyInput.addEventListener('input', () => {
   if (!polishKeyInput.value) applyPolishKeyState(lastPolishKeySet, lastPolishKeyMask);
   updatePolishToggleVisibility();
+  updateRefreshButtons();
 });
 
 // ── Segmented controls ────────────────────────────────────────────────────────
@@ -969,6 +1103,7 @@ keyClear.addEventListener('click', () => {
 keyInput.addEventListener('input', () => {
   if (!keyInput.value) applyKeyState(lastKeySet, lastKeyMask);
   updateToggleVisibility();
+  updateRefreshButtons();
 });
 
 // ── Focus handler ─────────────────────────────────────────────────────────────

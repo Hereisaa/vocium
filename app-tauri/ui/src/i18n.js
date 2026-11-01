@@ -85,6 +85,16 @@
       'seg.styleCustom': '自訂 Prompt',
       'ph.customPrompt': '自訂潤稿指令（保留原意與原語言）',
       'btn.deleteModel': '✕ 刪除此自訂模型',
+      // "Refresh model list" (settings.js refreshModelList). Fetched models are
+      // merged under the static list, which stays first as 推薦.
+      'btn.refreshModels': '↻ 重新整理模型清單',
+      'btn.refreshing': '↻ 讀取中…',
+      'hint.refreshNoKey': '請先輸入金鑰',
+      'msg.refreshOk': '已載入 {n} 個模型',
+      'err.refreshModels': '讀取失敗：',
+      'grp.recommended': '推薦',
+      'grp.fetched': '線上清單',
+      'grp.other': '其他',
       'lbl.localPolish': '本地 AI 潤稿',
       'stub.localPolish': '本地 AI 潤稿即將推出，請先選擇雲端來源（Groq / OpenAI / Gemini / Claude）。',
 
@@ -177,6 +187,14 @@
       'seg.styleCustom': 'Custom prompt',
       'ph.customPrompt': 'Custom polish instruction (preserve meaning & language)',
       'btn.deleteModel': '✕ Delete this custom model',
+      'btn.refreshModels': '↻ Refresh model list',
+      'btn.refreshing': '↻ Loading…',
+      'hint.refreshNoKey': 'Enter an API key first',
+      'msg.refreshOk': 'Loaded {n} models',
+      'err.refreshModels': 'Refresh failed: ',
+      'grp.recommended': 'Recommended',
+      'grp.fetched': 'Fetched',
+      'grp.other': 'Other',
       'lbl.localPolish': 'Local AI polish',
       'stub.localPolish': 'Local AI polish is coming soon — pick a cloud provider (Groq / OpenAI / Gemini / Claude) for now.',
 
