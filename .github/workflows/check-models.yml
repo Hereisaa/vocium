@@ -1,0 +1,101 @@
+# Monthly drift check of the static model list (packages/voice-core/src/stt/models.ts)
+# against each provider's PUBLIC docs. Deliberately uses no API keys: the only
+# token is the default GITHUB_TOKEN, used to open / update / close one issue.
+name: check-models
+
+on:
+  schedule:
+    - cron: '17 6 1 * *' # 1st of every month, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: check-models
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      ISSUE_TITLE: Model list drift
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build:core
+
+      # Exit 1 = severe drift. Capture the code instead of failing here so the
+      # issue step can still run; the job is failed at the end.
+      - name: Check model lists against public docs
+        id: check
+        run: |
+          set +e
+          npm run check:models --silent -- --out report.md
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Show report
+        if: always()
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update or close the drift issue
+        if: always() && steps.check.outputs.exit_code != ''
+        uses: actions/github-script@v7
+        env:
+          EXIT_CODE: ${{ steps.check.outputs.exit_code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const title = process.env.ISSUE_TITLE;
+            const severe = process.env.EXIT_CODE === '1';
+            const report = fs.existsSync('report.md') ? fs.readFileSync('report.md', 'utf8') : '_report.md missing_';
+            const body = [
+              `Automated check of \`packages/voice-core/src/stt/models.ts\` against provider docs (no API keys used).`,
+              `Run: ${process.env.RUN_URL}`,
+              '',
+              'To fix: run the `update-models` project skill (`.claude/skills/update-models/SKILL.md`) or follow docs/CONTRIBUTING.md → "Keeping the model list current".',
+              '',
+              '---',
+              '',
+              report,
+            ].join('\n');
+
+            // One pinned issue, found by exact title, among open issues created by this workflow.
+            const { owner, repo } = context.repo;
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100, labels: 'model-drift',
+            });
+            const existing = open.find((i) => i.title === title && !i.pull_request);
+
+            if (severe) {
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Still drifting as of ${new Date().toISOString().slice(0, 10)}. Issue body updated with the latest report.`,
+                });
+                core.info(`Updated issue #${existing.number}`);
+              } else {
+                const created = await github.rest.issues.create({ owner, repo, title, body, labels: ['model-drift'] });
+                core.info(`Opened issue #${created.data.number}`);
+              }
+              core.setFailed('Model list drift detected — see the issue and the step summary.');
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `Resolved: the ${new Date().toISOString().slice(0, 10)} check found no severe drift. Closing.\n\n${process.env.RUN_URL}`,
+              });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed', state_reason: 'completed' });
+              core.info(`Closed issue #${existing.number}`);
+            } else {
+              core.info('No severe drift and no open issue — nothing to do.');
+            }

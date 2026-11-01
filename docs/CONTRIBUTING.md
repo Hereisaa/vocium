@@ -9,7 +9,7 @@ packages/voice-core/   pure-TypeScript core (STT adapters, polish, zh conversion
 app-tauri/ui/src/      webview sources (app.js floating icon, settings.js, i18n.js)
 app-tauri/ui/build/    esbuild output (gitignored)
 app-tauri/src-tauri/   Rust shell (window, tray, hotkey, config file, native injection in inject.rs)
-scripts/               build helpers (build-ui.mjs, copy-vad-assets.mjs, icon generation)
+scripts/               build helpers (build-ui.mjs, copy-vad-assets.mjs, icon generation, check-models.mjs)
 ```
 
 Single process: voice-core runs inside the floating icon's webview, talks to Rust via Tauri `invoke`/events, and makes network requests through `@tauri-apps/plugin-http`'s `fetch`.
@@ -57,6 +57,31 @@ export const DEFAULT_MODEL: Record<CloudProvider, string> = { /* … */ };
 - No runtime model-list fetch: provider `/models` endpoints have no reliable STT flag, need a key, and add first-open latency.
 - The dropdown's last entry "Custom…" accepts any model id, so a stale list never blocks anyone.
 - `POLISH_MODELS` / `DEFAULT_POLISH_MODEL` follow the same rules across four providers (groq / openai / gemini / claude; claude has no STT but can polish).
+
+## Keeping the model list current
+
+Three layers share the job, and none of them needs an API key:
+
+1. **Script — `npm run check:models`** (`scripts/check-models.mjs`). Fetches each provider's *public* models and
+   deprecations pages (Groq, OpenAI, Gemini, Claude), flattens them to text and checks every id in `STT_MODELS`,
+   `POLISH_MODELS`, `DEFAULT_*` and the replacement ids in `RETIRED_MODEL_REPLACEMENTS`. An id missing from the
+   models page is **severe** (exit 1) unless the deprecations page still gives a future shutdown date; an id listed as
+   deprecated is a **warning**; a page that cannot be fetched (403, timeout, JS shell) is **unverifiable** rather than a
+   false alarm. Pass `--out report.md` to also write the Markdown report. If `GROQ_API_KEY` / `OPENAI_API_KEY` /
+   `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` happen to be set in your shell, the script additionally compares against the
+   live `/models` endpoint through voice-core's `listModels()`; keys are never printed. Requires `npm run build:core` first.
+2. **Project skill — `.claude/skills/update-models/SKILL.md`.** The step-by-step playbook for Claude Code (or a human):
+   run the script, confirm replacements and price positioning on the official docs, edit `models.ts` (labels, `DEFAULT_*`,
+   `MODEL_LIST_VERIFIED_AT`, `RETIRED_MODEL_REPLACEMENTS`), update `docs/CONFIGURATION*.md` and `CHANGELOG.md`, run
+   `npm test`, open a PR. It spells out that keys are never printed or committed.
+3. **Scheduled CI — `.github/workflows/check-models.yml`.** Runs the script on the 1st of every month (and on
+   `workflow_dispatch`) with **no repository secrets** — only the default `GITHUB_TOKEN`, scoped to
+   `issues: write, contents: read`. On severe drift it opens or updates a single issue titled **Model list drift**
+   (label `model-drift`) containing the report; when a later run is clean it comments on and closes that issue. Because
+   it has no keys it can only verify public documentation, which is intentional: the owner does not want provider
+   credentials in GitHub.
+
+Typical loop: CI opens the issue → run the `update-models` skill locally → PR → merge → next monthly run closes the issue.
 
 ## Adding an STT Provider
 

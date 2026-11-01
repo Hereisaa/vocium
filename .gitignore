@@ -5,7 +5,9 @@ app-tauri/src-tauri/target/
 app-tauri/src-tauri/gen/
 
 # Local Claude Code workspace state (per-machine settings; never upstream).
-.claude/
+# Project skills under .claude/skills/ are shared and tracked.
+.claude/*
+!.claude/skills/
 
 # --- local config & secrets (Groq key lives only in %APPDATA%, never here) ---
 **/vocium-config.json

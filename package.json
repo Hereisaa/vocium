@@ -25,7 +25,8 @@
     "showcase": "node scripts/gen-showcase.mjs",
     "vad:assets": "node scripts/copy-vad-assets.mjs",
     "dev": "npm run build && npm run vad:assets && tauri dev --config app-tauri/src-tauri/tauri.conf.json",
-    "package": "tauri build --config app-tauri/src-tauri/tauri.conf.json"
+    "package": "tauri build --config app-tauri/src-tauri/tauri.conf.json",
+    "check:models": "node scripts/check-models.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
