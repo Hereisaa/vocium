@@ -36,6 +36,15 @@ Set keys via **Tray → Vocium → Settings…**.
 
 > **Privacy** — cloud providers (Groq, OpenAI, Gemini) send your audio to their servers for transcription. For fully offline use, wait for **Local STT** (roadmap).
 
+## Model list and "Refresh model list"
+
+The **Model** dropdown (Speech-to-Text and AI Polish tabs) is a hand-maintained static list shipped with the app, so it works offline and never changes under you. It cannot know about models released after the build; two escape hatches cover that:
+
+- **Custom…** — type any model id by hand.
+- **↻ Refresh model list** — fetches the provider's live catalogue with the key you have entered or saved (`GET …/models` for Groq / OpenAI-compatible endpoints, including a custom Base URL; Gemini's `v1beta/models`; Anthropic's `v1/models` for Claude polish). The static list stays first as **Recommended**; fetched models appear below as **Fetched** (names containing `whisper`/`transcribe`, or Gemini models that accept `generateContent`, for STT; known chat families for polish) and anything the rules cannot place as **Other**, so nothing the provider returned is hidden. Fetched ids have no speed/cost hints — the id is the label.
+
+The result lives only in memory for the open Settings window; it is **never written to `vocium-config.json`**, and only the model id you pick is saved. The button is disabled with a hint when no key is available, and a failed fetch shows one line next to the button and leaves the dropdown unchanged.
+
 ## AI Polish
 
 Optional LLM cleanup pass applied after transcription, before text injection. Off by default; enable in **Settings → AI Polish**.

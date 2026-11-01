@@ -11,6 +11,7 @@ export * from './base64.js';
 
 export * from './stt/types.js';
 export * from './stt/models.js';
+export * from './stt/list-models.js';
 export * from './stt/resolve-active.js';
 export * from './stt/stt-adapter.js';
 export * from './stt/describe-error.js';

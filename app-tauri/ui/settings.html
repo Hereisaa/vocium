@@ -86,6 +86,11 @@
             <select class="selfield" id="modelSel" aria-labelledby="modelSelLabel"></select>
             <input id="modelCustom" class="keyinput" style="display:none;margin-top:8px"
                    placeholder="輸入 model id" data-i18n-ph="ph.modelId" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
+
+            <div class="refreshrow">
+              <button type="button" class="refreshbtn" id="modelRefresh" data-i18n="btn.refreshModels">↻ 重新整理模型清單</button>
+              <span class="s-hint" id="modelRefreshMsg"></span>
+            </div>
           </div>
           <div class="field" id="baseUrlField" style="display:none">
             <div class="flabel" id="baseUrlLabel" data-i18n="lbl.baseUrl">Base URL（選填）</div>
@@ -134,6 +139,11 @@
               <input id="polishModelCustom" class="keyinput" style="display:none;margin-top:8px"
                      placeholder="輸入 model id" data-i18n-ph="ph.modelId" autocomplete="off" spellcheck="false" aria-label="自訂 model id" />
               <span class="clearkey" id="polishModelDelete" role="button" hidden data-i18n="btn.deleteModel">✕ 刪除此自訂模型</span>
+
+              <div class="refreshrow">
+                <button type="button" class="refreshbtn" id="polishModelRefresh" data-i18n="btn.refreshModels">↻ 重新整理模型清單</button>
+                <span class="s-hint" id="polishModelRefreshMsg"></span>
+              </div>
             </div>
             <div class="field">
               <div class="flabel" data-i18n="lbl.polishStyle">風格</div>
