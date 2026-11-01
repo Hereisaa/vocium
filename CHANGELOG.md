@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Settings window is larger (540×700, was 420×560) and resizable.
+- README showcase: the floating pill hugs its label instead of leaving dead space.
 - **Single-process architecture.** The Node sidecar (Bun-compiled binary) and the MCP
   server/client layer are gone. The voice core now runs inside the floating icon's
   webview; the Rust shell only does OS work (window, tray, hotkey, config file,
