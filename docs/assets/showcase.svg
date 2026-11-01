@@ -94,36 +94,36 @@
   <g transform="translate(470 54)" filter="url(#shadow)">
     <!-- idle -->
     <g class="state st-idle">
-      <rect x="-78" y="-23" width="156" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
-      <circle class="core-idle" cx="-50" cy="0" r="9.5" fill="#6ad0c8"/>
-      <text class="pill-label" x="-28" y="5.5">Vocium</text>
+      <rect x="-62" y="-23" width="124" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
+      <circle class="core-idle" cx="-40" cy="0" r="9.5" fill="#6ad0c8"/>
+      <text class="pill-label" x="-20" y="5.5">Vocium</text>
     </g>
     <!-- listening -->
     <g class="state st-listen">
-      <rect x="-84" y="-23" width="168" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
-      <circle class="ring" cx="-56" cy="0" r="16" fill="none" stroke="#3ddc97" stroke-width="2"/>
-      <g transform="translate(-65 12)" fill="#3ddc97">
+      <rect x="-70" y="-23" width="140" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
+      <circle class="ring" cx="-42" cy="0" r="16" fill="none" stroke="#3ddc97" stroke-width="2"/>
+      <g transform="translate(-51 12)" fill="#3ddc97">
         <rect class="bar" x="0"  y="-24" width="3" height="24" rx="1.5"/>
         <rect class="bar" x="5"  y="-24" width="3" height="24" rx="1.5"/>
         <rect class="bar" x="10" y="-24" width="3" height="24" rx="1.5"/>
         <rect class="bar" x="15" y="-24" width="3" height="24" rx="1.5"/>
         <rect class="bar" x="20" y="-24" width="3" height="24" rx="1.5"/>
       </g>
-      <text class="pill-label" x="-32" y="5.5">聆聽中…</text>
+      <text class="pill-label" x="-18" y="5.5">聆聽中…</text>
     </g>
     <!-- transcribing -->
     <g class="state st-trans">
-      <rect x="-84" y="-23" width="168" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
-      <circle cx="-56" cy="0" r="7" fill="#f5a623"/>
-      <circle class="spin" cx="-56" cy="0" r="14" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-dasharray="44 44" stroke-linecap="round"/>
-      <text class="pill-label" x="-32" y="5.5">轉錄中…</text>
+      <rect x="-70" y="-23" width="140" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
+      <circle cx="-42" cy="0" r="7" fill="#f5a623"/>
+      <circle class="spin" cx="-42" cy="0" r="14" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-dasharray="44 44" stroke-linecap="round"/>
+      <text class="pill-label" x="-18" y="5.5">轉錄中…</text>
     </g>
     <!-- injected -->
     <g class="state st-inject">
-      <rect x="-84" y="-23" width="168" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
-      <circle cx="-56" cy="0" r="14" fill="none" stroke="#7c5cff" stroke-width="2" opacity=".4"/>
-      <path class="check" d="M-63 0.5 L-58.5 5 L-49 -5" fill="none" stroke="#7c5cff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <text class="pill-label" x="-32" y="5.5">輸入完成</text>
+      <rect x="-70" y="-23" width="140" height="46" rx="16" fill="url(#pillbg)" stroke="rgba(255,255,255,.10)"/>
+      <circle cx="-42" cy="0" r="14" fill="none" stroke="#7c5cff" stroke-width="2" opacity=".4"/>
+      <path class="check" d="M-49 0.5 L-44.5 5 L-35 -5" fill="none" stroke="#7c5cff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="pill-label" x="-18" y="5.5">輸入完成</text>
     </g>
   </g>
 
