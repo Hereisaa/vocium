@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `npm run check:models` (`scripts/check-models.mjs`): checks every id in the
+  static model lists against each provider's public models / deprecations
+  pages without any API key (live `/models` comparison only when a key is in
+  the environment); Markdown report, exit 1 on severe drift.
+- `update-models` project skill (`.claude/skills/update-models/SKILL.md`) and
+  a monthly `check-models` GitHub Actions workflow that opens / closes a
+  "Model list drift" issue using only the default `GITHUB_TOKEN`.
+
 ### Changed
 
 - **Model lists refreshed (2026-11-01)** against each provider's docs / live

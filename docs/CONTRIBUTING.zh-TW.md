@@ -9,7 +9,7 @@ packages/voice-core/   純 TypeScript 核心（STT adapters、潤稿、繁簡、
 app-tauri/ui/src/      webview 原始碼（app.js 懸浮 ICON、settings.js 設定、i18n.js）
 app-tauri/ui/build/    esbuild 產物（gitignored）
 app-tauri/src-tauri/   Rust 殼層（視窗、Tray、快捷鍵、設定檔、原生注入 inject.rs）
-scripts/               建置輔助（build-ui.mjs、copy-vad-assets.mjs、圖示產生）
+scripts/               建置輔助（build-ui.mjs、copy-vad-assets.mjs、圖示產生、check-models.mjs 模型清單核對）
 ```
 
 單一行程：voice-core 在懸浮 ICON 的 webview 內執行，透過 Tauri 的 `invoke`／event 與 Rust 溝通，網路請求走 `@tauri-apps/plugin-http` 的 `fetch`。
@@ -57,6 +57,28 @@ export const DEFAULT_MODEL: Record<CloudProvider, string> = { /* … */ };
 - 不做 runtime model-list fetch：各家 `/models` 端點無可靠的 STT 旗標可過濾、需要金鑰、增加首次開啟延遲。
 - 模型選單末項「自訂…」允許輸入任意模型 id，清單落後不會卡住使用者。
 - `POLISH_MODELS` / `DEFAULT_POLISH_MODEL` 規則相同，涵蓋四家 provider（groq / openai / gemini / claude；claude 無 STT 但可潤稿）。
+
+## 維持模型清單不過期
+
+三層機制互相配合，全部**不需要 API 金鑰**：
+
+1. **腳本 `npm run check:models`**（`scripts/check-models.mjs`）：抓各家（Groq／OpenAI／Gemini／Claude）**公開**的
+   models 與 deprecations 文件頁，轉成純文字後逐一核對 `STT_MODELS`、`POLISH_MODELS`、`DEFAULT_*` 以及
+   `RETIRED_MODEL_REPLACEMENTS` 的替代 id。id 從 models 頁消失且沒有未到期的停用日 → **嚴重**（exit 1）；
+   被列在 deprecations 頁 → **警告**；頁面抓不到（403、逾時、JS 空殼）→ 標「無法核對」而不是誤報。
+   加 `--out report.md` 可同時輸出 Markdown 報告。若 shell 裡恰好有 `GROQ_API_KEY`／`OPENAI_API_KEY`／
+   `GEMINI_API_KEY`／`ANTHROPIC_API_KEY`，會再透過 voice-core 的 `listModels()` 比對即時 `/models`；金鑰絕不印出。
+   執行前先 `npm run build:core`。
+2. **專案 skill `.claude/skills/update-models/SKILL.md`**：給 Claude Code（或人）照著走的流程——跑腳本、到官方頁確認
+   替代模型與價格定位、改 `models.ts`（label、`DEFAULT_*`、`MODEL_LIST_VERIFIED_AT`、`RETIRED_MODEL_REPLACEMENTS`）、
+   同步 `docs/CONFIGURATION*.md` 與 `CHANGELOG.md`、跑 `npm test`、開 PR。內文明寫不印、不 commit 金鑰。
+3. **排程 CI `.github/workflows/check-models.yml`**：每月 1 日（與 `workflow_dispatch`）跑同一支腳本，
+   **不使用任何 repo secrets**，只用預設 `GITHUB_TOKEN`（權限 `issues: write, contents: read`）。
+   有嚴重項目就開或更新一張固定標題 **Model list drift**（標籤 `model-drift`）的 issue 並貼上報告；
+   之後某次跑乾淨了就留言並關閉。因為沒有金鑰，CI 只能核對公開文件——這是刻意的設計，擁有者不希望把
+   供應商憑證放進 GitHub。
+
+常見循環：CI 開 issue → 本機跑 `update-models` skill → PR → 合併 → 下個月 CI 自動關 issue。
 
 ## 新增 STT Provider
 
