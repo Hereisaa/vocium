@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Model lists refreshed (2026-11-01)** against each provider's docs / live
+  `/models`: Groq polish default is `openai/gpt-oss-120b` (llama-3.3-70b and
+  llama-3.1-8b were retired 2026-08-16); OpenAI STT default is `gpt-transcribe`
+  (whisper-1 / gpt-4o-*-transcribe retire 2027-02-26) and polish moves to the
+  GPT-6 generation; Gemini default is `gemini-3.8-flash`; Claude presets are the
+  5.5 generation. `DEFAULTS` in config.ts now derive from `DEFAULT_MODEL` /
+  `DEFAULT_POLISH_MODEL` instead of repeating the ids.
+- `RETIRED_MODEL_REPLACEMENTS` / `resolveRetiredModel`: `normalizeConfig` swaps a
+  retired id saved in an old config (e.g. `llama-3.3-70b-versatile`) for the
+  provider's stated replacement, so AI polish keeps working after a retirement.
+- New `MODEL_LIST_VERIFIED_AT` export: per-provider ISO date of the last manual
+  verification of the static model list.
+
 ## [0.2.0] - 2026-11-01
 
 ### Changed

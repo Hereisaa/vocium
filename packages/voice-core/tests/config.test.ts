@@ -1,6 +1,6 @@
 // tests/config.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import { loadConfig, saveConfig, DEFAULTS, readZhMode, readPolishConfig } from '../src/config.js';
+import { loadConfig, saveConfig, DEFAULTS, readZhMode, readPolishConfig, normalizeConfig } from '../src/config.js';
 
 function fakeFs(initial?: string) {
   const store = new Map<string, string>();
@@ -70,10 +70,10 @@ describe('config', () => {
     const fs = fakeFs();
     const cfg = loadConfig(fs as any, path as any, '/cfg');
     expect(cfg.openaiApiKey).toBe('');
-    expect(cfg.openaiModel).toBe('whisper-1');
+    expect(cfg.openaiModel).toBe('gpt-transcribe');
     expect(cfg.openaiBaseUrl).toBe('https://api.openai.com/v1');
     expect(cfg.geminiApiKey).toBe('');
-    expect(cfg.geminiModel).toBe('gemini-3.5-flash');
+    expect(cfg.geminiModel).toBe('gemini-3.8-flash');
     expect(cfg.inputMode).toBe('toggle');
     expect(cfg.vadTrim).toBe(false);
     expect(cfg.micDeviceId).toBe('');
@@ -107,12 +107,18 @@ describe('config', () => {
     expect(c2.vadTrim).toBe(true);
   });
 
+  it('normalizeConfig remaps retired model ids to their replacement', () => {
+    const c = normalizeConfig({ polishModel: 'llama-3.3-70b-versatile', groqModel: 'whisper-large-v3' });
+    expect(c.polishModel).toBe('openai/gpt-oss-120b');
+    expect(c.groqModel).toBe('whisper-large-v3');
+  });
+
   it('defaults: polish fields', () => {
     const fs = fakeFs();
     const c = loadConfig(fs as any, path as any, '/cfg');
     expect(c.polishEnabled).toBe(false);
     expect(c.polishProvider).toBe('groq');
-    expect(c.polishModel).toBe('llama-3.3-70b-versatile');
+    expect(c.polishModel).toBe('openai/gpt-oss-120b');
     expect(c.polishStyle).toBe('light');
     expect(c.polishCustomPrompt).toBe('');
     expect(c.polishApiKey).toBe('');
@@ -184,7 +190,7 @@ describe('readPolishConfig', () => {
     const p = readPolishConfig(fs as any, path as any, '/d');
     expect(p).toEqual({
       polishEnabled: false, polishProvider: 'groq',
-      polishModel: 'llama-3.3-70b-versatile', polishStyle: 'light',
+      polishModel: 'openai/gpt-oss-120b', polishStyle: 'light',
       polishCustomPrompt: '', polishApiKey: '', claudeApiKey: '',
       groqApiKey: '', openaiApiKey: '', geminiApiKey: '',
     });

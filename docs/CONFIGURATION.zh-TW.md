@@ -12,10 +12,10 @@
   "groqApiKey": "<your-groq-key>",
   "groqModel": "whisper-large-v3-turbo",
   "openaiApiKey": "<your-openai-key>", // 選填；使用 OpenAI 提供商時填入
-  "openaiModel": "whisper-1",
+  "openaiModel": "gpt-transcribe",
   "openaiBaseUrl": "",                 // 選填；留空即使用 api.openai.com
   "geminiApiKey": "<your-gemini-key>", // 選填；使用 Gemini 提供商時填入
-  "geminiModel": "gemini-3.5-flash",
+  "geminiModel": "gemini-3.8-flash",
   "inputMode": "toggle",               // "toggle" | "ptt"（按住說話模式）
   "vadTrim": false,                    // 是否啟用靜音自動裁剪
   "maxListenMs": 30000,
